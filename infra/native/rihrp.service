@@ -1,0 +1,22 @@
+[Unit]
+Description=RIHRP Research Studio API
+Documentation=file://%h/Projects/Business-Project/RIHRP-Research-Studio/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/Business-Project/RIHRP-Research-Studio
+EnvironmentFile=-%h/.config/rihrp/rihrp.conf
+ExecStart=%h/Projects/Business-Project/RIHRP-Research-Studio/.venv/bin/uvicorn rihrp.main:app --app-dir apps/api --host 127.0.0.1 --port 18110
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/Projects/Business-Project/RIHRP-Research-Studio /tmp
+# loopback のみで待ち受ける（外向きの firewall はホスト側で管理する）
+
+[Install]
+WantedBy=default.target

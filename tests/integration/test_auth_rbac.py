@@ -1,0 +1,232 @@
+"""認証・認可・CSRF の結合テスト。"""
+
+from __future__ import annotations
+
+from fastapi.testclient import TestClient
+
+from tests.conftest import ROLES, TEST_PASSWORD, login
+
+
+def test_login_and_me(client: TestClient, users: dict[str, str]) -> None:
+    user = login(client, "editor")
+    assert user["email"] == ROLES["editor"]
+    me = client.get("/api/auth/me")
+    assert me.status_code == 200
+    assert me.json()["user"]["role"] == "editor"
+
+
+def test_login_rejects_wrong_password(client: TestClient, users: dict[str, str]) -> None:
+    response = client.post(
+        "/api/auth/login",
+        json={"email": ROLES["editor"], "password": "wrong-password-123"},
+    )
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "invalid_credentials"
+
+
+def test_me_requires_session(client: TestClient, users: dict[str, str]) -> None:
+    assert client.get("/api/auth/me").status_code == 401
+
+
+def test_csrf_required_for_writes(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "editor")
+    client.headers.pop("X-CSRF-Token")
+    response = client.post("/api/projects", json={"title": "CSRF", "summary": ""})
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "csrf_failed"
+
+
+def test_logout_revokes_session(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "editor")
+    assert client.post("/api/auth/logout").status_code == 200
+    assert client.get("/api/auth/me").status_code == 401
+
+
+def test_viewer_cannot_write(viewer_client: TestClient, users: dict[str, str]) -> None:
+    response = viewer_client.post("/api/projects", json={"title": "denied", "summary": ""})
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "forbidden"
+    assert viewer_client.get("/api/projects").status_code == 200
+
+
+def test_viewer_cannot_read_audit(viewer_client: TestClient, users: dict[str, str]) -> None:
+    assert viewer_client.get("/api/audit").status_code == 403
+
+
+def test_audit_is_not_mutable(reviewer_client: TestClient, users: dict[str, str]) -> None:
+    assert reviewer_client.put("/api/audit").status_code in (404, 405)
+    assert reviewer_client.delete("/api/audit").status_code in (404, 405)
+
+
+def test_admin_can_list_users(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "admin")
+    response = client.get("/api/users")
+    assert response.status_code == 200
+    assert len(response.json()["users"]) == 4
+
+
+def test_login_rate_limit(client: TestClient, users: dict[str, str], monkeypatch) -> None:
+    import time
+
+    from rihrp.auth import _login_attempts, reset_login_rate
+    from rihrp.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "login_rate_limit", 5)
+    reset_login_rate()
+    now = time.monotonic()
+    _login_attempts["testclient"].extend([now - i for i in range(5)])
+    response = client.post(
+        "/api/auth/login",
+        json={"email": ROLES["editor"], "password": TEST_PASSWORD},
+    )
+    assert response.status_code == 429
+    assert response.json()["error"]["code"] == "rate_limited"
+
+
+def test_security_headers(client: TestClient, users: dict[str, str]) -> None:
+    response = client.get("/healthz")
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert "default-src 'self'" in response.headers["Content-Security-Policy"]
+
+
+def test_session_cookie_flags(client: TestClient, users: dict[str, str]) -> None:
+    response = client.post(
+        "/api/auth/login",
+        json={"email": ROLES["editor"], "password": TEST_PASSWORD},
+    )
+    assert response.status_code == 200
+    cookies = response.headers.get_list("set-cookie")
+    session_cookie = next(item for item in cookies if item.startswith("rihrp_session="))
+    csrf_cookie = next(item for item in cookies if item.startswith("rihrp_csrf="))
+    assert "HttpOnly" in session_cookie
+    assert "SameSite=lax" in session_cookie
+    assert "HttpOnly" not in csrf_cookie
+
+
+def test_oversized_body_rejected(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "editor")
+    response = client.post(
+        "/api/projects",
+        content=b"x" * (2 * 1024 * 1024 + 1),
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "payload_too_large"
+
+
+def test_admin_cannot_demote_self(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "admin")
+    response = client.patch(f"/api/users/{users['admin']}", json={"role": "viewer"})
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+
+
+def test_change_password(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "editor")
+    changed = client.post(
+        "/api/auth/change-password",
+        json={"current_password": TEST_PASSWORD, "new_password": "new-password-456"},
+    )
+    assert changed.status_code == 200
+
+    with TestClient(client.app) as other:
+        assert (
+            other.post(
+                "/api/auth/login",
+                json={"email": ROLES["editor"], "password": "new-password-456"},
+            ).status_code
+            == 200
+        )
+    with TestClient(client.app) as stale:
+        assert (
+            stale.post(
+                "/api/auth/login",
+                json={"email": ROLES["editor"], "password": TEST_PASSWORD},
+            ).status_code
+            == 401
+        )
+
+
+def test_password_change_revokes_other_sessions(users: dict[str, str]) -> None:
+    with (
+        TestClient(__import__("rihrp.main", fromlist=["app"]).app) as first,
+        TestClient(__import__("rihrp.main", fromlist=["app"]).app) as second,
+    ):
+        login(first, "editor")
+        login(second, "editor")
+        assert second.get("/api/auth/me").status_code == 200
+
+        changed = first.post(
+            "/api/auth/change-password",
+            json={"current_password": TEST_PASSWORD, "new_password": "another-password-789"},
+        )
+        assert changed.status_code == 200
+        assert second.get("/api/auth/me").status_code == 401
+        assert first.get("/api/auth/me").status_code == 200
+
+
+def test_deactivated_user_sessions_are_revoked(users: dict[str, str]) -> None:
+    from sqlalchemy import select
+
+    from rihrp.db import SessionLocal
+    from rihrp.main import app
+    from rihrp.models import Session as SessionRow
+
+    with TestClient(app) as viewer:
+        login(viewer, "viewer")
+        assert viewer.get("/api/auth/me").status_code == 200
+
+        with TestClient(app) as admin:
+            login(admin, "admin")
+            response = admin.patch(f"/api/users/{users['viewer']}", json={"is_active": False})
+            assert response.status_code == 200
+
+        assert viewer.get("/api/auth/me").status_code == 401
+
+    with SessionLocal() as db:
+        sessions = db.execute(
+            select(SessionRow).where(SessionRow.user_id == users["viewer"])
+        ).scalars()
+        assert all(session.revoked_at is not None for session in sessions)
+
+
+def test_chunked_body_without_length_rejected(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "editor")
+    response = client.post(
+        "/api/projects",
+        content=(b"x" for _ in range(10)),
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 411
+    assert response.json()["error"]["code"] == "length_required"
+
+
+def test_production_forces_secure_cookie(
+    client: TestClient, users: dict[str, str], monkeypatch
+) -> None:
+    from rihrp.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "env", "production")
+    response = client.post(
+        "/api/auth/login",
+        json={"email": ROLES["editor"], "password": TEST_PASSWORD},
+    )
+    assert response.status_code == 200
+    cookies = response.headers.get_list("set-cookie")
+    assert any("Secure" in cookie for cookie in cookies)
+
+
+def test_invalid_email_rejected(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "admin")
+    response = client.post(
+        "/api/users",
+        json={
+            "email": "not-an-email",
+            "name": "x",
+            "role": "viewer",
+            "password": "long-enough-pass-1",
+        },
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
