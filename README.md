@@ -186,7 +186,7 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 | 主張一覧の根拠数集約（N+1 解消） | 実装済み | `test_claim_list_reports_evidence_count` |
 | 監査ログの DB レベル append-only | 実装済み | migration `0002_audit_immutable`、`test_audit_events_reject_update_and_delete` |
 | 監査ログの TRUNCATE 保護（DB トリガー） | 実装済み | migration `0003_audit_truncate`、`test_audit_events_reject_update_and_delete`（TRUNCATE を含む）、`test_app_role_cannot_disable_audit_trigger`（所有者ロールでは skip） |
-| 承認・主張変更の直列化（行ロック） | 実装済み | `test_locking.py`、`test_flow_integrity.py` |
+| 承認・主張変更の直列化（行ロック） | 実装済み | `services.py`（`SELECT … FOR UPDATE`）、`test_locking.py`（ロック後の最新行参照） |
 | 主張の判定・本文フィルタ | 実装済み | UI 実測（矛盾 0 件 / 根拠不足 1 件 / 検索 1 件） |
 | モーダルのフォーカストラップ | 実装済み | Playwright 実測（Tab 25 回で外に出ない） |
 | エクスポートは参照主張のみ | 実装済み | `test_export_includes_only_referenced_claims` |
