@@ -61,7 +61,15 @@ def load_jwks(settings: Settings, *, force: bool = False) -> PyJWKSet:
         return cached[1]
     try:
         jwks = _fetch_jwks(settings)
-    except (urllib.error.URLError, TimeoutError, ValueError, KeyError, jwt.PyJWKSetError) as exc:
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        ValueError,
+        KeyError,
+        TypeError,
+        AttributeError,
+        jwt.PyJWKSetError,
+    ) as exc:
         # 一時的な取得失敗では、許容時間内に限り直前の鍵を使う（鍵の失効・ローテーションに配慮）。
         if cached and now - cached[0] <= JWKS_STALE_MAX_SECONDS:
             return cached[1]

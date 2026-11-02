@@ -99,9 +99,9 @@ export function LoginPage() {
               >
                 Cloudflare Access でサインイン
               </button>
-              {accessError ? <div className="error-banner" role="alert">{accessError}</div> : null}
             </div>
           ) : null}
+          {accessError ? <div className="error-banner" role="alert">{accessError}</div> : null}
           {error ? <div className="error-banner" role="alert">{error}</div> : null}
           <form onSubmit={onSubmit} noValidate>
             <div className="field">

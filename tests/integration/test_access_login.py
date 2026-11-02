@@ -93,7 +93,7 @@ def test_access_login_requires_assertion(
     response = client.get("/api/auth/access")
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "access_assertion_missing"
-    assert has_audit("auth.access_denied", reason="assertion_missing")
+    assert has_audit("auth.access_denied", reason="assertion_missing", source="testclient")
 
 
 def test_access_login_rejects_forged_token(
@@ -236,3 +236,29 @@ def test_access_login_audits_origin_rejection(
 
     assert response.status_code == 403
     assert has_audit("auth.access_denied", reason="origin_rejected")
+
+
+def test_access_login_rejects_token_without_email(
+    client: TestClient, users: dict[str, str], access_env: None, signing_key
+) -> None:
+    response = client.get(
+        "/api/auth/access",
+        headers={"Cf-Access-Jwt-Assertion": make_token(signing_key, email=None)},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "access_assertion_invalid"
+    assert has_audit("auth.access_denied", reason="email_missing")
+
+
+def test_access_login_audits_wrong_audience(
+    client: TestClient, users: dict[str, str], access_env: None, signing_key
+) -> None:
+    response = client.get(
+        "/api/auth/access",
+        headers={"Cf-Access-Jwt-Assertion": make_token(signing_key, aud="other-aud")},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "access_assertion_invalid"
+    assert has_audit("auth.access_denied", reason="access_assertion_invalid")

@@ -22,10 +22,10 @@
 
 | 項目 | 結果 |
 |---|---|
-| `pytest -q` | **89 passed / 1 skipped**（Access 関連 30 件を追加: unit 20 / integration 10） |
+| `pytest -q` | **93 passed / 1 skipped**（Access 関連 34 件を追加: unit 22 / integration 12） |
 | `ruff check` / `ruff format --check` | pass |
 | `python infra/db/export_openapi.py --check` | pass（`/api/auth/access` を反映） |
-| `vitest run` | **9 passed**（`auth.test.tsx` 4 件: 自動サインイン / 無効時のフォールバック / ログアウト直後の抑止 / 500 時に自動サインインしない） |
+| `vitest run` | **10 passed**（`auth.test.tsx` 4 件 + `pages/Login.test.tsx` 1 件: 自動サインイン / 無効時のフォールバック / ログアウト直後の抑止 / 500 時に自動サインインしない / セッション確認エラーの表示） |
 | `tsc -b` / `vite build` | pass |
 
 integration テストで確認した境界:
@@ -66,7 +66,7 @@ Cloudflare Access 側: アプリ「RIHRP Research Studio」の allow policy を 
 ### 4.1 設計の修正（実測に基づく）
 
 - 配備前の実測で、uvicorn は proxy headers を既定で信頼し、Tunnel 経由の `request.client.host` が
-  **利用者の実 IP**（例 `2001:268:...`）になることを確認した（`journalctl -u rihrp.service`）。
+  **利用者の実 IP**（実測例は伏せる）になることを確認した（`journalctl -u rihrp.service`）。
 - そのため `RIHRP_CF_ACCESS_LOOPBACK_ONLY` の既定を **false** にした。この判定は uvicorn を
   `--no-proxy-headers` で動かす場合の追加防御として残す。境界は **JWT 検証 + email allowlist** が担う。
 
@@ -76,7 +76,7 @@ Cloudflare Access 側: アプリ「RIHRP Research Studio」の allow policy を 
 - 署名の合わない JWT を付与 → **401**
 - `GET https://research.mirai-dx-platform.com/` → **302**（Access。変わらず）
 - `/healthz` `/readyz` → 200
-- 監査: **すべての拒否**（Assertion 欠落 / 署名・aud・iss・期限の検証失敗 / email 欠落 / allowlist 外 / 未登録 / 無効 / 送信元拒否）が `auth.access_denied` に、成功が `auth.login`（`via=cloudflare_access`）に残る（integration テストで確認）
+- 監査: 拒否は経路ごとに `auth.access_denied`（reason・source）を記録し、成功は `auth.login`（`via=cloudflare_access`）に残る。主要経路（Assertion 欠落 / 検証失敗 / email 欠落 / allowlist 外 / 未登録 / 送信元拒否）は integration テストで確認済み。無効ユーザー経路はコード上の記録のみ。
 
 ## 6. 未検証
 

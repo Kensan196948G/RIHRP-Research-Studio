@@ -160,11 +160,27 @@ def test_verify_assertion_rejects_hs256(monkeypatch):
     assert excinfo.value.status_code == 401
 
 
-def test_verify_assertion_requires_exp_and_iat(monkeypatch):
+def test_verify_assertion_requires_exp(monkeypatch):
     private_key, jwks = make_key()
     monkeypatch.setattr(cf_access, "_fetch_jwks", lambda _settings: jwks)
     token = jwt.encode(
-        {"aud": AUD, "iss": ISS, "email": "editor@example.com"},
+        {"aud": AUD, "iss": ISS, "email": "editor@example.com", "iat": int(time.time())},
+        private_key,
+        algorithm="RS256",
+        headers={"kid": "kid-1"},
+    )
+
+    with pytest.raises(ApiError) as excinfo:
+        cf_access.verify_assertion(token, make_settings())
+    assert excinfo.value.status_code == 401
+
+
+def test_verify_assertion_requires_iat(monkeypatch):
+    private_key, jwks = make_key()
+    monkeypatch.setattr(cf_access, "_fetch_jwks", lambda _settings: jwks)
+    now = int(time.time())
+    token = jwt.encode(
+        {"aud": AUD, "iss": ISS, "email": "editor@example.com", "exp": now + 300},
         private_key,
         algorithm="RS256",
         headers={"kid": "kid-1"},
@@ -281,3 +297,17 @@ def test_load_jwks_returns_503_on_empty_keys(monkeypatch):
     with pytest.raises(ApiError) as excinfo:
         cf_access.load_jwks(make_settings())
     assert excinfo.value.status_code == 503
+
+
+def test_load_jwks_returns_503_for_non_object_payload(monkeypatch):
+    """JSON が null / 配列 / 文字列のときも 500 ではなく 503 にする（実パース経路）。"""
+
+    def non_object(_settings):
+        return PyJWKSet.from_dict({"keys": "not-a-list"})
+
+    monkeypatch.setattr(cf_access, "_fetch_jwks", non_object)
+
+    with pytest.raises(ApiError) as excinfo:
+        cf_access.load_jwks(make_settings())
+    assert excinfo.value.status_code == 503
+    assert excinfo.value.code == "access_verification_unavailable"
