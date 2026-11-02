@@ -106,6 +106,22 @@ def login(
     return {"user": user_to_dict(user), "csrf_token": csrf_token}
 
 
+def _access_denied(db: OrmSession, request: Request, reason: str, **details: object) -> None:
+    """Access 自動ログインの拒否を監査に残す。
+
+    検証前のクレームは信頼できないため、email は検証後に確定した場合だけ渡す。
+    """
+    source = request.client.host if request.client else ""
+    write_audit(
+        db,
+        actor_id=None,
+        action="auth.access_denied",
+        entity_type="user",
+        details={"reason": reason, "source": source, **details},
+    )
+    db.commit()
+
+
 @router.get("/access")
 def access_login(
     request: Request,
@@ -124,32 +140,32 @@ def access_login(
 
     host = request.client.host if request.client else ""
     if settings.cf_access_loopback_only and host not in {"127.0.0.1", "::1"}:
+        _access_denied(db, request, "origin_rejected", source=host)
         raise ApiError(
             403, "access_origin_rejected", "Cloudflare Access 経由の接続ではありません。"
         )
 
     token = request.headers.get("Cf-Access-Jwt-Assertion", "").strip()
     if not token:
+        _access_denied(db, request, "assertion_missing")
         raise ApiError(
             401, "access_assertion_missing", "Cloudflare Access の認証情報がありません。"
         )
 
-    claims = verify_assertion(token, settings)
+    try:
+        claims = verify_assertion(token, settings)
+    except ApiError as exc:
+        _access_denied(db, request, exc.code)
+        raise
     email = str(claims.get("email") or "").strip().lower()
     if not email:
+        _access_denied(db, request, "email_missing")
         raise ApiError(
             401, "access_assertion_invalid", "Cloudflare Access のトークンに email がありません。"
         )
 
     if email not in allowed_emails(settings):
-        write_audit(
-            db,
-            actor_id=None,
-            action="auth.access_denied",
-            entity_type="user",
-            details={"email": email, "reason": "email_not_allowed"},
-        )
-        db.commit()
+        _access_denied(db, request, "email_not_allowed", email=email)
         raise ApiError(403, "access_email_not_allowed", "このアカウントには利用権限がありません。")
 
     user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
@@ -163,25 +179,10 @@ def access_login(
         db.add(user)
         db.flush()
     if user is None:
-        write_audit(
-            db,
-            actor_id=None,
-            action="auth.access_denied",
-            entity_type="user",
-            details={"email": email, "reason": "user_not_found"},
-        )
-        db.commit()
+        _access_denied(db, request, "user_not_found", email=email)
         raise ApiError(403, "access_user_not_found", "このアカウントは登録されていません。")
     if not user.is_active:
-        write_audit(
-            db,
-            actor_id=user.id,
-            action="auth.access_denied",
-            entity_type="user",
-            entity_id=user.id,
-            details={"email": email, "reason": "user_inactive"},
-        )
-        db.commit()
+        _access_denied(db, request, "user_inactive", email=email, user_id=user.id)
         raise ApiError(403, "access_user_inactive", "このアカウントは無効化されています。")
 
     raw_token = new_opaque_token()
@@ -204,6 +205,8 @@ def access_login(
     )
     db.commit()
     _set_cookies(response, raw_token, csrf_token, settings.session_ttl_minutes)
+    # 自動ログインの応答はキャッシュさせない（prefetch 等で古い応答を再利用させない）。
+    response.headers["Cache-Control"] = "no-store"
     return {"user": user_to_dict(user), "csrf_token": csrf_token}
 
 

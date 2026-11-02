@@ -71,6 +71,16 @@ def audit_actions() -> list[tuple[str, dict]]:
     return [(action, details or {}) for action, details in rows]
 
 
+def has_audit(action: str, **expected: object) -> bool:
+    """details の部分一致で監査イベントを探す（source 等の付加情報は無視する）。"""
+    for recorded, details in audit_actions():
+        if recorded != action:
+            continue
+        if all(details.get(key) == value for key, value in expected.items()):
+            return True
+    return False
+
+
 def test_access_login_is_disabled_by_default(client: TestClient, users: dict[str, str]) -> None:
     response = client.get("/api/auth/access")
     assert response.status_code == 404
@@ -83,6 +93,7 @@ def test_access_login_requires_assertion(
     response = client.get("/api/auth/access")
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "access_assertion_missing"
+    assert has_audit("auth.access_denied", reason="assertion_missing")
 
 
 def test_access_login_rejects_forged_token(
@@ -95,6 +106,7 @@ def test_access_login_rejects_forged_token(
     )
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "access_assertion_invalid"
+    assert has_audit("auth.access_denied", reason="access_assertion_invalid")
 
 
 def test_access_login_creates_session(
@@ -105,6 +117,7 @@ def test_access_login_creates_session(
         headers={"Cf-Access-Jwt-Assertion": make_token(signing_key)},
     )
     assert response.status_code == 200, response.text
+    assert response.headers["Cache-Control"] == "no-store"
     body = response.json()
     assert body["user"]["email"] == "editor@test.local"
     assert body["user"]["role"] == "editor"
@@ -115,7 +128,7 @@ def test_access_login_creates_session(
     assert me.status_code == 200
     assert me.json()["user"]["email"] == "editor@test.local"
 
-    assert ("auth.login", {"role": "editor", "via": "cloudflare_access"}) in audit_actions()
+    assert has_audit("auth.login", role="editor", via="cloudflare_access")
 
 
 def test_access_login_rejects_email_outside_allowlist(
@@ -127,10 +140,7 @@ def test_access_login_rejects_email_outside_allowlist(
     )
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "access_email_not_allowed"
-    assert (
-        "auth.access_denied",
-        {"email": "reviewer@test.local", "reason": "email_not_allowed"},
-    ) in audit_actions()
+    assert has_audit("auth.access_denied", email="reviewer@test.local", reason="email_not_allowed")
 
 
 def test_access_login_rejects_unknown_user(
@@ -152,10 +162,7 @@ def test_access_login_rejects_unknown_user(
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "access_user_not_found"
-    assert (
-        "auth.access_denied",
-        {"email": "nobody@test.local", "reason": "user_not_found"},
-    ) in audit_actions()
+    assert has_audit("auth.access_denied", email="nobody@test.local", reason="user_not_found")
 
 
 def test_access_login_provisions_when_enabled(
@@ -192,3 +199,34 @@ def test_access_login_requires_loopback_when_configured(
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "access_origin_rejected"
+
+
+def test_access_login_denies_all_when_allowlist_is_empty(
+    client: TestClient, users: dict[str, str], access_env: None, signing_key, monkeypatch
+) -> None:
+    monkeypatch.setenv("RIHRP_CF_ACCESS_ALLOWED_EMAILS", "")
+    get_settings.cache_clear()
+
+    response = client.get(
+        "/api/auth/access",
+        headers={"Cf-Access-Jwt-Assertion": make_token(signing_key)},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "access_email_not_allowed"
+    assert has_audit("auth.access_denied", reason="email_not_allowed")
+
+
+def test_access_login_audits_origin_rejection(
+    client: TestClient, users: dict[str, str], access_env: None, signing_key, monkeypatch
+) -> None:
+    monkeypatch.setenv("RIHRP_CF_ACCESS_LOOPBACK_ONLY", "true")
+    get_settings.cache_clear()
+
+    response = client.get(
+        "/api/auth/access",
+        headers={"Cf-Access-Jwt-Assertion": make_token(signing_key)},
+    )
+
+    assert response.status_code == 403
+    assert has_audit("auth.access_denied", reason="origin_rejected")

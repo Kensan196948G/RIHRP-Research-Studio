@@ -76,4 +76,4 @@
 | 承認後の根拠変更を検知 | `services.py::report_integrity` | `test_approved_report_flags_post_approval_tamper` | ✅ |
 | 承認拒否時も検証結果を残す | `reports.py::review_report`（commit 後に 409） | `test_blocked_approval_persists_verification` | ✅ |
 | モバイルでの可読性 | カード表示 / 表の横スクロール | Playwright 実測（390px） | ✅ |
-| Cloudflare Access 自動ログイン | `routers/auth.py::access_login`、`cf_access.py`（JWT 検証・allowlist・ループバック限定） | `tests/unit/test_cf_access.py`（8 件）、`tests/integration/test_access_login.py`（8 件）、`apps/web/src/auth.test.tsx` | ✅ |
+| Cloudflare Access 自動ログイン | `routers/auth.py::access_login`、`cf_access.py`（JWT 検証・allowlist・拒否監査・ループバック限定は任意） | `tests/unit/test_cf_access.py`（16 件）、`tests/integration/test_access_login.py`（10 件）、`apps/web/src/auth.test.tsx`（3 件） | ✅ |

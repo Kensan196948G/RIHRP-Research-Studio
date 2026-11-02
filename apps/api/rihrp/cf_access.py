@@ -25,6 +25,8 @@ from .config import Settings
 from .errors import ApiError
 
 JWKS_TTL_SECONDS = 300.0
+# 鍵取得に失敗したとき、この秒数までは直前の鍵を使う（それ以上古い鍵では 503 で停止する）。
+JWKS_STALE_MAX_SECONDS = 3600.0
 HTTP_TIMEOUT_SECONDS = 5.0
 
 # team domain -> (取得時刻, JWKS)
@@ -59,9 +61,9 @@ def load_jwks(settings: Settings, *, force: bool = False) -> PyJWKSet:
         return cached[1]
     try:
         jwks = _fetch_jwks(settings)
-    except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as exc:
-        # 一時的な取得失敗では期限切れでも直前の鍵を使う（全断を避ける）。
-        if cached:
+    except (urllib.error.URLError, TimeoutError, ValueError, KeyError, jwt.PyJWKSetError) as exc:
+        # 一時的な取得失敗では、許容時間内に限り直前の鍵を使う（鍵の失効・ローテーションに配慮）。
+        if cached and now - cached[0] <= JWKS_STALE_MAX_SECONDS:
             return cached[1]
         raise ApiError(
             503,

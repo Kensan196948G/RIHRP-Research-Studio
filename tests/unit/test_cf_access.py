@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+import urllib.error
 
 import jwt
 import pytest
@@ -127,3 +128,109 @@ def test_verify_assertion_requires_configuration():
 def test_allowed_emails_parsing():
     settings = make_settings(cf_access_allowed_emails=" A@example.com, b@example.com ,, ")
     assert cf_access.allowed_emails(settings) == {"a@example.com", "b@example.com"}
+
+
+def test_verify_assertion_rejects_alg_none(monkeypatch):
+    _, jwks = make_key()
+    monkeypatch.setattr(cf_access, "_fetch_jwks", lambda _settings: jwks)
+    now = int(time.time())
+    token = jwt.encode(
+        {"aud": AUD, "iss": ISS, "email": "editor@example.com", "iat": now, "exp": now + 300},
+        None,
+        algorithm="none",
+    )
+
+    with pytest.raises(ApiError) as excinfo:
+        cf_access.verify_assertion(token, make_settings())
+    assert excinfo.value.status_code == 401
+
+
+def test_verify_assertion_rejects_hs256(monkeypatch):
+    _, jwks = make_key()
+    monkeypatch.setattr(cf_access, "_fetch_jwks", lambda _settings: jwks)
+    now = int(time.time())
+    token = jwt.encode(
+        {"aud": AUD, "iss": ISS, "email": "editor@example.com", "iat": now, "exp": now + 300},
+        "secret",
+        algorithm="HS256",
+    )
+
+    with pytest.raises(ApiError) as excinfo:
+        cf_access.verify_assertion(token, make_settings())
+    assert excinfo.value.status_code == 401
+
+
+def test_verify_assertion_requires_exp_and_iat(monkeypatch):
+    private_key, jwks = make_key()
+    monkeypatch.setattr(cf_access, "_fetch_jwks", lambda _settings: jwks)
+    token = jwt.encode(
+        {"aud": AUD, "iss": ISS, "email": "editor@example.com"},
+        private_key,
+        algorithm="RS256",
+        headers={"kid": "kid-1"},
+    )
+
+    with pytest.raises(ApiError) as excinfo:
+        cf_access.verify_assertion(token, make_settings())
+    assert excinfo.value.status_code == 401
+
+
+def test_verify_assertion_rejects_future_iat(monkeypatch):
+    private_key, jwks = make_key()
+    monkeypatch.setattr(cf_access, "_fetch_jwks", lambda _settings: jwks)
+
+    with pytest.raises(ApiError) as excinfo:
+        cf_access.verify_assertion(
+            make_token(private_key, iat=int(time.time()) + 120), make_settings()
+        )
+    assert excinfo.value.status_code == 401
+
+
+def test_load_jwks_returns_503_when_fetch_fails(monkeypatch):
+    def fail(_settings):
+        raise urllib.error.URLError("boom")
+
+    monkeypatch.setattr(cf_access, "_fetch_jwks", fail)
+
+    with pytest.raises(ApiError) as excinfo:
+        cf_access.load_jwks(make_settings())
+    assert excinfo.value.status_code == 503
+    assert excinfo.value.code == "access_verification_unavailable"
+
+
+def test_load_jwks_returns_503_on_invalid_jwks(monkeypatch):
+    def invalid(_settings):
+        raise jwt.PyJWKSetError("invalid jwks")
+
+    monkeypatch.setattr(cf_access, "_fetch_jwks", invalid)
+
+    with pytest.raises(ApiError) as excinfo:
+        cf_access.load_jwks(make_settings())
+    assert excinfo.value.status_code == 503
+
+
+def test_load_jwks_uses_stale_cache_within_limit(monkeypatch):
+    private_key, jwks = make_key()
+
+    def fail(_settings):
+        raise urllib.error.URLError("boom")
+
+    monkeypatch.setattr(cf_access, "_fetch_jwks", fail)
+    cf_access._jwks_cache[TEAM] = (time.monotonic() - 600, jwks)
+
+    claims = cf_access.verify_assertion(make_token(private_key), make_settings())
+    assert claims["email"] == "editor@example.com"
+
+
+def test_load_jwks_rejects_cache_older_than_limit(monkeypatch):
+    _, jwks = make_key()
+
+    def fail(_settings):
+        raise urllib.error.URLError("boom")
+
+    monkeypatch.setattr(cf_access, "_fetch_jwks", fail)
+    cf_access._jwks_cache[TEAM] = (time.monotonic() - cf_access.JWKS_STALE_MAX_SECONDS - 60, jwks)
+
+    with pytest.raises(ApiError) as excinfo:
+        cf_access.load_jwks(make_settings())
+    assert excinfo.value.status_code == 503
