@@ -34,6 +34,10 @@ infra/db/backup.sh rihrp
 # 復元検証（別 DB に復元して行数を確認）
 infra/db/restore_check.sh ~/.local/state/rihrp/backups/rihrp-<stamp>.dump
 
+# pg_dump / pg_restore は同一 major を使う（既定: /usr/lib/postgresql/16/bin）。
+# PATH の pg_dump が 17、pg_restore が 16 だと「バージョン(1.16)はサポートされていません」で失敗する。
+# 必要なら RIHRP_PG_BIN=/usr/lib/postgresql/16/bin を指定する。
+
 # migration 状態
 (cd infra/migrations && alembic current && alembic heads)
 ```

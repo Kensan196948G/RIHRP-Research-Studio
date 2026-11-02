@@ -5,10 +5,13 @@ set -euo pipefail
 
 DUMP="${1:?バックアップファイルを指定してください}"
 RESTORE_DB="${2:-rihrp_restore_check}"
+PG_BIN="${RIHRP_PG_BIN:-/usr/lib/postgresql/16/bin}"
+PG_RESTORE="$PG_BIN/pg_restore"
+[[ -x "$PG_RESTORE" ]] || PG_RESTORE="pg_restore"
 
 dropdb --if-exists "$RESTORE_DB"
 createdb "$RESTORE_DB"
-pg_restore --no-owner --dbname="$RESTORE_DB" "$DUMP"
+"$PG_RESTORE" --no-owner --dbname="$RESTORE_DB" "$DUMP"
 
 echo "restored: $RESTORE_DB"
 psql -d "$RESTORE_DB" -tAc "select 'users='||count(*) from users union all select 'projects='||count(*) from projects union all select 'claims='||count(*) from claims union all select 'reports='||count(*) from reports"

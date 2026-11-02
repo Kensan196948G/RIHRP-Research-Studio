@@ -191,6 +191,8 @@ createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指
 - 監査: 上記操作が `audit_events` に記録されていることを確認
 - OpenDesign: design direction（`tech-utility`）取得、Studio で 8 画面のプロトタイプ生成（run は failed 表示）、実装との差異を文書化
 - systemd 配備: `rihrp.service` 起動、`/healthz` 200 / `/readyz` 200（migration `2dee6c390541`）
+- Backup / Restore: `infra/db/backup.sh` で dump 作成、`infra/db/restore_check.sh` で別 DB に復元（users=4 / projects=1 / claims=4 / reports=1）
+- Migration rollback: `rihrp_test` で `alembic downgrade base` → `upgrade head` を実測（最終 `2dee6c390541 (head)`）
 
 ## 11. ドキュメント
 
