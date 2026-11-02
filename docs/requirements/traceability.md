@@ -54,7 +54,7 @@
 | NFR-5 監査 append-only | `audit.py`、API なし | `test_audit_is_not_mutable` | ✅ |
 | NFR-6 Node 22 / Python 3.12 / Docker なし | systemd unit | 実測 | ✅ |
 | NFR-7 migration 未適用で 503 | `routers/health.py` | `test_health_and_ready` | ✅ |
-| NFR-8 キーボード / フォーカス | CSS `:focus-visible` | Playwright 実測（2px ティール） | ✅ |
+| NFR-8 キーボード / フォーカス | CSS `:focus-visible`、スキップリンク | Playwright 実測（2px ティール、Tab→本文へ移動） | ✅ |
 
 ## 追加要件（実運用で発見）
 

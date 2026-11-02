@@ -124,7 +124,7 @@ RIHRP_DATABASE_URL=postgresql+psycopg://rihrp_app:<パスワード>@127.0.0.1:54
 createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指定可
 
 .venv/bin/pytest -q            # 33 passed
-(cd apps/web && npx vitest run) # 4 passed
+(cd apps/web && npx vitest run) # 5 passed
 .venv/bin/ruff check apps/api tests
 .venv/bin/ruff format --check apps/api tests
 tools/ci.sh --no-install       # CI 相当を一括実行
@@ -167,7 +167,8 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 | レポート / 版 / 検証 / 提出 / 承認 / 差し戻し | 実装済み | pytest、UI 実測（提出→承認） |
 | 承認後の整合性警告（根拠変更で矛盾になった場合） | 実装済み | pytest（`test_approved_report_flags_post_approval_tamper`）、画面確認 |
 | モバイル表示（カード / 表スクロール / レール非表示） | 実装済み | Playwright 実測（390px、横スクロール 0） |
-| キーボード（Esc / フォーカスリング） | 実装済み | Playwright 実測（2px ティール） |
+| キーボード（Esc / フォーカスリング / スキップリンク） | 実装済み | Playwright 実測（2px ティール） |
+| 描画エラー時のフォールバック | 実装済み | `ErrorBoundary.test.tsx` |
 | OpenDesign 設計参照との比較 | 実施済み | `docs/design/01-webui-design.md` 第 8 章 |
 | Markdown エクスポート | 実装済み | pytest、API 実測 |
 | 監査ログ（append-only） | 実装済み | pytest |
@@ -189,7 +190,7 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 ## 10. 検証記録（2026-11-02）
 
 - `pytest`: **28 passed**（実 PostgreSQL `rihrp_test`）
-- `vitest`: **4 passed**
+- `vitest`: **5 passed**
 - `ruff check` / `ruff format --check`: pass
 - `tsc -b` / `vite build`: pass（227 kB / gzip 71 kB）
 - `alembic upgrade head`: 適用済み（`2dee6c390541`）

@@ -486,3 +486,12 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
   padding: 14px;
 }
 .verification-text { font-size: 14px; font-weight: 600; margin: 8px 0 4px; line-height: 1.6; }
+
+/* skip link（キーボード利用者向け） */
+.skip-link {
+  position: absolute; left: -9999px; top: 8px; z-index: 300;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--accent-line); border-radius: 6px; padding: 8px 12px;
+  font-weight: 600; font-size: 13px;
+}
+.skip-link:focus { left: 8px; }

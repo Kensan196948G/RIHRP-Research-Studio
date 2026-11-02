@@ -26,6 +26,7 @@ export function Layout() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">本文へ移動</a>
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark" aria-hidden="true">RI</div>
@@ -67,7 +68,7 @@ export function Layout() {
         </div>
       </aside>
 
-      <main className="main">
+      <main className="main" id="main-content" tabIndex={-1}>
         <Outlet />
       </main>
     </div>
