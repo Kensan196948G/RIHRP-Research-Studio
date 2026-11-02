@@ -16,6 +16,7 @@
 > GitHub への PR は作成済み（[#1](https://github.com/Kensan196948G/RIHRP-Research-Studio/pull/1)）だが、**`main` へのマージは未実施**（リポジトリが自動マージ許可リストに未登録、かつ CI 未設定のため）。
 > **本番公開（Cloudflare Tunnel / custom domain）は未実施**（高リスク変更として承認待ち）。
 > **CI（GitHub Actions）は未設定**（ワークフローファイルの作成が環境のポリシーゲートで拒否されたため。第 9 章）。
+> **最終検証（2026-11-03）:** pytest 47 / vitest 5 / `tools/ci.sh`（npm ci 含む）/ `npm audit` 0 / `pip-audit` 0 / スケール（1,000 主張）p95 claims 180ms・export 42ms / 通し E2E 成功。
 
 ## 01. これは何か
 
@@ -217,8 +218,10 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 - UI 実測（Round 3）: ログイン後の戻り先復元、主張編集（判定リセット）、テーマ編集、版履歴モーダル、設定画面、ロール変更、テーマ削除（管理者のみ）
 - 改竄試験: 出典本文を変更 → `contradicted`（`evidence_tampered`）→ 承認 API が **409 approval_blocked**
 - 監査: 上記操作が `audit_events` に記録されていることを確認
+- 最終通し E2E（2026-11-03）: テーマ作成 → 出典（SHA-256 一致）→ 主張/根拠 → 検証 `verified` → レポート v2 → 提出 → 承認 → エクスポート（マーカー / SHA）→ 整合性 `needs_reapproval=false` → 管理者が削除
+- 依存関係: `npm audit --omit=dev` 0 件、`pip-audit` 0 件
 - OpenDesign: design direction（`tech-utility`）取得、Studio で 8 画面のプロトタイプ生成（run は failed 表示）、実装との差異を文書化
-- systemd 配備: `rihrp.service` 起動、`/healthz` 200 / `/readyz` 200（migration `2dee6c390541`）
+- systemd 配備: `rihrp.service` 起動、`/healthz` 200 / `/readyz` 200（migration `0002_audit_immutable`）
 - UI: ダッシュボード要対応レール、エディタのセクション一覧レール、独立した検証結果画面、モバイル 390px（横スクロール 0、カード表示）、モーダル Esc、フォーカスリング 2px を実測
 - 性能（小規模、n=100）: `/api/projects` p95 17.6ms / claims p95 24.8ms / sources p95 14.9ms（NFR-2 の 300ms 以内）
 - 性能（スケール: 200 出典 / 1,000 主張 / 200 参照）: claims p95 180ms / export p95 42ms / projects p95 17ms（NFR-2 の 300ms 以内）
