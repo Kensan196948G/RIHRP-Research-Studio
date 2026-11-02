@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
 from ..audit import write_audit
@@ -78,7 +79,11 @@ def create_user(
         entity_id=user.id,
         details={"role": user.role},
     )
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ApiError(409, "conflict", "同じメールアドレスの利用者が存在します。") from None
     return {"user": user_to_dict(user)}
 
 

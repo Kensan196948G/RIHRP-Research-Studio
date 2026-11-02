@@ -11,7 +11,8 @@
 
 - `audit_events` への INSERT は、業務操作と同じ DB トランザクションで行う。
 - 監査の書き込みに失敗した場合、業務操作も失敗させる（fail closed）。
-- `audit_events` に対する UPDATE / DELETE の API を提供しない。DB ロールにも UPDATE/DELETE を付与しない。
+- `audit_events` に対する UPDATE / DELETE の API を提供しない。
+- DB トリガー `trg_audit_immutable`（migration `0002_audit_immutable`）で UPDATE / DELETE を例外にする。アプリのバグや手作業 SQL でも履歴を書き換えられない。
 - 記録項目: actor_id、action、entity_type、entity_id、project_id、details（秘密は入れない）、created_at、request_id。
 
 ## 理由

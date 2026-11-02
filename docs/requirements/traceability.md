@@ -26,6 +26,7 @@
 | FR-4.2 根拠の紐付け | `claims.py::add_evidence` | `test_main_flow_end_to_end` | ✅ |
 | FR-4.3 引用の実在確認（422） | `claims.py::add_evidence` | `test_quote_must_exist` | ✅ |
 | FR-4.4 検証 API と保存 | `services.py::verify_claim_row` | `test_main_flow_end_to_end` | ✅ |
+| FR-4.5 主張の判定・本文フィルタ | 主張一覧のクライアントフィルタ | UI 実測 | ✅ |
 | FR-5.1 決定論的 4 判定 | `apps/api/rihrp/verify.py` | `tests/unit/test_verification.py` 7 件 | ✅ |
 | FR-5.2 判定の内訳 | `verify.py::verify_claim`（details） | 同上 | ✅ |
 | FR-5.3 一括 / レポート検証 | `claims.py::verify_project_claims`、`reports.py::verify_report` | `test_main_flow_end_to_end` | ✅ |
@@ -58,10 +59,11 @@
 | NFR-10 Cookie 属性 | `auth.py::_set_cookies` | `test_session_cookie_flags` | ✅ |
 | NFR-11 パスワード変更時のセッション失効 | `auth.py::change_password` | `test_password_change_revokes_other_sessions` | ✅ |
 | NFR-12 一覧の N+1 回避 | `claims.py`（`GROUP BY`） | `test_claim_list_reports_evidence_count` | ✅ |
-| NFR-5 監査 append-only | `audit.py`、API なし | `test_audit_is_not_mutable` | ✅ |
+| NFR-13 一意制約競合の 409 化 | `sources.py` / `claims.py` / `admin.py`（`IntegrityError`） | コードレビュー（競合時の防御） | ✅ |
+| NFR-5 監査 append-only | `audit.py`、API なし、DB トリガー（`0002`） | `test_audit_is_not_mutable`、`test_audit_events_reject_update_and_delete` | ✅ |
 | NFR-6 Node 22 / Python 3.12 / Docker なし | systemd unit | 実測 | ✅ |
 | NFR-7 migration 未適用で 503 | `routers/health.py` | `test_health_and_ready` | ✅ |
-| NFR-8 キーボード / フォーカス | CSS `:focus-visible`、スキップリンク | Playwright 実測（2px ティール、Tab→本文へ移動） | ✅ |
+| NFR-8 キーボード / フォーカス | CSS `:focus-visible`、スキップリンク、モーダルのフォーカストラップ | Playwright 実測（2px ティール、Tab→本文へ移動、Tab 25 回で外へ出ない） | ✅ |
 
 ## 追加要件（実運用で発見）
 

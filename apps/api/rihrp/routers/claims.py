@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
 from ..audit import write_audit
@@ -200,7 +201,11 @@ def add_evidence(
         project_id=claim.project_id,
         details={"claim_id": claim.id, "source_id": source.id, "quote": quote[:120]},
     )
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ApiError(409, "conflict", "同じ根拠が既に登録されています。") from None
     return {"evidence": claim_to_dict(claim, _load_evidence(db, claim.id))["evidence"]}
 
 

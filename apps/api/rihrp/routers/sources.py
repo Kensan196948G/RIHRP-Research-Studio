@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
 from ..audit import write_audit
@@ -95,7 +96,12 @@ def create_source(
         project_id=project_id,
         details={"title": source.title, "kind": source.kind, "sha256": digest},
     )
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # 事前チェックと commit の間に同じ内容が登録された場合（競合）
+        db.rollback()
+        raise ApiError(409, "conflict", "同じ内容の出典が既に登録されています。") from None
     return {"source": source_to_dict(source)}
 
 

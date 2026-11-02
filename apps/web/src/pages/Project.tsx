@@ -40,6 +40,8 @@ export function ProjectPage() {
   const [evidenceClaim, setEvidenceClaim] = useState<Claim | null>(null);
   const [reportModal, setReportModal] = useState(false);
   const [projectModal, setProjectModal] = useState(false);
+  const [claimFilter, setClaimFilter] = useState("all");
+  const [claimQuery, setClaimQuery] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -82,6 +84,13 @@ export function ProjectPage() {
     }),
     [sources, claims, reports],
   );
+
+  const visibleClaims = claims.filter((claim) => {
+    if (claimFilter === "unchecked" && claim.last_verdict !== null) return false;
+    if (claimFilter !== "all" && claimFilter !== "unchecked" && claim.last_verdict !== claimFilter) return false;
+    const needle = claimQuery.trim().toLowerCase();
+    return !needle || claim.text.toLowerCase().includes(needle);
+  });
 
   const nextActions = useMemo(() => {
     if (!project) return [];
@@ -420,6 +429,35 @@ export function ProjectPage() {
               </button>
               <span className="muted small">検証は決定論的です（引用の実在と数値の一致）。</span>
             </div>
+            <div className="row" style={{ marginBottom: 10 }}>
+              <select
+                className="select"
+                style={{ maxWidth: 180 }}
+                aria-label="判定で絞り込み"
+                value={claimFilter}
+                onChange={(event) => setClaimFilter(event.target.value)}
+              >
+                <option value="all">すべての判定</option>
+                <option value="verified">検証済</option>
+                <option value="unverified">未検証</option>
+                <option value="contradicted">矛盾</option>
+                <option value="insufficient">根拠不足</option>
+                <option value="unchecked">未検証（未実行）</option>
+              </select>
+              <input
+                className="input"
+                style={{ maxWidth: 260 }}
+                placeholder="主張を検索"
+                aria-label="主張を検索"
+                value={claimQuery}
+                onChange={(event) => setClaimQuery(event.target.value)}
+              />
+              <span className="muted small">{visibleClaims.length} / {claims.length} 件</span>
+            </div>
+            {visibleClaims.length === 0 ? (
+              <EmptyState title="条件に一致する主張がありません" description="絞り込みを変えてください。" />
+            ) : (
+              <>
             <div className="table-wrap claims-table">
               <table className="table">
                 <thead>
@@ -432,7 +470,7 @@ export function ProjectPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {claims.map((claim) => (
+                  {visibleClaims.map((claim) => (
                     <tr key={claim.id}>
                       <td style={{ maxWidth: 620 }}>
                         <div className="muted small mono">{claimCode(claim.id)}</div>
@@ -459,7 +497,7 @@ export function ProjectPage() {
             </div>
 
             <div className="claims-cards" aria-label="主張一覧">
-              {claims.map((claim) => (
+              {visibleClaims.map((claim) => (
                 <div key={claim.id} className="claim-card">
                   <div className="claim-card-text">{claim.text}</div>
                   <div className="row">
@@ -479,6 +517,8 @@ export function ProjectPage() {
                 </div>
               ))}
             </div>
+              </>
+            )}
           </>
         )
       ) : null}

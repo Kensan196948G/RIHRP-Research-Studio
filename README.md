@@ -123,7 +123,7 @@ RIHRP_DATABASE_URL=postgresql+psycopg://rihrp_app:<パスワード>@127.0.0.1:54
 # テスト DB を用意（初回のみ）
 createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指定可
 
-.venv/bin/pytest -q            # 42 passed
+.venv/bin/pytest -q            # 43 passed
 (cd apps/web && npx vitest run) # 5 passed
 .venv/bin/ruff check apps/api tests
 .venv/bin/ruff format --check apps/api tests
@@ -178,6 +178,9 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 | テーマ検索 / CLM 番号 / 最近の活動 | 実装済み | UI 実測（検索 1 件、該当なし、CLM-xxxx、reviewer/admin のみ活動表示） |
 | パスワード変更時の他セッション失効 | 実装済み | `test_password_change_revokes_other_sessions` |
 | 主張一覧の根拠数集約（N+1 解消） | 実装済み | `test_claim_list_reports_evidence_count` |
+| 監査ログの DB レベル append-only | 実装済み | migration `0002_audit_immutable`、`test_audit_events_reject_update_and_delete` |
+| 主張の判定・本文フィルタ | 実装済み | UI 実測（矛盾 0 件 / 根拠不足 1 件 / 検索 1 件） |
+| モーダルのフォーカストラップ | 実装済み | Playwright 実測（Tab 25 回で外に出ない） |
 | OpenDesign 設計参照との比較 | 実施済み | `docs/design/01-webui-design.md` 第 8 章 |
 | Markdown エクスポート | 実装済み | pytest、API 実測 |
 | 監査ログ（append-only） | 実装済み | pytest |
