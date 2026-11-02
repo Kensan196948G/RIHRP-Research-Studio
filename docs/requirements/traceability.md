@@ -52,7 +52,7 @@
 | 要件 | 実装 | テスト / 実測 | 状態 |
 |---|---|---|---|
 | NFR-1 ローカル PostgreSQL | `config.py` / `db.py` | `pytest`（`rihrp_test`） | ✅ |
-| NFR-2 応答 300ms | インデックス、集計クエリ | 実測 n=100: p95 14.9〜24.8ms | ✅ |
+| NFR-2 応答 300ms | インデックス、集計クエリ、根拠の一括取得 | 小規模 p95 14.9〜24.8ms / スケール（1,000 主張）claims 180ms・export 42ms | ✅ |
 | NFR-3 統一エラー形式 | `errors.py` | 各テストで `error.code` を確認 | ✅ |
 | NFR-4 秘密をログに出さない | `security.py`、監査 details | コードレビュー | ✅ |
 | NFR-9 本文サイズ上限 | `main.py`（2 MiB、413） | `test_oversized_body_rejected` | ✅ |
@@ -61,6 +61,7 @@
 | NFR-12 一覧の N+1 回避 | `claims.py`（`GROUP BY`） | `test_claim_list_reports_evidence_count` | ✅ |
 | NFR-13 一意制約競合の 409 化 | `sources.py` / `claims.py` / `admin.py`（`IntegrityError`） | コードレビュー（競合時の防御） | ✅ |
 | NFR-14 リクエスト相関 ID | `main.py` / `request_context.py` / `audit.py` | `test_audit_records_request_id_and_header` | ✅ |
+| NFR-15 依存関係の脆弱性 0 | React Router v7.18.5 / pytest 9.0.3 | `npm audit --omit=dev` / `pip-audit` | ✅ |
 | NFR-5 監査 append-only | `audit.py`、API なし、DB トリガー（`0002`） | `test_audit_is_not_mutable`、`test_audit_events_reject_update_and_delete` | ✅ |
 | NFR-6 Node 22 / Python 3.12 / Docker なし | systemd unit | 実測 | ✅ |
 | NFR-7 migration 未適用で 503 | `routers/health.py` | `test_health_and_ready` | ✅ |

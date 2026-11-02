@@ -292,8 +292,32 @@ def _load_evidence(db: Session, claim_id: str) -> list[tuple[ClaimEvidence, Sour
     return [(evidence, source) for evidence, source in rows]
 
 
-def verify_claim_row(db: Session, claim: Claim, *, actor_id: str | None) -> dict[str, Any]:
-    rows = _load_evidence(db, claim.id)
+def load_evidence_map(
+    db: Session, claim_ids: list[str]
+) -> dict[str, list[tuple[ClaimEvidence, Source | None]]]:
+    """複数主張の根拠を 1 クエリでまとめて取得する（一覧・エクスポート用）。"""
+    result: dict[str, list[tuple[ClaimEvidence, Source | None]]] = {cid: [] for cid in claim_ids}
+    if not claim_ids:
+        return result
+    rows = db.execute(
+        select(ClaimEvidence, Source)
+        .outerjoin(Source, Source.id == ClaimEvidence.source_id)
+        .where(ClaimEvidence.claim_id.in_(claim_ids))
+        .order_by(ClaimEvidence.created_at)
+    ).all()
+    for evidence, source in rows:
+        result.setdefault(evidence.claim_id, []).append((evidence, source))
+    return result
+
+
+def verify_claim_row(
+    db: Session,
+    claim: Claim,
+    *,
+    actor_id: str | None,
+    evidence_rows: list[tuple[ClaimEvidence, Source | None]] | None = None,
+) -> dict[str, Any]:
+    rows = evidence_rows if evidence_rows is not None else _load_evidence(db, claim.id)
     evidence_inputs = [
         EvidenceInput(
             source_id=source.id,
@@ -342,8 +366,11 @@ def verify_report_row(db: Session, report: Report, *, actor_id: str | None) -> d
         )
     counts = {"verified": 0, "unverified": 0, "contradicted": 0, "insufficient": 0}
     issues: list[dict[str, Any]] = []
+    evidence_map = load_evidence_map(db, [claim.id for claim in claims])
     for claim in claims:
-        result = verify_claim_row(db, claim, actor_id=actor_id)
+        result = verify_claim_row(
+            db, claim, actor_id=actor_id, evidence_rows=evidence_map.get(claim.id, [])
+        )
         counts[result["verdict"]] += 1
         if result["verdict"] != "verified":
             issues.append(
@@ -413,9 +440,7 @@ def render_markdown(db: Session, report: Report) -> str:
                 )
             ).scalars()
         }
-    evidence_by_claim: dict[str, list[tuple[ClaimEvidence, Source | None]]] = {
-        claim_id: _load_evidence(db, claim_id) for claim_id in claims
-    }
+    evidence_by_claim = load_evidence_map(db, list(claims))
     lines: list[str] = []
     lines.append(f"# {report.title}")
     lines.append("")

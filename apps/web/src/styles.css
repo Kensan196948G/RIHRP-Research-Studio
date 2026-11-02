@@ -495,3 +495,10 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
   font-weight: 600; font-size: 13px;
 }
 .skip-link:focus { left: 8px; }
+
+/* report preview */
+.preview-doc { max-width: 760px; margin: 0 auto; line-height: 1.9; }
+.preview-title { font-size: 24px; margin-bottom: 4px; }
+.preview-heading { font-size: 17px; margin: 22px 0 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+.preview-paragraph { margin: 0 0 14px; white-space: pre-wrap; }
+.preview-claim { margin-left: 6px; vertical-align: middle; }

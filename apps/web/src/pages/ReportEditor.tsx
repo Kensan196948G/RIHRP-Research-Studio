@@ -31,6 +31,7 @@ export function ReportEditorPage() {
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [selectedClaimDetail, setSelectedClaimDetail] = useState<Claim | null>(null);
   const [showVersions, setShowVersions] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [versions, setVersions] = useState<{ version: number; seal_sha256: string; note: string; created_at: string | null; created_by: string | null }[] | null>(null);
   const [versionsLoading, setVersionsLoading] = useState(false);
 
@@ -343,6 +344,7 @@ export function ReportEditorPage() {
           </>
         ) : null}
         <div className="spacer" />
+        <button type="button" className="btn btn-sm" onClick={() => setShowPreview(true)}>プレビュー</button>
         <a className="btn btn-sm" href={api.exportReportUrl(report.id)} download>Markdown</a>
         {canVerify ? (
           <button type="button" className="btn btn-sm" onClick={() => void onVerify()} disabled={busy !== null}>
@@ -636,6 +638,40 @@ export function ReportEditorPage() {
             <span className="hint">提出者本人は承認できません。承認時に検証を再実行します。</span>
           </div>
         </div>
+      ) : null}
+
+      {showPreview ? (
+        <Modal title="プレビュー" onClose={() => setShowPreview(false)} width={860}>
+          <article className="preview-doc">
+            <h1 className="preview-title">{title || report.title}</h1>
+            <div className="muted small" style={{ marginBottom: 16 }}>
+              v{report.version} / {report.status === "approved" ? "承認済み" : report.status === "in_review" ? "レビュー中" : "下書き"}
+            </div>
+            {draft.sections.map((section) => (
+              <section key={section.id}>
+                <h2 className="preview-heading">{section.heading || "無題セクション"}</h2>
+                {section.paragraphs.map((paragraph) => (
+                  <p key={paragraph.id} className="preview-paragraph">
+                    {paragraph.text}
+                    {paragraph.claimIds.map((claimId) => {
+                      const claim = claimMap.get(claimId);
+                      return (
+                        <span
+                          key={claimId}
+                          className={`preview-claim badge badge-${claim?.last_verdict ?? "none"}`}
+                          title={claim?.text ?? claimId}
+                        >
+                          {claimCode(claimId)}
+                        </span>
+                      );
+                    })}
+                  </p>
+                ))}
+              </section>
+            ))}
+            {draft.sections.length === 0 ? <p className="muted small">セクションがありません。</p> : null}
+          </article>
+        </Modal>
       ) : null}
 
       {showVersions ? (

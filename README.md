@@ -184,6 +184,8 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 | エクスポートは参照主張のみ | 実装済み | `test_export_includes_only_referenced_claims` |
 | 利用者無効化時のセッション失効 | 実装済み | `test_deactivated_user_sessions_are_revoked` |
 | リクエスト相関 ID（監査・ヘッダー） | 実装済み | `test_audit_records_request_id_and_header` |
+| レポートプレビュー（インライン CLM 表示） | 実装済み | UI 実測 |
+| 依存関係の脆弱性監査 | 0 件 | `npm audit --omit=dev` / `pip-audit` |
 | OpenDesign 設計参照との比較 | 実施済み | `docs/design/01-webui-design.md` 第 8 章 |
 | Markdown エクスポート | 実装済み | pytest、API 実測 |
 | 監査ログ（append-only） | 実装済み | pytest |
@@ -218,7 +220,9 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 - OpenDesign: design direction（`tech-utility`）取得、Studio で 8 画面のプロトタイプ生成（run は failed 表示）、実装との差異を文書化
 - systemd 配備: `rihrp.service` 起動、`/healthz` 200 / `/readyz` 200（migration `2dee6c390541`）
 - UI: ダッシュボード要対応レール、エディタのセクション一覧レール、独立した検証結果画面、モバイル 390px（横スクロール 0、カード表示）、モーダル Esc、フォーカスリング 2px を実測
-- 性能（ローカル、n=100）: `/api/projects` p95 17.6ms / claims p95 24.8ms / sources p95 14.9ms（NFR-2 の 300ms 以内）
+- 性能（小規模、n=100）: `/api/projects` p95 17.6ms / claims p95 24.8ms / sources p95 14.9ms（NFR-2 の 300ms 以内）
+- 性能（スケール: 200 出典 / 1,000 主張 / 200 参照）: claims p95 180ms / export p95 42ms / projects p95 17ms（NFR-2 の 300ms 以内）
+- 依存関係: `npm audit --omit=dev` 0 件、`pip-audit` 0 件（pytest 9.0.3 へ更新）
 - プレビュースモーク: `tests/e2e/preview_smoke.py` が PASS（health / ready / login / CSRF / 主要データ / export）
 - Backup / Restore: `infra/db/backup.sh` で dump 作成、`infra/db/restore_check.sh` で別 DB に復元（users=4 / projects=1 / claims=4 / reports=1）
 - Migration rollback: `rihrp_test` で `alembic downgrade base` → `upgrade head` を実測（最終 `2dee6c390541 (head)`）
