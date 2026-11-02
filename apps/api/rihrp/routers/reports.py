@@ -15,8 +15,10 @@ from ..schemas import ReportContentIn, ReportIn, ReportUpdate, ReviewIn, content
 from ..services import (
     collect_report_claim_ids,
     get_project_or_404,
+    get_report_for_update,
     get_report_or_404,
     iso,
+    lock_project,
     make_version,
     render_markdown,
     report_integrity,
@@ -172,7 +174,13 @@ def update_report(
     principal: Principal = Depends(require_editor),
     db: OrmSession = Depends(get_db),
 ) -> dict:
-    report = get_report_or_404(db, report_id)
+    report = get_report_for_update(db, report_id)
+    if payload.content is not None and payload.expected_version is None:
+        raise ApiError(
+            422,
+            "validation_error",
+            "内容を更新する場合は expected_version が必要です。",
+        )
     if payload.expected_version is not None and payload.expected_version != report.version:
         raise ApiError(
             409,
@@ -191,6 +199,8 @@ def update_report(
     if payload.title is not None:
         report.title = payload.title.strip()
     if payload.content is not None:
+        # 主張削除（project ロック）とレポート保存を直列化する
+        lock_project(db, report.project_id)
         report.content = _normalize_content(db, report.project_id, payload.content)
         content_changed = True
     if content_changed:
@@ -227,9 +237,26 @@ def submit_report(
     principal: Principal = Depends(require_editor),
     db: OrmSession = Depends(get_db),
 ) -> dict:
-    report = get_report_or_404(db, report_id)
+    report = get_report_for_update(db, report_id)
     if report.status not in {"draft", "changes_requested"}:
         raise ApiError(409, "invalid_state", "下書きまたは差し戻し状態のレポートだけ提出できます。")
+    claim_ids = collect_report_claim_ids(report.content or {})
+    if claim_ids:
+        known = set(
+            db.execute(
+                select(Claim.id).where(
+                    Claim.id.in_(claim_ids), Claim.project_id == report.project_id
+                )
+            ).scalars()
+        )
+        missing = [claim_id for claim_id in claim_ids if claim_id not in known]
+        if missing:
+            raise ApiError(
+                409,
+                "invalid_report",
+                "存在しない主張を参照しているため提出できません。",
+                {"missing_claim_ids": missing},
+            )
     has_text = any(
         (paragraph.get("text") or "").strip()
         for section in (report.content or {}).get("sections", [])
@@ -260,7 +287,7 @@ def review_report(
     principal: Principal = Depends(require_reviewer),
     db: OrmSession = Depends(get_db),
 ) -> dict:
-    report = get_report_or_404(db, report_id)
+    report = get_report_for_update(db, report_id)
     if report.status != "in_review":
         raise ApiError(409, "invalid_state", "レビュー中状態のレポートだけ審査できます。")
 
@@ -268,16 +295,17 @@ def review_report(
         if report.submitted_by == principal.user_id:
             raise ApiError(403, "forbidden", "自分が提出したレポートは承認できません。")
         summary = verify_report_row(db, report, actor_id=principal.user_id)
-        if summary["contradicted"] > 0:
+        if summary["contradicted"] > 0 or summary["missing_claim_ids"]:
             # 承認は拒否するが、検証結果（claim の判定・監査）は事実として残す。
             # ロールバックすると画面の判定が古いままになり、再検証の証跡も消える。
             db.commit()
             raise ApiError(
                 409,
                 "approval_blocked",
-                "矛盾（contradicted）のあるレポートは承認できません。",
+                "矛盾または欠落した参照主張があるレポートは承認できません。",
                 {
                     "contradicted": summary["contradicted"],
+                    "missing_claim_ids": summary["missing_claim_ids"],
                     "issues": [i for i in summary["issues"] if i["verdict"] == "contradicted"],
                 },
             )

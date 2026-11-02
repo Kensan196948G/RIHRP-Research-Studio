@@ -8,6 +8,8 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from .request_context import request_id_var
+
 logger = logging.getLogger("rihrp.errors")
 
 
@@ -53,8 +55,15 @@ def install_error_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(Exception)
-    async def _unhandled(_request: Request, exc: Exception) -> JSONResponse:
-        logger.exception("unhandled error", exc_info=exc)
+    async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
+        # SQLAlchemy の例外には SQL と bind parameters（業務データ）が含まれ得るため、
+        # 例外オブジェクトやスタックをそのままログへ出さない。
+        logger.error(
+            "unhandled error type=%s path=%s request_id=%s",
+            type(exc).__name__,
+            request.url.path,
+            request_id_var.get(),
+        )
         return JSONResponse(
             status_code=500,
             content=error_body("internal_error", "サーバー内部エラーが発生しました。"),

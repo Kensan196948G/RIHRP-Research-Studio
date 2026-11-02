@@ -196,6 +196,7 @@ export function ReportEditorPage() {
       });
       setReport(result.report);
       setDraft(result.report.content);
+      setSummary(null);
       setDirty(false);
       setSavedAt(new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }));
       toast("保存しました。");
@@ -291,7 +292,12 @@ export function ReportEditorPage() {
   }
 
   const latestReview = report.reviews?.[0];
-  const summaryView = summary ?? report.latest_verification?.summary ?? null;
+  const latestVerification = report.latest_verification;
+  const summaryView =
+    summary ??
+    (latestVerification && latestVerification.version === report.version
+      ? latestVerification.summary
+      : null);
 
   const openVersions = async () => {
     setShowVersions(true);

@@ -22,6 +22,9 @@ def test_audit_events_reject_update_and_delete(client: TestClient, users: dict[s
     with pytest.raises(DBAPIError), engine.begin() as connection:
         connection.execute(text("DELETE FROM audit_events"))
 
+    with pytest.raises(DBAPIError), engine.begin() as connection:
+        connection.execute(text("TRUNCATE audit_events"))
+
     with engine.begin() as connection:
         count = connection.execute(text("SELECT count(*) FROM audit_events")).scalar_one()
     assert count >= 1

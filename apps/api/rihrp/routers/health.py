@@ -23,8 +23,8 @@ def _expected_head() -> str | None:
         config = Config(str(REPO_ROOT / "infra/migrations/alembic.ini"))
         config.set_main_option("script_location", str(REPO_ROOT / "infra/migrations"))
         return ScriptDirectory.from_config(config).get_current_head()
-    except Exception:  # noqa: BLE001 - readiness は失敗を握りつぶして 503 にする
-        logger.warning("failed to read alembic head", exc_info=True)
+    except Exception as exc:  # noqa: BLE001 - readiness は失敗を握りつぶして 503 にする
+        logger.warning("failed to read alembic head type=%s", type(exc).__name__)
         return None
 
 
@@ -38,8 +38,8 @@ def readyz(db: OrmSession = Depends(get_db)) -> JSONResponse:
     try:
         db.execute(text("SELECT 1"))
         current = db.execute(text("SELECT version_num FROM alembic_version")).scalar_one_or_none()
-    except Exception:  # noqa: BLE001
-        logger.warning("readiness check failed", exc_info=True)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("readiness check failed type=%s", type(exc).__name__)
         return JSONResponse(
             status_code=503,
             content={"status": "unavailable", "reason": "database_unreachable"},

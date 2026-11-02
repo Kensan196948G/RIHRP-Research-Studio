@@ -71,16 +71,16 @@ def create_user(
         password_hash=hash_password(payload.password),
     )
     db.add(user)
-    db.flush()
-    write_audit(
-        db,
-        actor_id=principal.user_id,
-        action="user.created",
-        entity_type="user",
-        entity_id=user.id,
-        details={"role": user.role},
-    )
     try:
+        db.flush()
+        write_audit(
+            db,
+            actor_id=principal.user_id,
+            action="user.created",
+            entity_type="user",
+            entity_id=user.id,
+            details={"role": user.role},
+        )
         db.commit()
     except IntegrityError:
         db.rollback()

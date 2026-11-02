@@ -33,13 +33,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers,
     credentials: "same-origin",
   });
-  if (response.status === 401) {
-    window.dispatchEvent(new Event("rihrp:unauthorized"));
-  }
   const isJson = (response.headers.get("content-type") ?? "").includes("application/json");
   if (!response.ok) {
     const body = isJson ? await response.json() : { error: { code: "unknown", message: response.statusText } };
-    throw new ApiError(response.status, body.error ?? { code: "unknown", message: "エラーが発生しました。" });
+    const error = body.error ?? { code: "unknown", message: "エラーが発生しました。" };
+    if (response.status === 401 && error.code === "unauthorized") {
+      window.dispatchEvent(new Event("rihrp:unauthorized"));
+    }
+    throw new ApiError(response.status, error);
   }
   if (!isJson) {
     return (await response.text()) as unknown as T;

@@ -10,6 +10,12 @@ from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatc
 
 _hasher = PasswordHasher()
 
+# 存在しない利用者でも同じコストで検証するための固定ハッシュ（秘密ではない）。
+DUMMY_PASSWORD_HASH = (  # noqa: S105 - ダミー検証用の固定ハッシュ（秘密ではない）
+    "$argon2id$v=19$m=65536,t=3,p=4$G2B/HUUvA3vH+VxvuXyQig$"  # noqa: S105
+    "xmr/E7Gs26hPFj1di6RdkZhxWHE+ComAXbLpWrVRSEo"
+)
+
 
 def hash_password(password: str) -> str:
     return _hasher.hash(password)

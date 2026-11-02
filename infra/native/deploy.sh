@@ -22,9 +22,10 @@ printf '== 依存（Python）\n'
 .venv/bin/pip install -q -e ".[dev]"
 
 printf '== migration\n'
+MIGRATION_URL="${RIHRP_MIGRATION_DATABASE_URL:-$RIHRP_DATABASE_URL}"
 (
   cd infra/migrations
-  RIHRP_DATABASE_URL="$RIHRP_DATABASE_URL" ../../.venv/bin/alembic upgrade head
+  RIHRP_DATABASE_URL="$MIGRATION_URL" ../../.venv/bin/alembic upgrade head
 )
 
 printf '== Web ビルド\n'

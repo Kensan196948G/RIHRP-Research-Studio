@@ -75,7 +75,10 @@ def create_report_with_claim(
             }
         ]
     }
-    saved = client.put(f"/api/reports/{report['id']}", json={"content": content})
+    saved = client.put(
+        f"/api/reports/{report['id']}",
+        json={"content": content, "expected_version": report["version"]},
+    )
     assert saved.status_code == 200, saved.text
     return saved.json()["report"]
 
@@ -438,3 +441,103 @@ def test_audit_records_request_id_and_header(
             )
         ).scalar_one()
     assert stored == request_id
+
+
+def test_missing_claim_reference_blocks_approval(
+    editor_client: TestClient, reviewer_client: TestClient, users: dict[str, str]
+) -> None:
+    project, _, claim = build_verified_claim(editor_client)
+    report = create_report_with_claim(editor_client, project, claim)
+    assert editor_client.post(f"/api/reports/{report['id']}/submit").status_code == 200
+
+    with engine.begin() as connection:
+        connection.execute(
+            text("DELETE FROM claim_evidence WHERE claim_id = :id"), {"id": claim["id"]}
+        )
+        connection.execute(text("DELETE FROM claims WHERE id = :id"), {"id": claim["id"]})
+
+    fetched = editor_client.get(f"/api/reports/{report['id']}").json()["report"]
+    assert fetched["integrity"]["missing_claim_ids"] == [claim["id"]]
+    assert fetched["integrity"]["needs_reapproval"] is True
+
+    blocked = reviewer_client.post(
+        f"/api/reports/{report['id']}/review",
+        json={"decision": "approved", "comment": ""},
+    )
+    assert blocked.status_code == 409
+    assert claim["id"] in blocked.json()["error"]["details"]["missing_claim_ids"]
+
+
+def test_integrity_detects_tampered_source(
+    editor_client: TestClient, reviewer_client: TestClient, users: dict[str, str]
+) -> None:
+    project, source, claim = build_verified_claim(editor_client)
+    report = create_report_with_claim(editor_client, project, claim)
+    assert editor_client.post(f"/api/reports/{report['id']}/submit").status_code == 200
+    assert (
+        reviewer_client.post(
+            f"/api/reports/{report['id']}/review",
+            json={"decision": "approved", "comment": ""},
+        ).status_code
+        == 200
+    )
+
+    with engine.begin() as connection:
+        connection.execute(
+            text("UPDATE sources SET content = content || '（改竄）' WHERE id = :id"),
+            {"id": source["id"]},
+        )
+
+    fetched = editor_client.get(f"/api/reports/{report['id']}").json()["report"]
+    assert fetched["integrity"]["tampered_sources"] == 1
+    assert fetched["integrity"]["needs_reapproval"] is True
+
+    exported = editor_client.get(f"/api/reports/{report['id']}/export").text
+    assert "矛盾（スナップショット改竄）" in exported
+
+
+def test_report_content_update_requires_expected_version(
+    editor_client: TestClient, users: dict[str, str]
+) -> None:
+    project, _, _ = build_verified_claim(editor_client)
+    report = editor_client.post(
+        f"/api/projects/{project['id']}/reports", json={"title": "版必須"}
+    ).json()["report"]
+    response = editor_client.put(
+        f"/api/reports/{report['id']}",
+        json={"content": {"sections": []}},
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+
+
+def test_evidence_audit_has_entity_id(editor_client: TestClient, users: dict[str, str]) -> None:
+    project = create_project(editor_client)
+    source = create_source(editor_client, project["id"])
+    claim = create_claim(editor_client, project["id"], "導入可能量は 1,240 MW と試算された。")
+    editor_client.post(
+        f"/api/claims/{claim['id']}/evidence",
+        json={"source_id": source["id"], "quote": "導入可能量は 1,240 MW", "note": ""},
+    )
+    with engine.begin() as connection:
+        entity_id = connection.execute(
+            text(
+                "SELECT entity_id FROM audit_events "
+                "WHERE action = 'evidence.created' ORDER BY created_at DESC LIMIT 1"
+            )
+        ).scalar_one()
+    assert entity_id
+
+
+def test_whitespace_and_short_values_rejected(
+    editor_client: TestClient, users: dict[str, str]
+) -> None:
+    project = editor_client.post("/api/projects", json={"title": "   ", "summary": ""})
+    assert project.status_code == 422
+
+    created = create_project(editor_client)
+    claim = editor_client.post(
+        f"/api/projects/{created['id']}/claims",
+        json={"text": "          "},
+    )
+    assert claim.status_code == 422

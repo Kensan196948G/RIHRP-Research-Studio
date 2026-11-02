@@ -19,6 +19,7 @@ from ..services import (
     get_claim_or_404,
     get_project_or_404,
     get_source_or_404,
+    lock_project,
     verify_claim_row,
 )
 from ..verify import normalize
@@ -132,6 +133,12 @@ def delete_claim(
     db: OrmSession = Depends(get_db),
 ) -> dict:
     claim = get_claim_or_404(db, claim_id)
+    lock_project(db, claim.project_id)
+    claim = db.execute(
+        select(Claim).where(Claim.id == claim_id).with_for_update()
+    ).scalar_one_or_none()
+    if claim is None:
+        raise ApiError(404, "not_found", "主張が見つかりません。")
     referenced = _claim_referenced_in_reports(db, claim.id)
     if referenced:
         raise ApiError(
@@ -192,16 +199,17 @@ def add_evidence(
     claim.last_verdict = None
     claim.last_details = None
     claim.last_verified_at = None
-    write_audit(
-        db,
-        actor_id=principal.user_id,
-        action="evidence.created",
-        entity_type="claim_evidence",
-        entity_id=evidence.id,
-        project_id=claim.project_id,
-        details={"claim_id": claim.id, "source_id": source.id, "quote": quote[:120]},
-    )
     try:
+        db.flush()
+        write_audit(
+            db,
+            actor_id=principal.user_id,
+            action="evidence.created",
+            entity_type="claim_evidence",
+            entity_id=evidence.id,
+            project_id=claim.project_id,
+            details={"claim_id": claim.id, "source_id": source.id, "quote": quote[:120]},
+        )
         db.commit()
     except IntegrityError:
         db.rollback()

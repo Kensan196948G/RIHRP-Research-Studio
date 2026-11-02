@@ -63,6 +63,16 @@ def get_project_or_404(db: Session, project_id: str) -> Project:
     return project
 
 
+def lock_project(db: Session, project_id: str) -> Project:
+    """テーマ配下の参照整合性を直列化するための行ロック。"""
+    project = db.execute(
+        select(Project).where(Project.id == project_id).with_for_update()
+    ).scalar_one_or_none()
+    if project is None:
+        raise ApiError(404, "not_found", "テーマが見つかりません。")
+    return project
+
+
 def get_claim_or_404(db: Session, claim_id: str) -> Claim:
     claim = db.get(Claim, claim_id)
     if claim is None:
@@ -79,6 +89,16 @@ def get_source_or_404(db: Session, source_id: str) -> Source:
 
 def get_report_or_404(db: Session, report_id: str) -> Report:
     report = db.get(Report, report_id)
+    if report is None:
+        raise ApiError(404, "not_found", "レポートが見つかりません。")
+    return report
+
+
+def get_report_for_update(db: Session, report_id: str) -> Report:
+    """同時更新・同時承認を直列化するため行ロックを取る。"""
+    report = db.execute(
+        select(Report).where(Report.id == report_id).with_for_update()
+    ).scalar_one_or_none()
     if report is None:
         raise ApiError(404, "not_found", "レポートが見つかりません。")
     return report
@@ -208,26 +228,44 @@ def audit_to_dict(event: AuditEvent, actor_name: str | None = None) -> dict[str,
 
 # ---------------------------------------------------------------- report integrity
 def report_integrity(db: Session, report: Report) -> dict[str, Any]:
-    """承認済みレポートの参照主張が、現在も同じ検証状態かを示す。
+    """承認済みレポートの参照主張と根拠が、現在も同じ状態かを示す。
 
-    承認時点の summary は履歴であり、その後の根拠変更で状態が変わり得る。
-    画面はこの値で「再承認が必要」を警告する。
+    - 主張が削除されている（missing）
+    - 出典本文の SHA-256 が保存値と一致しない（tampered）
+    - 検証状態が未検証に戻っている（unchecked）
+    のいずれかなら再承認が必要。digest はここで再計算する。
     """
     claim_ids = collect_report_claim_ids(report.content or {})
-    counts = {"verified": 0, "unverified": 0, "contradicted": 0, "insufficient": 0, "unchecked": 0}
+    claims: dict[str, Claim] = {}
     if claim_ids:
-        rows = db.execute(
-            select(Claim.last_verdict).where(
-                Claim.id.in_(claim_ids), Claim.project_id == report.project_id
-            )
-        ).scalars()
-        for verdict in rows:
-            counts[verdict or "unchecked"] += 1
+        claims = {
+            claim.id: claim
+            for claim in db.execute(
+                select(Claim).where(Claim.id.in_(claim_ids), Claim.project_id == report.project_id)
+            ).scalars()
+        }
+    counts = {"verified": 0, "unverified": 0, "contradicted": 0, "insufficient": 0, "unchecked": 0}
+    for claim_id in claim_ids:
+        claim = claims.get(claim_id)
+        counts[(claim.last_verdict if claim else None) or "unchecked"] += 1
+
+    evidence_map = load_evidence_map(db, list(claims))
+    tampered: set[str] = set()
+    for rows in evidence_map.values():
+        for _evidence, source in rows:
+            if source is not None and sha256_text(source.content) != source.content_sha256:
+                tampered.add(source.id)
+
+    missing = [claim_id for claim_id in claim_ids if claim_id not in claims]
+    needs_reapproval = report.status in {"approved", "in_review"} and (
+        counts["contradicted"] > 0 or counts["unchecked"] > 0 or bool(missing) or bool(tampered)
+    )
     return {
         **counts,
         "referenced": len(claim_ids),
-        "needs_reapproval": report.status == "approved"
-        and (counts["contradicted"] > 0 or counts["unchecked"] > 0),
+        "missing_claim_ids": missing,
+        "tampered_sources": len(tampered),
+        "needs_reapproval": needs_reapproval,
     }
 
 
@@ -441,6 +479,21 @@ def render_markdown(db: Session, report: Report) -> str:
             ).scalars()
         }
     evidence_by_claim = load_evidence_map(db, list(claims))
+    tampered_sources = {
+        source.id
+        for rows in evidence_by_claim.values()
+        for _evidence, source in rows
+        if source is not None and sha256_text(source.content) != source.content_sha256
+    }
+
+    def verdict_label(claim: Claim) -> str:
+        if any(
+            source is not None and source.id in tampered_sources
+            for _evidence, source in evidence_by_claim.get(claim.id, [])
+        ):
+            return "矛盾（スナップショット改竄）"
+        return VERDICT_LABELS.get(claim.last_verdict or "", "未検証")
+
     lines: list[str] = []
     lines.append(f"# {report.title}")
     lines.append("")
@@ -467,7 +520,7 @@ def render_markdown(db: Session, report: Report) -> str:
                 if claim is None:
                     lines.append(f"> [未登録の主張: {claim_id}]")
                     continue
-                label = VERDICT_LABELS.get(claim.last_verdict or "", "未検証")
+                label = verdict_label(claim)
                 lines.append(f"> [{label}] {claim.text}")
                 for evidence, source in evidence_by_claim.get(claim_id, []):
                     if source is None:
@@ -486,7 +539,7 @@ def render_markdown(db: Session, report: Report) -> str:
         if claim is None:
             lines.append(f"- [未登録の主張: {claim_id}]")
             continue
-        label = VERDICT_LABELS.get(claim.last_verdict or "", "未検証")
+        label = verdict_label(claim)
         lines.append(f"- [{label}] {claim.text}")
         for evidence, source in evidence_by_claim.get(claim.id, []):
             if source is None:

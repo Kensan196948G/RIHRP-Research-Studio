@@ -33,8 +33,8 @@ async def lifespan(_app: FastAPI):
         try:
             with SessionLocal() as db:
                 seed_all(db)
-        except Exception:  # noqa: BLE001 - DB 未起動でもプロセスは起動し、readyz で知らせる
-            logger.warning("demo seed skipped (database not ready)", exc_info=True)
+        except Exception as exc:  # noqa: BLE001 - DB 未起動でもプロセスは起動し、readyz で知らせる
+            logger.warning("demo seed skipped type=%s", type(exc).__name__)
     yield
 
 
@@ -78,6 +78,14 @@ def create_app() -> FastAPI:
                     status_code=413,
                     content=error_body("payload_too_large", "リクエスト本文が大きすぎます。"),
                 )
+        elif request.method.upper() in {"POST", "PUT", "PATCH", "DELETE"} and request.headers.get(
+            "transfer-encoding"
+        ):
+            # 長さの分からない chunked 本文は、上限を確実に適用できないため拒否する。
+            return JSONResponse(
+                status_code=411,
+                content=error_body("length_required", "Content-Length が必要です。"),
+            )
         response = await call_next(request)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")

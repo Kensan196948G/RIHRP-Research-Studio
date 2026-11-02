@@ -189,3 +189,44 @@ def test_deactivated_user_sessions_are_revoked(users: dict[str, str]) -> None:
             select(SessionRow).where(SessionRow.user_id == users["viewer"])
         ).scalars()
         assert all(session.revoked_at is not None for session in sessions)
+
+
+def test_chunked_body_without_length_rejected(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "editor")
+    response = client.post(
+        "/api/projects",
+        content=(b"x" for _ in range(10)),
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 411
+    assert response.json()["error"]["code"] == "length_required"
+
+
+def test_production_forces_secure_cookie(
+    client: TestClient, users: dict[str, str], monkeypatch
+) -> None:
+    from rihrp.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "env", "production")
+    response = client.post(
+        "/api/auth/login",
+        json={"email": ROLES["editor"], "password": TEST_PASSWORD},
+    )
+    assert response.status_code == 200
+    cookies = response.headers.get_list("set-cookie")
+    assert any("Secure" in cookie for cookie in cookies)
+
+
+def test_invalid_email_rejected(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "admin")
+    response = client.post(
+        "/api/users",
+        json={
+            "email": "not-an-email",
+            "name": "x",
+            "role": "viewer",
+            "password": "long-enough-pass-1",
+        },
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"

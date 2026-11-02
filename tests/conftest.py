@@ -65,14 +65,21 @@ def migrated() -> None:
 @pytest.fixture(autouse=True)
 def clean_db() -> Iterator[None]:
     reset_login_rate()
+    # 監査テーブルは TRUNCATE トリガーで保護されているため、テスト後始末だけ一時的に外す。
     with engine.begin() as connection:
-        connection.execute(
-            text(
-                "TRUNCATE audit_events, reviews, report_verifications, report_versions, "
-                "reports, claim_evidence, claims, sources, projects, sessions, users "
-                "RESTART IDENTITY CASCADE"
+        connection.execute(text("ALTER TABLE audit_events DISABLE TRIGGER trg_audit_no_truncate"))
+        try:
+            connection.execute(
+                text(
+                    "TRUNCATE audit_events, reviews, report_verifications, report_versions, "
+                    "reports, claim_evidence, claims, sources, projects, sessions, users "
+                    "RESTART IDENTITY CASCADE"
+                )
             )
-        )
+        finally:
+            connection.execute(
+                text("ALTER TABLE audit_events ENABLE TRIGGER trg_audit_no_truncate")
+            )
     yield
 
 

@@ -7,14 +7,10 @@ DB_NAME="${1:-rihrp}"
 DB_ROLE="${2:-rihrp_app}"
 : "${RIHRP_DB_PASSWORD:?RIHRP_DB_PASSWORD を設定してください}"
 
-psql -d postgres -v ON_ERROR_STOP=1 <<SQL
-DO \$\$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${DB_ROLE}') THEN
-    CREATE ROLE ${DB_ROLE} LOGIN PASSWORD '${RIHRP_DB_PASSWORD}';
-  END IF;
-END
-\$\$;
+# 識別子・リテラルは psql の format('%I','%L') で安全に組み立てる（SQL 注入防止）。
+psql -d postgres -v ON_ERROR_STOP=1 -v role="$DB_ROLE" -v pwd="$RIHRP_DB_PASSWORD" <<'SQL'
+SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'role', :'pwd')
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'role') \gexec
 SQL
 
 if ! psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1; then

@@ -23,7 +23,14 @@ from ..errors import ApiError
 from ..models import Session as SessionRow
 from ..models import User
 from ..schemas import LoginIn, PasswordChangeIn
-from ..security import hash_password, hash_token, new_csrf_token, new_opaque_token, verify_password
+from ..security import (
+    DUMMY_PASSWORD_HASH,
+    hash_password,
+    hash_token,
+    new_csrf_token,
+    new_opaque_token,
+    verify_password,
+)
 from ..services import user_to_dict
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -31,13 +38,14 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 def _set_cookies(response: Response, raw_token: str, csrf_token: str, ttl_minutes: int) -> None:
     settings = get_settings()
+    secure = settings.cookie_secure or settings.is_production
     max_age = ttl_minutes * 60
     response.set_cookie(
         SESSION_COOKIE,
         raw_token,
         httponly=True,
         samesite="lax",
-        secure=settings.cookie_secure,
+        secure=secure,
         max_age=max_age,
         path="/",
     )
@@ -46,7 +54,7 @@ def _set_cookies(response: Response, raw_token: str, csrf_token: str, ttl_minute
         csrf_token,
         httponly=False,
         samesite="lax",
-        secure=settings.cookie_secure,
+        secure=secure,
         max_age=max_age,
         path="/",
     )
@@ -63,11 +71,14 @@ def login(
     check_login_rate(ip)
     email = payload.email.strip().lower()
     user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
-    if (
-        user is None
-        or not user.is_active
-        or not verify_password(payload.password, user.password_hash)
-    ):
+    if user is None:
+        # 利用者の存在を応答時間から推測されないよう、ダミーハッシュも検証する。
+        verify_password(payload.password, DUMMY_PASSWORD_HASH)
+        raise ApiError(401, "invalid_credentials", "メールアドレスまたはパスワードが一致しません。")
+    if not user.is_active:
+        verify_password(payload.password, user.password_hash)
+        raise ApiError(401, "invalid_credentials", "メールアドレスまたはパスワードが一致しません。")
+    if not verify_password(payload.password, user.password_hash):
         raise ApiError(401, "invalid_credentials", "メールアドレスまたはパスワードが一致しません。")
 
     settings = get_settings()
