@@ -31,7 +31,8 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await login(email.trim(), password);
-      navigate("/", { replace: true });
+      const target = (location.state as { from?: string } | null)?.from ?? "/";
+      navigate(target, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "ログインに失敗しました。");
     } finally {

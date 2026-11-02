@@ -82,6 +82,7 @@ class ReportUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     content: ReportContentIn | None = None
     note: str = Field(default="", max_length=300)
+    expected_version: int | None = Field(default=None, ge=1)
 
 
 class ReviewIn(BaseModel):

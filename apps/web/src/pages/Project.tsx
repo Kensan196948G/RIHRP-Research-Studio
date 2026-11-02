@@ -39,6 +39,7 @@ export function ProjectPage() {
   const [claimDetail, setClaimDetail] = useState<Claim | null>(null);
   const [evidenceClaim, setEvidenceClaim] = useState<Claim | null>(null);
   const [reportModal, setReportModal] = useState(false);
+  const [projectModal, setProjectModal] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -199,6 +200,31 @@ export function ProjectPage() {
     }
   };
 
+  const updateProject = async (payload: { title: string; summary: string; status: "active" | "archived" }) => {
+    setBusy(true);
+    try {
+      await api.updateProject(projectId, payload);
+      toast("テーマを更新しました。");
+      setProjectModal(false);
+      await load();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "更新に失敗しました。", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const updateClaimText = async (claim: Claim, text: string) => {
+    try {
+      const result = await api.updateClaim(claim.id, text);
+      setClaimDetail(result.claim);
+      toast("主張を更新しました。再検証が必要です。");
+      await load();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "更新に失敗しました。", "error");
+    }
+  };
+
   const openSourceDetail = async (source: Source) => {
     try {
       const result = await api.source(source.id);
@@ -239,6 +265,7 @@ export function ProjectPage() {
         <div className="spacer" />
         {editable ? (
           <>
+            <button type="button" className="btn" onClick={() => setProjectModal(true)}>編集</button>
             <button type="button" className="btn" onClick={() => setClaimModal(true)}>+ 主張</button>
             <button type="button" className="btn btn-primary" onClick={() => setSourceModal(true)}>+ 出典</button>
           </>
@@ -518,6 +545,25 @@ export function ProjectPage() {
         />
       ) : null}
       {reportModal ? <ReportModal busy={busy} onClose={() => setReportModal(false)} onSubmit={(title) => void createReport(title)} /> : null}
+      {projectModal ? (
+        <ProjectModal
+          project={project}
+          busy={busy}
+          canDelete={user?.role === "admin"}
+          onClose={() => setProjectModal(false)}
+          onSubmit={updateProject}
+          onDelete={async () => {
+            if (!window.confirm("このテーマを削除しますか？ 出典・主張・レポートも削除されます。")) return;
+            try {
+              await api.deleteProject(project.id);
+              toast("テーマを削除しました。");
+              navigate("/");
+            } catch (err) {
+              toast(err instanceof Error ? err.message : "削除に失敗しました。", "error");
+            }
+          }}
+        />
+      ) : null}
       {claimDetail ? (
         <ClaimDetailModal
           claim={claimDetail}
@@ -525,6 +571,7 @@ export function ProjectPage() {
           onClose={() => setClaimDetail(null)}
           onVerify={() => void verifyClaim(claimDetail.id)}
           onDelete={() => void removeClaim(claimDetail)}
+          onUpdate={(text) => void updateClaimText(claimDetail, text)}
           onRemoveEvidence={async (evidenceId) => {
             try {
               await api.removeEvidence(claimDetail.id, evidenceId);
@@ -765,6 +812,7 @@ function ClaimDetailModal({
   onClose,
   onVerify,
   onDelete,
+  onUpdate,
   onRemoveEvidence,
 }: {
   claim: Claim;
@@ -772,9 +820,17 @@ function ClaimDetailModal({
   onClose: () => void;
   onVerify: () => void;
   onDelete: () => void;
+  onUpdate: (text: string) => void;
   onRemoveEvidence: (evidenceId: string) => void;
 }) {
   const details = claim.last_details;
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(claim.text);
+
+  useEffect(() => {
+    setEditing(false);
+    setEditText(claim.text);
+  }, [claim.id, claim.text]);
   return (
     <Modal
       title="主張の詳細"
@@ -793,7 +849,25 @@ function ClaimDetailModal({
         <VerdictBadge verdict={claim.last_verdict} />
         <span className="muted small">最終検証: {formatShortDate(claim.last_verified_at)}</span>
       </div>
-      <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>{claim.text}</p>
+      {editing ? (
+        <div className="field">
+          <textarea className="textarea" value={editText} onChange={(event) => setEditText(event.target.value)} maxLength={2000} />
+          <div className="row" style={{ marginTop: 8 }}>
+            <button type="button" className="btn btn-primary btn-sm" disabled={editText.trim().length < 10} onClick={() => onUpdate(editText.trim())}>
+              保存
+            </button>
+            <button type="button" className="btn btn-sm" onClick={() => setEditing(false)}>キャンセル</button>
+            <span className="hint">保存すると再検証が必要です。</span>
+          </div>
+        </div>
+      ) : (
+        <div className="row" style={{ marginBottom: 12, alignItems: "flex-start" }}>
+          <p style={{ fontSize: 15, fontWeight: 600, margin: 0, flex: 1 }}>{claim.text}</p>
+          {editable ? (
+            <button type="button" className="btn btn-sm" onClick={() => setEditing(true)}>編集</button>
+          ) : null}
+        </div>
+      )}
       {claim.last_verdict ? <p className="hint" style={{ marginBottom: 12 }}>{VERDICT_HINT[claim.last_verdict]}</p> : <p className="hint" style={{ marginBottom: 12 }}>まだ検証していません。</p>}
 
       <h3 style={{ fontSize: 13, marginBottom: 6 }}>根拠（{claim.evidence?.length ?? 0}）</h3>
@@ -860,6 +934,68 @@ function SourceDetailModal({ source, onClose, onDelete }: { source: Source; onCl
       <pre className="prewrap small" style={{ maxHeight: 320, overflow: "auto", background: "var(--surface-2)", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
         {source.content ?? "（本文は一覧では取得していません）"}
       </pre>
+    </Modal>
+  );
+}
+
+
+function ProjectModal({
+  project,
+  busy,
+  canDelete,
+  onClose,
+  onSubmit,
+  onDelete,
+}: {
+  project: Project;
+  busy: boolean;
+  canDelete: boolean;
+  onClose: () => void;
+  onSubmit: (payload: { title: string; summary: string; status: "active" | "archived" }) => void;
+  onDelete: () => void;
+}) {
+  const [title, setTitle] = useState(project.title);
+  const [summary, setSummary] = useState(project.summary);
+  const [status, setStatus] = useState<"active" | "archived">(project.status);
+  return (
+    <Modal
+      title="テーマを編集"
+      onClose={onClose}
+      width={620}
+      footer={
+        <>
+          {canDelete ? <button type="button" className="btn btn-danger" onClick={onDelete}>テーマを削除</button> : null}
+          <div className="spacer" />
+          <button type="button" className="btn" onClick={onClose}>キャンセル</button>
+          <button type="submit" form="project-edit-form" className="btn btn-primary" disabled={busy || !title.trim()}>
+            {busy ? "保存中…" : "保存"}
+          </button>
+        </>
+      }
+    >
+      <form
+        id="project-edit-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit({ title: title.trim(), summary: summary.trim(), status });
+        }}
+      >
+        <div className="field">
+          <label htmlFor="project-edit-title">タイトル</label>
+          <input id="project-edit-title" className="input" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} required />
+        </div>
+        <div className="field">
+          <label htmlFor="project-edit-summary">概要</label>
+          <textarea id="project-edit-summary" className="textarea" value={summary} onChange={(event) => setSummary(event.target.value)} maxLength={5000} />
+        </div>
+        <div className="field">
+          <label htmlFor="project-edit-status">状態</label>
+          <select id="project-edit-status" className="select" value={status} onChange={(event) => setStatus(event.target.value as "active" | "archived")}>
+            <option value="active">進行中</option>
+            <option value="archived">アーカイブ</option>
+          </select>
+        </div>
+      </form>
     </Modal>
   );
 }

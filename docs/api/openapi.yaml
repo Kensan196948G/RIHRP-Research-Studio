@@ -172,6 +172,12 @@ components:
           anyOf:
           - $ref: '#/components/schemas/ReportContentIn'
           - type: 'null'
+        expected_version:
+          anyOf:
+          - minimum: 1.0
+            type: integer
+          - type: 'null'
+          title: Expected Version
         note:
           default: ''
           maxLength: 300

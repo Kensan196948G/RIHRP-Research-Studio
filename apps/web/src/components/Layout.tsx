@@ -1,12 +1,13 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
-import { ROLE_LABEL, canReview } from "../utils";
+import { ROLE_LABEL } from "../utils";
 
-function NavIcon({ name }: { name: "home" | "audit" | "users" }) {
+function NavIcon({ name }: { name: "home" | "audit" | "users" | "settings" }) {
   const paths: Record<string, string> = {
     home: "M3 10.5 12 3l9 7.5V21H3V10.5Z",
     audit: "M5 3h14v18H5V3Zm3 5h8M8 12h8M8 16h5",
     users: "M8 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm8 0a3 3 0 1 0 0-6M2 21c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5m1-5.2c2.8.3 5 2.4 5 5.2",
+    settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8.4-3a8.4 8.4 0 0 0-.14-1.5l2-1.56-2-3.46-2.36.95a8.3 8.3 0 0 0-2.6-1.5L15 2h-4l-.3 2.43a8.3 8.3 0 0 0-2.6 1.5L5.74 5 3.74 8.46l2 1.56A8.4 8.4 0 0 0 5.6 12c0 .51.05 1.01.14 1.5l-2 1.56 2 3.46 2.36-.95a8.3 8.3 0 0 0 2.6 1.5L11 22h4l.3-2.43a8.3 8.3 0 0 0 2.6-1.5l2.36.95 2-3.46-2-1.56c.09-.49.14-.99.14-1.5Z",
   };
   return (
     <svg className="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -41,6 +42,10 @@ export function Layout() {
             <NavIcon name="home" />
             <span className="nav-label">ダッシュボード</span>
           </NavLink>
+          <NavLink to="/settings" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
+            <NavIcon name="settings" />
+            <span className="nav-label">設定</span>
+          </NavLink>
           <NavLink to="/audit" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
             <NavIcon name="audit" />
             <span className="nav-label">監査ログ</span>
@@ -73,8 +78,4 @@ export function Layout() {
       </main>
     </div>
   );
-}
-
-export function canSeeAudit(role: string | undefined): boolean {
-  return canReview(role as never);
 }

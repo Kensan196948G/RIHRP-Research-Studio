@@ -3,8 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { ApiError, api } from "../api";
 import { useAuth } from "../auth";
 import type { Claim, Report, ReportContent, VerificationSummary } from "../types";
-import { canEdit, canReview, formatDate, VERDICT_LABEL } from "../utils";
-import { ErrorBanner, Loading, ReportStatusBadge, useToast, VerdictBadge } from "../components/ui";
+import { canEdit, canReview, formatDate, shortHash, VERDICT_LABEL } from "../utils";
+import { ErrorBanner, Loading, Modal, ReportStatusBadge, useToast, VerdictBadge } from "../components/ui";
 
 function newSection(): ReportContent["sections"][number] {
   return { id: crypto.randomUUID(), heading: "", paragraphs: [{ id: crypto.randomUUID(), text: "", claimIds: [] }] };
@@ -30,6 +30,9 @@ export function ReportEditorPage() {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [selectedClaimDetail, setSelectedClaimDetail] = useState<Claim | null>(null);
+  const [showVersions, setShowVersions] = useState(false);
+  const [versions, setVersions] = useState<{ version: number; seal_sha256: string; note: string; created_at: string | null; created_by: string | null }[] | null>(null);
+  const [versionsLoading, setVersionsLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -184,7 +187,12 @@ export function ReportEditorPage() {
     if (!report) return;
     setBusy("save");
     try {
-      const result = await api.saveReport(report.id, { title, content: draft, note: "UI 保存" });
+      const result = await api.saveReport(report.id, {
+        title,
+        content: draft,
+        note: "UI 保存",
+        expected_version: report.version,
+      });
       setReport(result.report);
       setDraft(result.report.content);
       setDirty(false);
@@ -192,7 +200,11 @@ export function ReportEditorPage() {
       toast("保存しました。");
       await refreshClaims(result.report.project_id);
     } catch (err) {
-      toast(err instanceof Error ? err.message : "保存に失敗しました。", "error");
+      if (err instanceof ApiError && err.code === "version_conflict") {
+        toast("他の利用者が先に更新しました。最新の内容を読み込んでから保存してください。", "error");
+      } else {
+        toast(err instanceof Error ? err.message : "保存に失敗しました。", "error");
+      }
     } finally {
       setBusy(null);
     }
@@ -280,6 +292,20 @@ export function ReportEditorPage() {
   const latestReview = report.reviews?.[0];
   const summaryView = summary ?? report.latest_verification?.summary ?? null;
 
+  const openVersions = async () => {
+    setShowVersions(true);
+    setVersionsLoading(true);
+    try {
+      const result = await api.reportVersions(report.id);
+      setVersions(result.versions);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "版履歴の取得に失敗しました。", "error");
+      setVersions(null);
+    } finally {
+      setVersionsLoading(false);
+    }
+  };
+
   return (
     <div className="content">
       <div className="row" style={{ marginBottom: 8 }}>
@@ -344,7 +370,7 @@ export function ReportEditorPage() {
       ) : null}
       {report.status === "approved" && report.integrity?.needs_reapproval ? (
         <div className="error-banner" role="alert">
-          承認後に根拠の状態が変わり、矛盾が {report.integrity.contradicted} 件あります。この承認は現在の内容を保証しません。再検証と再承認が必要です。
+          承認後に根拠または主張が変更されました（矛盾 {report.integrity.contradicted} 件 / 未検証 {report.integrity.unchecked} 件）。この承認は現在の内容を保証しません。再検証と再承認が必要です。
         </div>
       ) : null}
       {report.status === "approved" && report.integrity && !report.integrity.needs_reapproval && report.integrity.unverified + report.integrity.insufficient > 0 ? (
@@ -569,7 +595,7 @@ export function ReportEditorPage() {
             <div className="small muted">現在 v{report.version}</div>
             <div className="small muted">提出: {report.submitted_by_name ?? "—"} / {formatDate(report.submitted_at)}</div>
             <div className="small muted">承認: {formatDate(report.approved_at)}</div>
-            <a className="small" href={`/api/reports/${report.id}/versions`} target="_blank" rel="noreferrer">版一覧（JSON）</a>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => void openVersions()}>版履歴</button>
           </div>
 
           {report.reviews?.length ? (
@@ -609,6 +635,39 @@ export function ReportEditorPage() {
             <span className="hint">提出者本人は承認できません。承認時に検証を再実行します。</span>
           </div>
         </div>
+      ) : null}
+
+      {showVersions ? (
+        <Modal title="版履歴" onClose={() => setShowVersions(false)} width={720}>
+          {versionsLoading ? (
+            <Loading label="版履歴を読み込んでいます…" />
+          ) : versions && versions.length ? (
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>版</th>
+                    <th>シール（SHA-256）</th>
+                    <th>メモ</th>
+                    <th>作成</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {versions.map((version) => (
+                    <tr key={version.version}>
+                      <td className="num">v{version.version}{version.version === report.version ? <span className="badge badge-verified" style={{ marginLeft: 6 }}>現在</span> : null}</td>
+                      <td className="mono muted">{shortHash(version.seal_sha256)}</td>
+                      <td className="small">{version.note || "—"}</td>
+                      <td className="muted small nowrap">{formatDate(version.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="muted small">版履歴がありません。</p>
+          )}
+        </Modal>
       ) : null}
     </div>
   );

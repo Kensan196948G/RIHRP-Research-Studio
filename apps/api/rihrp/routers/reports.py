@@ -173,6 +173,13 @@ def update_report(
     db: OrmSession = Depends(get_db),
 ) -> dict:
     report = get_report_or_404(db, report_id)
+    if payload.expected_version is not None and payload.expected_version != report.version:
+        raise ApiError(
+            409,
+            "version_conflict",
+            "他の利用者が先に更新しました。最新の内容を読み込んでから保存してください。",
+            {"current_version": report.version, "expected_version": payload.expected_version},
+        )
     if report.status in {"in_review", "approved"}:
         raise ApiError(
             409,

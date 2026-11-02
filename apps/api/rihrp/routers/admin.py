@@ -94,6 +94,8 @@ def update_user(
         raise ApiError(404, "not_found", "利用者が見つかりません。")
     if user.id == principal.user_id and payload.is_active is False:
         raise ApiError(422, "validation_error", "自分自身を無効化できません。")
+    if user.id == principal.user_id and payload.role is not None and payload.role != "admin":
+        raise ApiError(422, "validation_error", "自分自身の管理者権限を外せません。")
     changes: dict = {}
     if payload.name is not None:
         user.name = payload.name.strip()

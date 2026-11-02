@@ -113,3 +113,36 @@ def test_oversized_body_rejected(client: TestClient, users: dict[str, str]) -> N
     )
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "payload_too_large"
+
+
+def test_admin_cannot_demote_self(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "admin")
+    response = client.patch(f"/api/users/{users['admin']}", json={"role": "viewer"})
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+
+
+def test_change_password(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "editor")
+    changed = client.post(
+        "/api/auth/change-password",
+        json={"current_password": TEST_PASSWORD, "new_password": "new-password-456"},
+    )
+    assert changed.status_code == 200
+
+    with TestClient(client.app) as other:
+        assert (
+            other.post(
+                "/api/auth/login",
+                json={"email": ROLES["editor"], "password": "new-password-456"},
+            ).status_code
+            == 200
+        )
+    with TestClient(client.app) as stale:
+        assert (
+            stale.post(
+                "/api/auth/login",
+                json={"email": ROLES["editor"], "password": TEST_PASSWORD},
+            ).status_code
+            == 401
+        )

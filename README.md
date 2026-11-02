@@ -123,7 +123,7 @@ RIHRP_DATABASE_URL=postgresql+psycopg://rihrp_app:<パスワード>@127.0.0.1:54
 # テスト DB を用意（初回のみ）
 createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指定可
 
-.venv/bin/pytest -q            # 33 passed
+.venv/bin/pytest -q            # 40 passed
 (cd apps/web && npx vitest run) # 5 passed
 .venv/bin/ruff check apps/api tests
 .venv/bin/ruff format --check apps/api tests
@@ -169,6 +169,12 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 | モバイル表示（カード / 表スクロール / レール非表示） | 実装済み | Playwright 実測（390px、横スクロール 0） |
 | キーボード（Esc / フォーカスリング / スキップリンク） | 実装済み | Playwright 実測（2px ティール） |
 | 描画エラー時のフォールバック | 実装済み | `ErrorBoundary.test.tsx` |
+| 主張・テーマの編集 UI | 実装済み | UI 実測、pytest |
+| レポート同時編集の競合検知（expected_version） | 実装済み | `test_report_save_rejects_stale_version` |
+| 版履歴 UI | 実装済み | UI 実測 |
+| 期限切れセッションの保守コマンド | 実装済み | `test_purge_sessions_removes_only_expired` |
+| 設定画面（パスワード変更） | 実装済み | UI 実測、`test_change_password` |
+| 管理者のロール変更・テーマ削除 | 実装済み | UI 実測、`test_admin_cannot_demote_self` |
 | OpenDesign 設計参照との比較 | 実施済み | `docs/design/01-webui-design.md` 第 8 章 |
 | Markdown エクスポート | 実装済み | pytest、API 実測 |
 | 監査ログ（append-only） | 実装済み | pytest |
@@ -197,6 +203,7 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 - Health Check: `/healthz` 200、`/readyz` 200（migration 一致）
 - 主要フロー実測: editor ログイン → 検証（2 verified / 1 unverified）→ 提出 → reviewer 承認 → Markdown エクスポート
 - セキュリティ: セキュリティヘッダー、Cookie 属性（HttpOnly / SameSite）、2 MiB 超の本文 413 を自動テスト
+- UI 実測（Round 3）: ログイン後の戻り先復元、主張編集（判定リセット）、テーマ編集、版履歴モーダル、設定画面、ロール変更、テーマ削除（管理者のみ）
 - 改竄試験: 出典本文を変更 → `contradicted`（`evidence_tampered`）→ 承認 API が **409 approval_blocked**
 - 監査: 上記操作が `audit_events` に記録されていることを確認
 - OpenDesign: design direction（`tech-utility`）取得、Studio で 8 画面のプロトタイプ生成（run は failed 表示）、実装との差異を文書化

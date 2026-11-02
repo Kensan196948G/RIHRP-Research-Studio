@@ -104,6 +104,7 @@ def update_claim(
     claim.text = payload.text.strip()
     claim.last_verdict = None
     claim.last_details = None
+    claim.last_verified_at = None
     write_audit(
         db,
         actor_id=principal.user_id,
@@ -182,6 +183,7 @@ def add_evidence(
     db.add(evidence)
     claim.last_verdict = None
     claim.last_details = None
+    claim.last_verified_at = None
     write_audit(
         db,
         actor_id=principal.user_id,
@@ -209,6 +211,7 @@ def delete_evidence(
     db.delete(evidence)
     claim.last_verdict = None
     claim.last_details = None
+    claim.last_verified_at = None
     write_audit(
         db,
         actor_id=principal.user_id,

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
+import { useAuth } from "../auth";
 import type { Role, User } from "../types";
 import { ROLE_LABEL, formatDate } from "../utils";
 import { EmptyState, ErrorBanner, Loading, Modal, useToast } from "../components/ui";
@@ -8,6 +9,7 @@ const ROLES: Role[] = ["editor", "reviewer", "viewer", "admin"];
 
 export function UsersPage() {
   const toast = useToast();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +47,16 @@ export function UsersPage() {
       toast(err instanceof Error ? err.message : "作成に失敗しました。", "error");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const changeRole = async (user: User, role: Role) => {
+    try {
+      await api.updateUser(user.id, { role });
+      toast("役割を変更しました。");
+      await load();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "更新に失敗しました。", "error");
     }
   };
 
@@ -92,7 +104,21 @@ export function UsersPage() {
                 <tr key={user.id}>
                   <td style={{ fontWeight: 600 }}>{user.name}</td>
                   <td className="mono small">{user.email}</td>
-                  <td>{ROLE_LABEL[user.role]}</td>
+                  <td>
+                    {user.id === currentUser?.id ? (
+                      <span>{ROLE_LABEL[user.role]}</span>
+                    ) : (
+                      <select
+                        className="select"
+                        style={{ maxWidth: 140 }}
+                        aria-label={`${user.name} の役割`}
+                        value={user.role}
+                        onChange={(event) => void changeRole(user, event.target.value as Role)}
+                      >
+                        {ROLES.map((role) => <option key={role} value={role}>{ROLE_LABEL[role]}</option>)}
+                      </select>
+                    )}
+                  </td>
                   <td>{user.is_active ? <span className="badge badge-verified">有効</span> : <span className="badge badge-insufficient">無効</span>}</td>
                   <td className="muted small">{formatDate(user.created_at)}</td>
                   <td>

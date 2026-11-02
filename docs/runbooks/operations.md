@@ -74,3 +74,12 @@ DELETE FROM sessions WHERE expires_at < now() - interval '7 days';
 
 - systemd の `Restart=on-failure` のみ。
 - 外部合成監視（5 分ごとの `/readyz`）とアラートは未実装。本番公開時に追加する。
+
+## 4.1 セッションの定期削除
+
+```bash
+set -a; source "$HOME/.config/rihrp/rihrp.conf"; set +a
+.venv/bin/python -m rihrp.maintenance purge-sessions --days 7
+```
+
+期限切れから 7 日経過したセッションを削除する（既定）。cron / systemd timer で日次実行する場合は、`EnvironmentFile=~/.config/rihrp/rihrp.conf` を指定した oneshot ユニットにする。

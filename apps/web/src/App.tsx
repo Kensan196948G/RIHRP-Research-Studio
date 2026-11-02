@@ -9,6 +9,7 @@ import { DashboardPage } from "./pages/Dashboard";
 import { LoginPage } from "./pages/Login";
 import { ProjectPage } from "./pages/Project";
 import { ReportEditorPage } from "./pages/ReportEditor";
+import { SettingsPage } from "./pages/Settings";
 import { UsersPage } from "./pages/Users";
 import { VerificationPage } from "./pages/Verification";
 
@@ -73,6 +74,7 @@ export function App() {
         <Route path="/projects/:projectId" element={<ProjectPage />} />
         <Route path="/projects/:projectId/verification" element={<VerificationPage />} />
         <Route path="/reports/:reportId" element={<ReportEditorPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route
           path="/audit"
           element={

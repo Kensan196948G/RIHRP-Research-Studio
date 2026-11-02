@@ -226,7 +226,8 @@ def report_integrity(db: Session, report: Report) -> dict[str, Any]:
     return {
         **counts,
         "referenced": len(claim_ids),
-        "needs_reapproval": report.status == "approved" and counts["contradicted"] > 0,
+        "needs_reapproval": report.status == "approved"
+        and (counts["contradicted"] > 0 or counts["unchecked"] > 0),
     }
 
 

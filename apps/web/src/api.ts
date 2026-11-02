@@ -55,6 +55,11 @@ export const api = {
     }),
   logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   me: () => request<{ user: import("./types").User; csrf_token: string }>("/api/auth/me"),
+  changePassword: (current_password: string, new_password: string) =>
+    request<{ ok: boolean }>("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password, new_password }),
+    }),
 
   projects: () => request<{ projects: import("./types").Project[] }>("/api/projects"),
   project: (id: string) => request<{ project: import("./types").Project }>(`/api/projects/${id}`),
@@ -68,6 +73,7 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
+  deleteProject: (id: string) => request<{ ok: boolean }>(`/api/projects/${id}`, { method: "DELETE" }),
 
   sources: (projectId: string) => request<{ sources: import("./types").Source[] }>(`/api/projects/${projectId}/sources`),
   source: (id: string) => request<{ source: import("./types").Source }>(`/api/sources/${id}`),
@@ -116,7 +122,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ title }),
     }),
-  saveReport: (id: string, payload: { title?: string; content?: import("./types").ReportContent; note?: string }) =>
+  saveReport: (id: string, payload: { title?: string; content?: import("./types").ReportContent; note?: string; expected_version?: number }) =>
     request<{ report: import("./types").Report }>(`/api/reports/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
@@ -134,6 +140,12 @@ export const api = {
       body: JSON.stringify({ decision, comment }),
     }),
   exportReportUrl: (id: string) => `/api/reports/${id}/export`,
+  reportVersions: (id: string) =>
+    request<{
+      versions: { version: number; seal_sha256: string; note: string; created_at: string | null; created_by: string | null }[];
+      current: number;
+      current_seal: string;
+    }>(`/api/reports/${id}/versions`),
 
   audit: (limit = 100) => request<{ events: import("./types").AuditEvent[] }>(`/api/audit?limit=${limit}`),
   users: () => request<{ users: import("./types").User[] }>("/api/users"),

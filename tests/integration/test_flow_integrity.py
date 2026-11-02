@@ -301,3 +301,76 @@ def test_blocked_approval_persists_verification(
     assert any(event["action"] == "report.verified" for event in audit)
     report_after = editor_client.get(f"/api/reports/{report['id']}").json()["report"]
     assert report_after["status"] == "in_review"
+
+
+def test_report_save_rejects_stale_version(
+    editor_client: TestClient, users: dict[str, str]
+) -> None:
+    project, _, claim = build_verified_claim(editor_client)
+    report = create_report_with_claim(editor_client, project, claim)  # version 2
+    stale = editor_client.put(
+        f"/api/reports/{report['id']}",
+        json={"expected_version": 1, "content": {"sections": []}},
+    )
+    assert stale.status_code == 409
+    assert stale.json()["error"]["code"] == "version_conflict"
+    assert stale.json()["error"]["details"]["current_version"] == 2
+
+    ok = editor_client.put(
+        f"/api/reports/{report['id']}",
+        json={"expected_version": 2, "content": {"sections": []}},
+    )
+    assert ok.status_code == 200
+    assert ok.json()["report"]["version"] == 3
+
+
+def test_claim_update_resets_verdict(editor_client: TestClient, users: dict[str, str]) -> None:
+    project, source, claim = build_verified_claim(editor_client)
+    updated = editor_client.patch(
+        f"/api/claims/{claim['id']}", json={"text": "導入可能量は 1,240 MW と試算された（改訂）。"}
+    )
+    assert updated.status_code == 200
+    assert updated.json()["claim"]["last_verdict"] is None
+    assert updated.json()["claim"]["last_verified_at"] is None
+    again = editor_client.post(f"/api/claims/{claim['id']}/verify")
+    assert again.json()["result"]["verdict"] == "verified"
+
+
+def test_project_update_and_archive(editor_client: TestClient, users: dict[str, str]) -> None:
+    project = create_project(editor_client)
+    response = editor_client.patch(
+        f"/api/projects/{project['id']}",
+        json={"title": "更新後テーマ", "summary": "更新後概要", "status": "archived"},
+    )
+    assert response.status_code == 200
+    updated = response.json()["project"]
+    assert updated["title"] == "更新後テーマ"
+    assert updated["summary"] == "更新後概要"
+    assert updated["status"] == "archived"
+
+
+def test_approved_report_flags_claim_edit(
+    editor_client: TestClient, reviewer_client: TestClient, users: dict[str, str]
+) -> None:
+    project, _, claim = build_verified_claim(editor_client)
+    report = create_report_with_claim(editor_client, project, claim)
+    assert editor_client.post(f"/api/reports/{report['id']}/submit").status_code == 200
+    assert (
+        reviewer_client.post(
+            f"/api/reports/{report['id']}/review",
+            json={"decision": "approved", "comment": ""},
+        ).status_code
+        == 200
+    )
+
+    edited = editor_client.patch(
+        f"/api/claims/{claim['id']}",
+        json={"text": "導入可能量は 1,240 MW と試算された（改訂）。"},
+    )
+    assert edited.status_code == 200
+    assert edited.json()["claim"]["last_verdict"] is None
+
+    fetched = editor_client.get(f"/api/reports/{report['id']}").json()["report"]
+    assert fetched["status"] == "approved"
+    assert fetched["integrity"]["unchecked"] == 1
+    assert fetched["integrity"]["needs_reapproval"] is True

@@ -119,6 +119,7 @@ OpenDesign から採用した要素:
 | レポートエディタ | `docs/assets/screenshots/05-report-editor.png` | 2 カラム、主張チップ、検証サマリ |
 | 承認済み + 根拠パネル | `docs/assets/screenshots/06-approved.png` | 承認後の警告、選択クレームの根拠表示 |
 | 検証結果（独立画面） | `docs/assets/screenshots/10-verification.png` | 判定理由・数値の一致・根拠数 |
+| 設定（パスワード変更） | `docs/assets/screenshots/11-settings.png` | アカウント情報、パスワード変更 |
 
 ## 8.2 モバイル / キーボード検証（実測 2026-11-02）
 
