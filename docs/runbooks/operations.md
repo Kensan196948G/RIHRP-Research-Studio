@@ -34,7 +34,8 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://research.mirai-dx-platform.com
 
 - Access の認証後画面（OTP/SSO）の確認は人間が行う。AI は未認証 302 までを検証できる。
 - 本番設定は `RIHRP_ENV=production` / `RIHRP_COOKIE_SECURE=true` / `RIHRP_SEED_DEMO=false`。
-  この構成では `http://127.0.0.1` に対する `tests/e2e/preview_smoke.py` は Cookie が Secure のため 401 になる（`https://` 経由で実行する）。
+  この構成では `tests/e2e/preview_smoke.py` は `http://127.0.0.1` では Cookie が Secure のため 401、Access 配下の `https://` では未認証 302 となり、**どちらも実行できない**（スクリプトは Access の資格情報を持たない）。
+  本番の確認は Access 認証後のブラウザで行い、スモークは開発・プレビュー環境（`RIHRP_COOKIE_SECURE=false`）でのみ使う。
 - 公開 DNS・custom domain・Access の変更は組織方針の高リスク変更（Approval PR + ユーザーの明示 Y/N）。
 
 ## 2. 配備

@@ -1,0 +1,45 @@
+{
+  "_note": "PR #1 における独立レビュー（pr-verifier）の各巡の結果。件数は当時の subagent 出力から転記し、findings の原文は最終巡（pass）のみ保持している。最終巡の証跡は ~/.claude/automerge/state/reviews/Kensan196948G__RIHRP-Research-Studio__1.json。",
+  "repo": "Kensan196948G/RIHRP-Research-Studio",
+  "pr": 1,
+  "reviewer": "pr-verifier",
+  "rounds": [
+    {
+      "round": 1,
+      "head_sha": "ba86e211cb7cedff39f73981223d1ca6074f701a",
+      "verdict": "fail",
+      "counts": {"critical": 0, "high": 3, "medium": 8, "low": 4}
+    },
+    {
+      "round": 2,
+      "head_sha": "ba86e211cb7cedff39f73981223d1ca6074f701a",
+      "verdict": "fail",
+      "counts": {"critical": 0, "high": 2, "medium": 9, "low": 2}
+    },
+    {
+      "round": 3,
+      "head_sha": "f204c47854c2f87176646e1a55a21ac48be9ffb3",
+      "verdict": "fail",
+      "counts": {"critical": 0, "high": 2, "medium": 3, "low": 0}
+    },
+    {
+      "round": 4,
+      "head_sha": "af907e8333227495f932188828848bb2bb586b94",
+      "verdict": "fail",
+      "counts": {"critical": 0, "high": 1, "medium": 2, "low": 0}
+    },
+    {
+      "round": 5,
+      "head_sha": "1cb9d5b5c5d401b052dcb86378f49767238043c6",
+      "verdict": "fail",
+      "counts": {"critical": 0, "high": 1, "medium": 1, "low": 1}
+    },
+    {
+      "round": 6,
+      "head_sha": "6446935f5144faf11631a1361ac8343cd9dbb1cb",
+      "verdict": "pass",
+      "counts": {"critical": 0, "high": 0, "medium": 0, "low": 0},
+      "findings": []
+    }
+  ]
+}

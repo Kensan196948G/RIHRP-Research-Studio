@@ -7,7 +7,7 @@
 出典をスナップショットと SHA-256 で固定し、主張を引用と数値で決定論的に検証する。
 承認は「矛盾ゼロ」を条件に、未検証の残数も隠さない。
 
-![status](https://img.shields.io/badge/status-local%20verified-0f766e) ![python](https://img.shields.io/badge/python-3.12-0f2436) ![node](https://img.shields.io/badge/node-22-0f2436) ![db](https://img.shields.io/badge/PostgreSQL-16-0f2436)
+![status](https://img.shields.io/badge/status-production%20%2F%20CI%20green-0f766e) ![python](https://img.shields.io/badge/python-3.12-0f2436) ![node](https://img.shields.io/badge/node-22-0f2436) ![db](https://img.shields.io/badge/PostgreSQL-16-0f2436)
 
 </div>
 
@@ -16,7 +16,7 @@
 > PR [#1](https://github.com/Kensan196948G/RIHRP-Research-Studio/pull/1) は **main へマージ済み**（merge commit `5e3f410`）。独立レビュー（pr-verifier）は **6 巡で合格**（critical 0 / high 0）。
 > **CI（GitHub Actions）有効**: API (ruff / pytest) / Web (tsc / vitest / build) / Secret scan (gitleaks) の 3 ジョブ。
 > **本番公開済み**: [research.mirai-dx-platform.com](https://research.mirai-dx-platform.com)（Cloudflare Tunnel + Access。未認証は 302）。
-> **最終検証（2026-11-03）:** pytest 59 passed / 1 skipped / vitest 5 / CI success 3/3 / `npm audit` 0 / `pip-audit` 0 / スケール（1,000 主張）p95 claims 180ms・export 42ms / 通し E2E 成功。詳細は [`docs/verification/2026-11-03.md`](docs/verification/2026-11-03.md)。
+> **最終検証（2026-11-03）:** pytest 59 passed / 1 skipped / vitest 5 / CI success 3/3 / `npm audit`（開発依存含む）0 / `pip-audit` 0 / Dependabot open critical・high 0 / スケール（1,000 主張）p95 claims 180ms・export 42ms / 通し E2E 成功。詳細は [`docs/verification/2026-11-03.md`](docs/verification/2026-11-03.md)。
 
 ## 01. これは何か
 
@@ -130,15 +130,16 @@ createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指
 .venv/bin/ruff format --check apps/api tests
 tools/ci.sh --no-install       # CI 相当を一括実行
 
-# 配備済み環境のスモーク（秘密は環境変数）
-RIHRP_BASE_URL=https://research.mirai-dx-platform.com \
+# 配備済み環境のスモーク（開発・プレビュー向け。秘密は環境変数）
+RIHRP_BASE_URL=http://127.0.0.1:18110 \
 RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 .venv/bin/python tests/e2e/preview_smoke.py
 ```
 
-> **注意:** 本番設定（`RIHRP_ENV=production` / `RIHRP_COOKIE_SECURE=true`）では Cookie に `Secure` が付くため、
-> `http://` のローカルに対してこのスモークを実行するとログイン後に 401 になる（Cookie が送られない）。
-> 本番で実行する場合は Access を通した `https://` の URL を指定する。
+> **注意:** このスモークは Access を経由しない環境（`RIHRP_COOKIE_SECURE=false`）専用。
+> 本番設定（`RIHRP_ENV=production` / `RIHRP_COOKIE_SECURE=true`）では Cookie に `Secure` が付くため `http://` では送られず 401 になる。
+> また Cloudflare Access 配下の URL は `/healthz` を含めて未認証では 302 になり、スクリプトは Access の資格情報を持たないため**本番では実行できない**。
+> 本番の確認は Access 認証後にブラウザで行う（自動 E2E は未対応）。
 
 主なテスト観点:
 
@@ -193,7 +194,7 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 | 利用者無効化時のセッション失効 | 実装済み | `test_deactivated_user_sessions_are_revoked` |
 | リクエスト相関 ID（監査・ヘッダー） | 実装済み | `test_audit_records_request_id_and_header` |
 | レポートプレビュー（インライン CLM 表示） | 実装済み | UI 実測 |
-| 依存関係の脆弱性監査 | 0 件 | `npm audit --omit=dev` / `pip-audit` |
+| 依存関係の脆弱性監査 | 0 件（開発依存含む） | `npm audit`（full） / `pip-audit` / Dependabot |
 | OpenDesign 設計参照との比較 | 実施済み | `docs/design/01-webui-design.md` 第 8 章 |
 | Markdown エクスポート | 実装済み | pytest、API 実測 |
 | 監査ログ（append-only） | 実装済み | pytest |
@@ -201,14 +202,14 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 | systemd 配備 / health check | 実装済み | 実測（第 10 章） |
 | GitHub Actions CI | 実装済み | run `41513750337` success（API / Web / Secret scan） |
 | Cloudflare Tunnel / Access | 実装済み | `research.mirai-dx-platform.com`（未認証 302）。`docs/verification/2026-11-03.md` |
-| Dependabot アラート（脆弱性検知） | 有効 | open の critical / high = 0（実測） |
+| Dependabot アラート（脆弱性検知） | 有効 | open の critical / high = 0（dev 依存の 4 件は PR #3 で修正、再スキャン後に実測） |
 | PDF / Office 取り込み、外部 URL 自動取得 | 未実装 | 将来（要件 §5 の対象外） |
 
 ## 09. 既知の問題・制約
 
 1. **Cloudflare Access の認証後画面は人間の確認が必要**: 未認証 302 と Access 設定（アプリ・policy・DNS）は実測済みだが、OTP/SSO を通した画面確認は AI では実施できない（`docs/verification/2026-11-03.md` 第 6 章）。
 2. **OpenDesign Studio の run は `failed` 表示**: 再実行で成果物（8 画面のプロトタイプ）は生成されたが、run の状態は `failed`（`od_next_next_run_claim_failed`、daemon journal に `SQLITE_BUSY_SNAPSHOT`）。成果物は `docs/design/opendesign/` に保存し、実装との差異を [docs/design/01-webui-design.md](docs/design/01-webui-design.md) 第 8 章に記載した。
-3. **CI に依存脆弱性の自動監査 job は未追加**: Dependabot アラート（critical/high 0 件）と `npm audit --omit=dev` / `pip-audit` の手動実行で代替している。
+3. **CI に依存脆弱性の自動監査 job は未追加**: Dependabot アラート（critical/high 0 件）と `npm audit`（full） / `pip-audit` の手動実行で代替している。
 4. **マージ方法**: PR #1 は人間の操作で **merge commit**（`5e3f410`）としてマージされた。以後の通常 PR は `claude-automerge merge`（`--auto --squash`）を使う。`feat/mvp` リモートブランチは残存（AI は `git push --delete` 不可）。
 5. **外部 URL の自動取得なし**: URL は識別子として保存し、本文は貼付を正とする（改竄検出の単純化）。
 6. **モバイル実機・スクリーンリーダーの検証未実施**（CSS / ARIA の実装のみ）。
@@ -218,13 +219,13 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 
 ### 2026-11-03（最新）
 
-- 独立レビュー（pr-verifier）: **6 巡で合格**（critical 0 / high 0 / medium 0 / low 0）。主な対応は、監査ログの TRUNCATE 保護と DB ロール分離、承認と主張変更の直列化（`SELECT … FOR UPDATE`）、ロック後の identity map 更新、project 削除と子作成の直列化、数値境界判定。
+- 独立レビュー（pr-verifier）: **6 巡で合格**（critical 0 / high 0 / medium 0 / low 0）。各巡の件数は [`2026-11-03-reviews.json`](docs/verification/2026-11-03-reviews.json)。主な対応は、監査ログの TRUNCATE 保護と DB ロール分離、承認と主張変更の直列化（`SELECT … FOR UPDATE`）、ロック後の identity map 更新、project 削除と子作成の直列化、数値境界判定。
 - CI（GitHub Actions）: run `41513750337`（head `6446935`）と main push の run `41533037024`（`5e3f410`）がいずれも **success 3/3**（API (ruff / pytest) / Web (tsc / vitest / build) / Secret scan (gitleaks)）。
 - `pytest`: **59 passed / 1 skipped**（skip は所有者ロールのため対象外、`test_audit_immutable.py:40`）、`vitest`: 5 passed。
 - main マージ: PR #1 → merge commit **`5e3f410`**（2026-11-03 06:57 JST）。マージゲートは 18/20（高リスク 2 件はユーザーの明示 Y のうえ GitHub UI で人間がマージ）。
 - 配備: `infra/native/deploy.sh` → 稼働 commit **`5e3f410`**、`/healthz` 200・`/readyz` 200（`0003_audit_truncate`）。
 - 本番公開: `research.mirai-dx-platform.com`（Cloudflare Tunnel `35974e49…` + Access アプリ／policy `rihrp-allow`）。未認証は 302。
-- Dependabot アラート: 有効化、open の critical / high = **0 件**。
+- Dependabot アラート: 有効化。開発依存の critical 3 / high 1（vite / tinypool / vitest）は PR #3 で修正し、open の critical / high = **0 件**（再スキャン後に実測）。
 - 詳細: [docs/verification/2026-11-03.md](docs/verification/2026-11-03.md)
 
 ### 2026-11-02
@@ -263,6 +264,7 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 - 運用手順: [docs/runbooks/operations.md](docs/runbooks/operations.md)
 - 要件トレーサビリティ: [docs/requirements/traceability.md](docs/requirements/traceability.md)
 - 検証記録: [2026-11-03](docs/verification/2026-11-03.md) / [2026-11-02](docs/verification/2026-11-02.md)
+- 独立レビュー記録: [docs/verification/2026-11-03-reviews.json](docs/verification/2026-11-03-reviews.json)
 - CI 相当の一括検証: `tools/ci.sh`
 
 ## 12. ライセンス
