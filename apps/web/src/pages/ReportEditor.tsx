@@ -268,6 +268,9 @@ export function ReportEditorPage() {
         const details = err.details as { contradicted?: number; issues?: { text?: string }[] } | undefined;
         const issues = (details?.issues ?? []).map((issue) => issue.text).filter(Boolean).join(" / ");
         setReviewError(`矛盾が ${details?.contradicted ?? 0} 件あるため承認できません。${issues ? ` 対象: ${issues}` : ""}`);
+        // サーバー側で再検証済みの内容を反映する（古いサマリを残さない）
+        setSummary(null);
+        await load();
       } else {
         setReviewError(err instanceof Error ? err.message : "レビューに失敗しました。");
       }

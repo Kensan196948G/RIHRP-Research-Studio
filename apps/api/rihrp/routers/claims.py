@@ -110,6 +110,8 @@ def update_claim(
     db: OrmSession = Depends(get_db),
 ) -> dict:
     claim = get_claim_or_404(db, claim_id)
+    lock_project(db, claim.project_id)
+    claim = db.execute(select(Claim).where(Claim.id == claim_id).with_for_update()).scalar_one()
     claim.text = payload.text.strip()
     claim.last_verdict = None
     claim.last_details = None
@@ -169,6 +171,7 @@ def add_evidence(
     db: OrmSession = Depends(get_db),
 ) -> dict:
     claim = get_claim_or_404(db, claim_id)
+    lock_project(db, claim.project_id)
     source = get_source_or_404(db, payload.source_id)
     if source.project_id != claim.project_id:
         raise ApiError(422, "validation_error", "出典と主張のテーマが一致しません。")
@@ -225,6 +228,7 @@ def delete_evidence(
     db: OrmSession = Depends(get_db),
 ) -> dict:
     claim = get_claim_or_404(db, claim_id)
+    lock_project(db, claim.project_id)
     evidence = db.get(ClaimEvidence, evidence_id)
     if evidence is None or evidence.claim_id != claim_id:
         raise ApiError(404, "not_found", "根拠が見つかりません。")
@@ -252,6 +256,8 @@ def verify_claim_endpoint(
     db: OrmSession = Depends(get_db),
 ) -> dict:
     claim = get_claim_or_404(db, claim_id)
+    lock_project(db, claim.project_id)
+    claim = db.execute(select(Claim).where(Claim.id == claim_id).with_for_update()).scalar_one()
     result = verify_claim_row(db, claim, actor_id=principal.user_id)
     db.commit()
     return {"claim": claim_to_dict(claim, _load_evidence(db, claim.id)), "result": result}
@@ -264,6 +270,7 @@ def verify_project_claims(
     db: OrmSession = Depends(get_db),
 ) -> dict:
     get_project_or_404(db, project_id)
+    lock_project(db, project_id)
     claims = list(
         db.execute(
             select(Claim).where(Claim.project_id == project_id).order_by(Claim.created_at)

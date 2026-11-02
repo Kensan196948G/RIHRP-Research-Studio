@@ -74,7 +74,9 @@ def verify_claim(claim_text: str, evidence: list[EvidenceInput]) -> dict:
     combined = "\n".join(normalize(item.content) for item in evidence)
     missing_numbers: list[str] = []
     for number in numbers:
-        found = number in combined
+        # 数字の境界を考慮する（3 が 30、240 が 1,240 に一致しないようにする）。
+        pattern = re.compile(r"(?<![\d.,])" + re.escape(number) + r"(?![\d.,])")
+        found = pattern.search(combined) is not None
         details["numbers"].append({"value": number, "found": found})
         if not found:
             missing_numbers.append(number)

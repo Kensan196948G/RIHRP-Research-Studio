@@ -21,13 +21,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: rihrp_app
-          POSTGRES_PASSWORD: ci-password
-          POSTGRES_DB: rihrp
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-postgres
+          POSTGRES_DB: postgres
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U rihrp_app"
+          --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -35,7 +35,8 @@ jobs:
       RIHRP_ENV: test
       RIHRP_DATABASE_URL: postgresql+psycopg://rihrp_app:ci-password@127.0.0.1:5432/rihrp_test
       RIHRP_TEST_DATABASE_URL: postgresql+psycopg://rihrp_app:ci-password@127.0.0.1:5432/rihrp_test
-      PGPASSWORD: ci-password
+      RIHRP_MIGRATION_DATABASE_URL: postgresql+psycopg://rihrp_owner:ci-owner@127.0.0.1:5432/rihrp_test
+      PGPASSWORD: ci-postgres
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -44,8 +45,20 @@ jobs:
           cache: pip
       - name: Install
         run: pip install -e ".[dev]"
-      - name: Create test database
-        run: psql -h 127.0.0.1 -U rihrp_app -d rihrp -c "CREATE DATABASE rihrp_test"
+      - name: Create roles and test database (owner/app separation)
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres <<'SQL'
+          CREATE ROLE rihrp_owner LOGIN PASSWORD 'ci-owner';
+          CREATE ROLE rihrp_app LOGIN PASSWORD 'ci-password';
+          CREATE DATABASE rihrp_test OWNER rihrp_owner;
+          SQL
+          psql -h 127.0.0.1 -U postgres -d rihrp_test <<'SQL'
+          GRANT USAGE ON SCHEMA public TO rihrp_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE rihrp_owner IN SCHEMA public
+            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO rihrp_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE rihrp_owner IN SCHEMA public
+            GRANT USAGE, SELECT ON SEQUENCES TO rihrp_app;
+          SQL
       - name: Lint
         run: |
           ruff check apps/api tests

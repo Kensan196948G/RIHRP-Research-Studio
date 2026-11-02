@@ -17,24 +17,28 @@ TEST_DB_URL = os.environ.get(
 )
 if not TEST_DB_URL.rsplit("/", 1)[-1].startswith("rihrp_test"):
     raise RuntimeError("テストは rihrp_test* の DB でのみ実行できます")
+# ローカルでは app が所有者でもよい。CI/本番では owner ロールで migration と後始末を行う。
+MIGRATION_DB_URL = os.environ.get("RIHRP_MIGRATION_DATABASE_URL", TEST_DB_URL)
 
 os.environ.update(
     RIHRP_ENV="test",
     RIHRP_DATABASE_URL=TEST_DB_URL,
+    RIHRP_MIGRATION_DATABASE_URL=MIGRATION_DB_URL,
     RIHRP_SEED_DEMO="false",
     RIHRP_LOGIN_RATE_LIMIT="1000",
     RIHRP_COOKIE_SECURE="false",
 )
 
 from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy import text  # noqa: E402
+from sqlalchemy import create_engine, text  # noqa: E402
 
 from rihrp.auth import reset_login_rate  # noqa: E402
-from rihrp.db import SessionLocal, engine  # noqa: E402
+from rihrp.db import SessionLocal  # noqa: E402
 from rihrp.main import app  # noqa: E402
 from rihrp.models import User  # noqa: E402
 from rihrp.security import hash_password  # noqa: E402
 
+owner_engine = create_engine(MIGRATION_DB_URL, pool_pre_ping=True)
 TEST_PASSWORD = "test-password-123"  # noqa: S105
 ROLES = {
     "admin": "admin@test.local",
@@ -46,7 +50,7 @@ ROLES = {
 
 def alembic(*args: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
-    env["RIHRP_DATABASE_URL"] = TEST_DB_URL
+    env["RIHRP_DATABASE_URL"] = MIGRATION_DB_URL
     return subprocess.run(  # noqa: S603
         [sys.executable, "-m", "alembic", "-c", "alembic.ini", *args],
         cwd=REPO / "infra/migrations",
@@ -66,7 +70,7 @@ def migrated() -> None:
 def clean_db() -> Iterator[None]:
     reset_login_rate()
     # 監査テーブルは TRUNCATE トリガーで保護されているため、テスト後始末だけ一時的に外す。
-    with engine.begin() as connection:
+    with owner_engine.begin() as connection:
         connection.execute(text("ALTER TABLE audit_events DISABLE TRIGGER trg_audit_no_truncate"))
         try:
             connection.execute(

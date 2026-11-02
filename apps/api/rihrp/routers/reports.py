@@ -174,6 +174,8 @@ def update_report(
     principal: Principal = Depends(require_editor),
     db: OrmSession = Depends(get_db),
 ) -> dict:
+    report = get_report_or_404(db, report_id)
+    lock_project(db, report.project_id)
     report = get_report_for_update(db, report_id)
     if payload.content is not None and payload.expected_version is None:
         raise ApiError(
@@ -226,6 +228,8 @@ def verify_report(
     db: OrmSession = Depends(get_db),
 ) -> dict:
     report = get_report_or_404(db, report_id)
+    lock_project(db, report.project_id)
+    report = get_report_for_update(db, report_id)
     summary = verify_report_row(db, report, actor_id=principal.user_id)
     db.commit()
     return {"summary": summary, **_report_full(db, report)}
@@ -237,6 +241,8 @@ def submit_report(
     principal: Principal = Depends(require_editor),
     db: OrmSession = Depends(get_db),
 ) -> dict:
+    report = get_report_or_404(db, report_id)
+    lock_project(db, report.project_id)
     report = get_report_for_update(db, report_id)
     if report.status not in {"draft", "changes_requested"}:
         raise ApiError(409, "invalid_state", "下書きまたは差し戻し状態のレポートだけ提出できます。")
@@ -287,6 +293,8 @@ def review_report(
     principal: Principal = Depends(require_reviewer),
     db: OrmSession = Depends(get_db),
 ) -> dict:
+    report = get_report_or_404(db, report_id)
+    lock_project(db, report.project_id)
     report = get_report_for_update(db, report_id)
     if report.status != "in_review":
         raise ApiError(409, "invalid_state", "レビュー中状態のレポートだけ審査できます。")

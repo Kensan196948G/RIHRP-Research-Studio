@@ -74,3 +74,14 @@ def test_verified_by_numbers_only():
     result = verify_claim("実証事業は 3 件である。", [evidence()])
     assert result["verdict"] == "verified"
     assert result["reasons"] == ["number_verified"]
+
+
+def test_number_boundaries_are_not_substrings():
+    content = "実証事業は 30 件である。導入可能量は 1,240 MW である。"
+    source = evidence(content=content)
+
+    assert verify_claim("実証事業は 3 件である。", [source])["verdict"] == "unverified"
+    assert verify_claim("導入可能量は 240 MW である。", [source])["verdict"] == "unverified"
+    assert verify_claim("導入可能量は 1 MW である。", [source])["verdict"] == "unverified"
+    assert verify_claim("実証事業は 30 件である。", [source])["verdict"] == "verified"
+    assert verify_claim("導入可能量は 1,240 MW である。", [source])["verdict"] == "verified"
