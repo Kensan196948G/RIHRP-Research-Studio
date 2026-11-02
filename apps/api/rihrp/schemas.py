@@ -213,3 +213,10 @@ def content_to_dict(content: ReportContentIn) -> dict[str, Any]:
             }
         )
     return {"sections": sections}
+
+
+class ResearchDocIn(BaseModel):
+    """研究ワークスペース文書の保存入力（楽観ロック付き）。"""
+
+    expected_version: int = Field(ge=0)
+    payload: dict[str, Any]

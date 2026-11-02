@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RIHRP Research Studio — 研究着想・仮説洗練プラットフォーム</title>
+<style>
+:root{
+ --bg:#f3f5f7;--panel:#ffffff;--panel2:#f7f9fb;--ink:#0f172a;--ink2:#475569;--ink3:#8a96a8;--line:#e3e8ee;
+ --accent:#0f766e;--accentInk:#0b5f59;--accentSoft:#e0f4f1;--onAccent:#ffffff;--top:#0d1f22;
+ --good:#15803d;--goodSoft:#e3f5e8;--warn:#b45309;--warnSoft:#fdf3dc;--bad:#b91c1c;--badSoft:#fce8e8;--info:#1d4ed8;--infoSoft:#e4ecfd;
+ --shadow:0 1px 2px rgba(15,23,42,.05),0 6px 18px rgba(15,23,42,.05);--r:12px;--mono:Consolas,"SFMono-Regular",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+ --bg:#0d1416;--panel:#141d20;--panel2:#182427;--ink:#e6edf0;--ink2:#a9b6bd;--ink3:#73828a;--line:#26353b;
+ --accent:#2dd4bf;--accentInk:#5eead4;--accentSoft:#123430;--onAccent:#062a26;--top:#081113;
+ --good:#4ade80;--goodSoft:#14301f;--warn:#fbbf24;--warnSoft:#33280f;--bad:#f87171;--badSoft:#3a1717;--info:#93c5fd;--infoSoft:#16243d;
+ --shadow:0 1px 2px rgba(0,0,0,.35);
+}}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:"Yu Gothic UI","Yu Gothic","Hiragino Sans","Hiragino Kaku Gothic ProN","Meiryo",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.65;-webkit-text-size-adjust:100%}
+button,select,input,textarea{font:inherit;color:inherit}
+h1,h2,h3{margin:0;line-height:1.35}
+/* top bar */
+.topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;padding:9px 18px;background:var(--top);color:#eef6f5;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#2dd4bf,#0f766e);display:grid;place-items:center;font:800 13px var(--mono);color:#042f2b;flex:none}
+.brand-t{font-weight:700;font-size:15px;letter-spacing:.02em;white-space:nowrap}
+.brand-s{font-size:11px;opacity:.7;white-space:nowrap;line-height:1.45}
+.brand-s b{color:#5eead4;font-weight:800}
+.offbadge{font-size:11px;padding:2px 9px;border:1px solid rgba(255,255,255,.35);border-radius:99px;white-space:nowrap}
+.offbadge::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#facc15;margin-right:6px;vertical-align:1px}
+.topr{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.topbar select{background:#17302f;border:1px solid #2b4a48;color:#eef6f5;border-radius:8px;padding:5px 8px;max-width:280px}
+.tbtn{background:transparent;border:1px solid #2b4a48;color:#eef6f5;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12.5px;white-space:nowrap}
+.tbtn:hover{background:#17302f}
+.saveState{font-size:11.5px;opacity:.7;white-space:nowrap}
+.gprog{display:flex;align-items:center;gap:8px;font-size:11.5px;white-space:nowrap}
+.gprog .bar{width:110px;height:6px;background:#22403e;border-radius:9px;overflow:hidden}
+.gprog .bar i{display:block;height:100%;background:#2dd4bf;transition:width .25s}
+.notice{background:var(--warnSoft);color:var(--ink2);font-size:12.5px;padding:6px 18px;border-bottom:1px solid var(--line)}
+.notice b{color:var(--warn)}
+/* layout */
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:calc(100vh - 90px)}
+nav#nav{border-right:1px solid var(--line);background:var(--panel);padding:14px 10px;position:sticky;top:52px;align-self:start;height:calc(100vh - 52px);overflow:auto}
+.navcap{font-size:11px;color:var(--ink3);letter-spacing:.08em;margin:2px 10px 8px}
+.navitem{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:10px;cursor:pointer;border:0;background:none;width:100%;text-align:left;margin-bottom:2px}
+.navitem:hover{background:var(--panel2)}
+.navitem .num{font:700 12px var(--mono);width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:var(--panel2);border:1px solid var(--line);flex:none;color:var(--ink2)}
+.navitem.active{background:var(--accentSoft)}
+.navitem.active .num{background:var(--accent);color:var(--onAccent);border-color:var(--accent)}
+.navitem .lbl{display:block;font-weight:650;font-size:13.5px}
+.navitem .st{display:block;font-size:11.5px;color:var(--ink3)}
+.navitem .st.on{color:var(--accentInk)}
+.navfoot{margin:16px 8px 0;padding-top:12px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink3)}
+main{padding:22px 26px 70px;min-width:0}
+@media (max-width:900px){
+ .layout{grid-template-columns:1fr}
+ nav#nav{position:static;height:auto;display:flex;overflow-x:auto;padding:8px;gap:4px;border-right:0;border-bottom:1px solid var(--line);top:auto}
+ .navcap,.navfoot{display:none}
+ .navitem{min-width:150px;margin:0}
+ main{padding:16px}
+ .topbar{padding:8px 12px;position:static}
+ .brand-s{white-space:normal;font-size:10.5px}
+}
+/* page */
+.page-head{display:flex;gap:16px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px}
+.eyebrow{font:700 11.5px var(--mono);color:var(--accentInk);letter-spacing:.1em}
+.page-head h1{font-size:22px;margin-top:2px}
+.sub{color:var(--ink2);margin:4px 0 0;font-size:13px;max-width:720px}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px 18px;margin-bottom:16px;min-width:0}
+.card h2{font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h2 .cnt{font:600 12px var(--mono);color:var(--ink3)}
+.card h3{font-size:13.5px;margin:12px 0 6px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:1100px){.grid2{grid-template-columns:1fr}.grid3{grid-template-columns:1fr}}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:7px 13px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap}
+.btn:hover{border-color:var(--ink3)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--onAccent)}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:7px}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--bad)}
+.btn.good{color:var(--good)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+label.f{display:block;font-size:12.5px;font-weight:650;color:var(--ink2);margin:12px 0 5px}
+label.f small{font-weight:400;color:var(--ink3);margin-left:6px}
+input[type=text],textarea,select.in,input[type=number]{width:100%;border:1px solid var(--line);background:var(--panel2);border-radius:9px;padding:8px 10px;outline:none}
+textarea{resize:vertical;min-height:80px;line-height:1.6}
+input[type=text]:focus,textarea:focus,select.in:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accentSoft)}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row>*{flex:1;min-width:150px}
+.chk{display:flex;gap:8px;align-items:center;font-size:13px;margin-top:10px;cursor:pointer}
+.hint{font-size:12px;color:var(--ink3);margin:6px 0 0}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:650;padding:1px 8px;border-radius:99px;border:1px solid var(--line);background:var(--panel2);color:var(--ink2);white-space:nowrap}
+.chip.good{background:var(--goodSoft);color:var(--good);border-color:transparent}
+.chip.warn{background:var(--warnSoft);color:var(--warn);border-color:transparent}
+.chip.bad{background:var(--badSoft);color:var(--bad);border-color:transparent}
+.chip.info{background:var(--infoSoft);color:var(--info);border-color:transparent}
+.chip.acc{background:var(--accentSoft);color:var(--accentInk);border-color:transparent}
+.chip.mock{border-style:dashed}
+.tag{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);margin:0 4px 4px 0;color:var(--ink2)}
+.muted{color:var(--ink3)}
+.empty{text-align:center;padding:34px 16px;color:var(--ink2)}
+.empty .big{font-size:30px;opacity:.5}
+.empty p{margin:8px 0 14px}
+.banner{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px}
+.banner.warn{background:var(--warnSoft);border:1px solid rgba(180,83,9,.25)}
+.banner.info{background:var(--infoSoft);border:1px solid rgba(29,78,216,.2)}
+.banner.acc{background:var(--accentSoft);border:1px solid rgba(15,118,110,.25)}
+/* live check */
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.kv span{color:var(--ink3)}
+.flowline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 8px}
+.pill{padding:5px 12px;border-radius:99px;font-weight:700;font-size:13px}
+.pill.iv{background:var(--infoSoft);color:var(--info)}
+.pill.dv{background:var(--accentSoft);color:var(--accentInk)}
+.arrow{color:var(--ink3);font-weight:700}
+.dirtag{font-size:12px;color:var(--ink2);border:1px solid var(--line);padding:2px 8px;border-radius:6px}
+ul.checks{list-style:none;padding:0;margin:10px 0 0}
+ul.checks li{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+ul.checks li:last-child{border-bottom:0}
+ul.checks .ck{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none;margin-top:1px}
+ul.checks li.ok .ck{background:var(--goodSoft);color:var(--good)}
+ul.checks li.ng .ck{background:var(--warnSoft);color:var(--warn)}
+ul.checks b{display:block;font-weight:650}
+ul.checks small{color:var(--ink3);font-size:12px}
+.qscore{margin-top:10px;font-size:13px;color:var(--ink2)}
+.qscore b{font:800 20px var(--mono);color:var(--accentInk)}
+.samples{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sample{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--panel2);cursor:pointer;text-align:left}
+.sample:hover{border-color:var(--accent)}
+.sample b{display:block;font-size:12.5px;margin-top:3px}
+.revs{list-style:none;padding:0;margin:0;font-size:12.5px}
+.revs li{padding:7px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:flex-start}
+.revs li:last-child{border:0}
+.revs .rv{font:700 11.5px var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:0 6px;flex:none}
+.revs .txt{flex:1;min-width:0;color:var(--ink2)}
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.stat span{display:block;font-size:11.5px;color:var(--ink3)}
+.stat b{font:800 22px var(--mono)}
+/* tasks */
+.dagwrap{overflow-x:auto;padding-bottom:4px}
+.dag text{font-family:"Yu Gothic UI","Meiryo",sans-serif}
+.dag .edge{fill:none;stroke:var(--line);stroke-width:2}
+.dag .edge.on{stroke:var(--accent);stroke-width:2}
+.dag .node rect.box{fill:var(--panel2);stroke:var(--line);stroke-width:1.5}
+.dag .node.ready rect.box{stroke:var(--info);fill:var(--infoSoft)}
+.dag .node.running rect.box{stroke:var(--accent);fill:var(--accentSoft);stroke-width:2.5}
+.dag .node.approval rect.box{stroke:var(--warn);fill:var(--warnSoft);stroke-width:2.5;stroke-dasharray:5 3}
+.dag .node.done rect.box{stroke:var(--good);fill:var(--goodSoft)}
+.dag .t1{font-size:12px;font-weight:700;fill:var(--ink)}
+.dag .t2{font-size:10.5px;fill:var(--ink2)}
+.dag .t3{font-size:10px;font-weight:700}
+.dag .pb{fill:var(--line)}
+.dag .pf{fill:var(--accent)}
+.dag .node.done .pf{fill:var(--good)}
+.dag .node.approval .pf{fill:var(--warn)}
+.dag .node.running rect.box{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{stroke-opacity:.35}}
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tblwrap{overflow-x:auto}
+table.tbl th{text-align:left;font-size:11.5px;color:var(--ink3);font-weight:650;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.tbl td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+table.tbl tr:last-child td{border-bottom:0}
+.agentcell{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.dot{width:22px;height:22px;border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-size:11px;font-weight:700;flex:none}
+.pbar{height:7px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);overflow:hidden;min-width:90px}
+.pbar i{display:block;height:100%;background:var(--accent);transition:width .25s}
+.pbar.done i{background:var(--good)}
+.pbar.approval i{background:var(--warn)}
+.st-badge{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap}
+.st-blocked{background:var(--panel2);color:var(--ink3)}
+.st-ready{background:var(--infoSoft);color:var(--info)}
+.st-running{background:var(--accentSoft);color:var(--accentInk)}
+.st-paused{background:var(--panel2);color:var(--ink2);border:1px dashed var(--ink3)}
+.st-approval{background:var(--warnSoft);color:var(--warn)}
+.st-done{background:var(--goodSoft);color:var(--good)}
+.logbox{font:12px/1.7 var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.logbox .lt{color:var(--ink3)}
+.ctrls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ctrls select{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:6px 8px}
+/* debate */
+.debate{display:grid;grid-template-columns:290px minmax(0,1fr);gap:16px}
+@media (max-width:1000px){.debate{grid-template-columns:1fr}}
+.agents{display:flex;flex-direction:column;gap:6px}
+.agent{display:flex;gap:9px;align-items:center;padding:7px 8px;border-radius:10px;border:1px solid var(--line);background:var(--panel2)}
+.agent .av{width:30px;height:30px;font-size:12px}
+.agent .nm{font-size:12.5px;font-weight:700;display:block;line-height:1.3}
+.agent .rl{font-size:11px;color:var(--ink3);display:block;line-height:1.3}
+.agent .chip{margin-left:auto;font-size:10.5px}
+.agent.speaking{border-color:var(--accent);box-shadow:0 0 0 3px var(--accentSoft)}
+.meter{height:10px;border-radius:99px;background:linear-gradient(90deg,var(--bad),var(--warn),var(--good));position:relative;margin:8px 0 4px;opacity:.85}
+.meter i{position:absolute;top:-4px;width:4px;height:18px;background:var(--ink);border-radius:2px;transition:left .4s}
+.av{width:36px;height:36px;border-radius:50%;color:#fff;display:grid;place-items:center;font-weight:800;flex:none;font-size:13px}
+.chat{display:flex;flex-direction:column;gap:12px;height:56vh;min-height:340px;overflow:auto;padding:4px 6px 4px 2px;scroll-behavior:smooth}
+.msg{display:flex;gap:10px;align-items:flex-start}
+.msg.new{animation:pop .32s ease}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.bubble{background:var(--panel2);border:1px solid var(--line);border-radius:4px 14px 14px 14px;padding:8px 12px;max-width:780px;min-width:0}
+.who{font-size:12px;font-weight:750;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:2px}
+.bubble p{margin:0;font-size:13.5px;overflow-wrap:anywhere}
+.msg.you{flex-direction:row-reverse}
+.msg.you .bubble{background:var(--accentSoft);border-color:transparent;border-radius:14px 4px 14px 14px}
+.msg.you .who{justify-content:flex-end}
+.roundsep{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--ink3);font-weight:700;letter-spacing:.04em;margin:6px 0}
+.roundsep::before,.roundsep::after{content:"";flex:1;height:1px;background:var(--line)}
+.typing{display:flex;gap:10px;align-items:center;color:var(--ink3);font-size:12.5px}
+.typing .dots span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ink3);margin-right:3px;animation:bl 1s infinite}
+.typing .dots span:nth-child(2){animation-delay:.15s}.typing .dots span:nth-child(3){animation-delay:.3s}
+@keyframes bl{50%{opacity:.2}}
+.composer{border-top:1px solid var(--line);margin-top:10px;padding-top:12px}
+.qchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.qchip{border:1px solid var(--line);background:var(--panel2);border-radius:99px;padding:3px 11px;font-size:12px;cursor:pointer}
+.qchip:hover{border-color:var(--accent);color:var(--accentInk)}
+.composer .cr{display:flex;gap:8px;align-items:flex-end}
+.composer textarea{min-height:58px}
+/* evidence */
+.evlist{display:flex;flex-direction:column;gap:10px}
+.ev{border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:var(--panel2)}
+.ev.off{opacity:.5}
+.ev .t{font-weight:700;font-size:13.5px}
+.ev .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:5px 0}
+.ev .sum{font-size:12.5px;color:var(--ink2);margin:4px 0 6px}
+.ev .bars{display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;align-items:center;font-size:11.5px;color:var(--ink3);max-width:420px}
+.ev .foot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.ev select{border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:2px 6px;font-size:12px}
+.minibar{height:6px;border-radius:9px;background:var(--line);overflow:hidden}
+.minibar i{display:block;height:100%;background:var(--accent)}
+.crit{border-left:4px solid var(--line);padding:9px 12px;border-radius:0 9px 9px 0;background:var(--panel2);margin-bottom:8px}
+.crit.s高{border-left-color:var(--bad)}.crit.s中{border-left-color:var(--warn)}.crit.s低{border-left-color:var(--info)}
+.crit.closed{opacity:.55}
+.crit .h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px}
+.crit p{margin:4px 0;font-size:13px}
+.crit .sug{font-size:12.5px;color:var(--ink2)}
+.crit .sug::before{content:"改善案：";font-weight:700;color:var(--accentInk)}
+ol.fals{margin:4px 0 0;padding-left:20px;font-size:13px}
+ol.fals li{margin-bottom:4px}
+.mth{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:center}
+.mth:last-child{border:0}
+.lvl{display:inline-flex;gap:2px}
+.lvl i{width:8px;height:8px;border-radius:2px;background:var(--line)}
+.lvl i.on{background:var(--accent)}
+.lvl.c i.on{background:var(--warn)}
+.ethi{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.ethi:last-child{border:0}
+.ethi .a{font-size:12px;color:var(--ink2)}
+.addform{border:1px dashed var(--accent);border-radius:10px;padding:12px;margin-bottom:12px;background:var(--panel2)}
+/* compare */
+.cands{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.cand{border:1px solid var(--line);border-radius:12px;padding:13px;background:var(--panel);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.cand.main{border-color:var(--accent);box-shadow:0 0 0 2px var(--accentSoft)}
+.cand.rej{opacity:.55}
+.cand .hd{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.cand .lb{font:800 15px var(--mono);color:var(--accentInk)}
+.cand .tx{font-size:13px;margin:0}
+.cand .tot{margin-left:auto;font:800 20px var(--mono)}
+.cand .tot small{font-size:11px;color:var(--ink3);font-weight:600}
+.sc{display:grid;grid-template-columns:96px 1fr 30px;gap:3px 8px;align-items:center;font-size:11.5px;color:var(--ink2)}
+.sc b{font:700 11.5px var(--mono);text-align:right;color:var(--ink)}
+.cand .ft{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:4px;align-items:center}
+.wts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px 18px}
+.wts label{font-size:12.5px;color:var(--ink2);display:flex;justify-content:space-between}
+.wts input{width:100%;accent-color:var(--accent)}
+.chartrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:1000px){.chartrow{grid-template-columns:1fr}}
+.radar text{font-size:11px;fill:var(--ink2)}
+.radar .grid{fill:none;stroke:var(--line)}
+.hbar{display:grid;grid-template-columns:44px 1fr 40px;gap:8px;align-items:center;font-size:12.5px;margin-bottom:8px}
+.hbar .b{height:16px;border-radius:5px;background:var(--panel2);border:1px solid var(--line);overflow:hidden}
+.hbar .b i{display:block;height:100%}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;margin-top:6px}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c);margin-right:5px;vertical-align:-1px}
+.disc{font-size:12px;color:var(--ink3);border-top:1px dashed var(--line);padding-top:8px;margin-top:10px}
+/* toast */
+#toast{position:fixed;right:18px;bottom:18px;z-index:99;display:flex;flex-direction:column;gap:8px;max-width:min(380px,calc(100vw - 36px))}
+.toast{background:var(--top);color:#eef6f5;padding:10px 14px;border-radius:10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:pop .25s ease}
+/* print */
+@media print{
+ .topbar,.notice,nav#nav,.page-head,.no-print,#toast{display:none!important}
+ .layout{display:block}
+ main{padding:0}
+ body{background:#fff}
+ .card{box-shadow:none;border:0;padding:0}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+ <div class="brand">
+  <div class="logo">RI</div>
+  <div><div class="brand-t">RIHRP Research Studio</div><div class="brand-s" title="RIHRP = Research Inspiration &amp; Hypothesis Refinement Platform"><b>R</b>esearch <b>I</b>nspiration &amp; <b>H</b>ypothesis <b>R</b>efinement <b>P</b>latform<br>研究着想・仮説洗練プラットフォーム</div></div>
+  <span class="offbadge">Offline Demo</span>
+ </div>
+ <div class="topr">
+  <div class="gprog" title="研究フローの全体進捗"><span>全体進捗</span><span class="bar"><i id="gbar" style="width:0"></i></span><b id="gpct">0%</b></div>
+  <select id="projSel" aria-label="研究テーマの選択"></select>
+  <button class="tbtn" data-act="newProject">＋ 新規研究</button>
+  <button class="tbtn" data-act="exportAll" title="全研究データをJSONで保存">JSON保存</button>
+  <button class="tbtn" data-act="importAll" title="JSONから研究データを復元">JSON読込</button>
+  <span class="saveState" id="saveState">—</span>
+ </div>
+</header>
+<div class="notice"><b>オフライン・シミュレーション：</b>本アプリの「AIエージェント」はブラウザ内のJavaScriptによるルールベース処理で、AIモデルによる推論ではありません。内蔵の研究資料・事例はすべて<b>架空の模擬データ</b>です。評価値は例示指標であり、科学的な真偽や新規性を保証しません。</div>
+<div class="layout">
+ <nav id="nav" aria-label="画面ナビゲーション"></nav>
+ <main id="main"></main>
+</div>
+<div id="toast" aria-live="polite"></div>
+<input type="file" id="fileJson" accept=".json,application/json" hidden>
+<input type="file" id="fileEv" accept=".txt,.md,.csv,.json" multiple hidden>
+
+<script>
+'use strict';
+/* =========================================================
+   RIHRP Offline Research Studio  — single-file, no network
+   ========================================================= */
+
+// ---------- utilities ----------
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const nowStr=()=>{const d=new Date();return d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())};
+const dateTag=()=>{const d=new Date();return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())};
+const uid=p=>(p||'id')+'_'+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const uniq=a=>a.filter((x,i)=>x&&a.indexOf(x)===i);
+const short=(s,n)=>{s=String(s||'').replace(/\s+/g,' ').trim();return s.length>n?s.slice(0,n)+'…':s};
+function hash(s){let h=2166136261;s=String(s);for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function shuffle(arr,r){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;$('#toast').appendChild(t);setTimeout(()=>t.remove(),3600)}
+function download(name,content,type){const b=new Blob([content],{type:type||'text/plain;charset=utf-8'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(u);a.remove()},800)}
+
+// ---------- domain dictionaries (fictional sample knowledge) ----------
+const FIELDS={
+ river:{name:'河川・水工',scope:'湾曲部外岸かつ緩勾配の区間',importance:78,
+  kw:['河川','護岸','河道','出水','洪水','堤防','河床','水理','湾曲'],
+  vars:[
+   {n:'根固め工の重量',u:'t/個',m:'据付記録・重量管理',a:['根固め']},
+   {n:'洗掘深',u:'m',m:'音響測深・横断測量',a:['洗掘'],o:1},
+   {n:'流速',u:'m/s',m:'ADCP・電磁流速計',a:['流れの速さ']},
+   {n:'河床勾配',u:'‰',m:'縦断測量',a:['急勾配','緩勾配']},
+   {n:'出水頻度',u:'回/年',m:'水位観測記録',a:['出水回数','出水の繰返し']},
+   {n:'護岸法勾配',u:'割',m:'出来形測量',a:['法勾配']},
+   {n:'粒径',u:'mm',m:'河床材料調査（d50）',a:['河床材料']},
+   {n:'水位変動',u:'m',m:'水位計',a:['水位の変動']},
+   {n:'護岸変状',u:'mm',m:'変位計測・定期点検',a:['変状','被災'],o:1}
+  ],
+  defIV:'根固め工の重量',defDV:'洗掘深',
+  methods:[{n:'水理模型実験（縮尺模型）',cost:4,time:3,val:4},{n:'2次元河床変動解析',cost:2,time:2,val:3},{n:'現地モニタリング（ADCP・水位計）',cost:3,time:5,val:5},{n:'過去の出水・被災記録の統計解析',cost:1,time:2,val:2}],
+  issues:['水理模型の縮尺効果により、結果を実河川へそのまま適用できない可能性があります。','出水イベントは再現性が低く、現地での観測機会が限られます。'],
+  special:'{dv}は単一出水の規模よりも出水の繰返し（出水頻度）に強く依存し、{iv}の効果は累積的に評価する必要がある。',
+  safety:[['出水時・増水時の河川内観測','観測は遠隔計測を基本とし、設定水位を超えた場合は河川内への立入を禁止する。']]
+ },
+ geo:{name:'地盤・土質',scope:'細粒分含有率が一定以上で、層構成が比較的均質な区域',importance:80,
+  kw:['地盤','液状化','土質','埋立','改良','沈下','地下水','ボーリング'],
+  vars:[
+   {n:'地下水位',u:'GL-m',m:'観測井・水位計',a:['地下水']},
+   {n:'N値',u:'回',m:'標準貫入試験',a:['貫入抵抗']},
+   {n:'細粒分含有率',u:'%',m:'粒度試験',a:['細粒分']},
+   {n:'改良率',u:'%',m:'設計図書・施工記録',a:['深層混合','改良仕様']},
+   {n:'改良体強度',u:'kN/m²',m:'一軸圧縮試験',a:['改良体']},
+   {n:'間隙水圧',u:'kPa',m:'間隙水圧計',a:['過剰間隙水圧']},
+   {n:'沈下量',u:'cm',m:'沈下板・水準測量',a:['沈下'],o:1},
+   {n:'液状化強度比',u:'—',m:'繰返し三軸試験',a:['液状化強度'],o:1}
+  ],
+  defIV:'改良率',defDV:'沈下量',
+  methods:[{n:'室内土質試験（繰返し三軸）',cost:3,time:3,val:4},{n:'遠心模型実験',cost:5,time:4,val:5},{n:'有効応力解析（FEM）',cost:2,time:2,val:3},{n:'現場計測（沈下板・間隙水圧計）',cost:3,time:5,val:5},{n:'既往ボーリング・沈下記録の再解析',cost:1,time:1,val:2}],
+  issues:['地盤の不均質性により、代表値に基づく評価では局所的な挙動を見落とす可能性があります。','室内試験の試料は乱れの影響を受け、原位置の強度と一致しない場合があります。'],
+  special:'{dv}は{iv}よりも地盤の不均質性（細粒分含有率のばらつき）に強く支配され、平均値に基づく設計では局所的な{dv}を過小評価する。',
+  safety:[['試掘・計測機器設置時の埋設物と近接構造物','事前に埋設物調査を行い、近接構造物の変位を監視しながら作業する。']]
+ },
+ concrete:{name:'コンクリート・材料',scope:'部材厚の大きいマスコンクリート部材',importance:74,
+  kw:['コンクリート','配合','セメント','ひび割れ','養生','打設','打込み','スラグ','マス'],
+  vars:[
+   {n:'打込み温度',u:'℃',m:'温度計（打込み時）',a:['プレクーリング']},
+   {n:'混和材置換率',u:'%',m:'配合計画書',a:['高炉スラグ','フライアッシュ','置換率']},
+   {n:'養生温度',u:'℃',m:'埋設温度センサー',a:['養生']},
+   {n:'水セメント比',u:'%',m:'配合計画書',a:['水結合材比']},
+   {n:'部材厚',u:'m',m:'設計図書',a:['部材寸法']},
+   {n:'断熱温度上昇量',u:'℃',m:'断熱温度上昇試験',a:['温度上昇']},
+   {n:'ひび割れ指数',u:'—',m:'温度応力解析',a:['温度ひび割れ指数'],o:1},
+   {n:'ひび割れ幅',u:'mm',m:'画像計測・クラックスケール',a:['ひび割れの幅'],o:1},
+   {n:'圧縮強度',u:'N/mm²',m:'供試体圧縮試験',a:['強度発現'],o:1}
+  ],
+  defIV:'混和材置換率',defDV:'ひび割れ指数',
+  methods:[{n:'供試体試験（断熱温度上昇・収縮）',cost:2,time:3,val:4},{n:'3次元温度応力解析',cost:2,time:2,val:3},{n:'実部材への温度・ひずみセンサー埋設計測',cost:4,time:4,val:5},{n:'模擬部材（実大ブロック）試験',cost:5,time:4,val:5},{n:'ひび割れ画像計測',cost:1,time:2,val:3}],
+  issues:['室内供試体と実構造物では寸法効果・拘束条件が異なり、結果が一致しない可能性があります。','温度応力解析は入力物性値の設定に敏感で、解析結果の幅が大きくなりがちです。'],
+  special:'{iv}による{dv}の改善効果は、自己収縮の増加により材齢の進行とともに相殺される。',
+  safety:[['試験体製作・高所での計測器設置','高所作業は足場上で行い、運搬・破壊試験時の安全措置を手順書に定める。']]
+ },
+ construction:{name:'施工・生産性',scope:'複数工種が並行する繁忙期の都市部現場',importance:72,
+  kw:['工程','工期','重機','施工','生産性','BIM','CIM','搬入','作業員','段取り'],
+  vars:[
+   {n:'資材搬入間隔',u:'時間',m:'搬入記録・ゲート記録',a:['搬入間隔','搬入計画']},
+   {n:'重機稼働率',u:'%',m:'重機IoT稼働ログ',a:['稼働率'],o:1},
+   {n:'工期',u:'日',m:'工程表・出来高記録',a:['工程遅延'],o:1},
+   {n:'段取り替え回数',u:'回/日',m:'作業日報',a:['段取り']},
+   {n:'作業員配置',u:'人',m:'入退場記録',a:['人員配置','作業員']},
+   {n:'天候待ち日数',u:'日',m:'気象記録・日報',a:['天候']},
+   {n:'BIM/CIM活用度',u:'段階',m:'活用状況の評価票',a:['BIM','CIM']},
+   {n:'手待ち時間',u:'時間/日',m:'タイムスタディ',a:['手待ち','待機時間'],o:1}
+  ],
+  defIV:'資材搬入間隔',defDV:'工期',
+  methods:[{n:'工程の離散事象シミュレーション',cost:2,time:2,val:3},{n:'重機IoTログ・入退場記録の解析',cost:1,time:2,val:3},{n:'比較施工（A/B工区）',cost:4,time:5,val:5},{n:'作業観察（タイムスタディ）',cost:2,time:3,val:4}],
+  issues:['観察されていることを意識して作業が変わる（ホーソン効果）可能性があります。','現場ごとの条件差が大きく、少数現場の比較では一般化が難しい点に注意が必要です。'],
+  special:'{dv}の改善は{iv}そのものよりも、計画変更に伴う段取り替え回数の減少によって生じる。',
+  safety:[['稼働中重機の近接観察','観察者は重機の作業半径に立ち入らず、誘導員の指示に従う。']]
+ },
+ general:{name:'その他（汎用）',scope:'対象とする条件・期間を限定した範囲',importance:65,
+  kw:[],
+  vars:[
+   {n:'介入施策',u:'—',m:'実施記録',a:['導入','施策','対策']},
+   {n:'成果指標',u:'—',m:'定量指標の記録',a:['効果','成果','生産性','品質'],o:1},
+   {n:'コスト',u:'円',m:'原価記録',a:['費用','コスト']},
+   {n:'実施期間',u:'日',m:'実施記録',a:['期間']},
+   {n:'外部要因',u:'—',m:'環境記録',a:['季節','外部環境']}
+  ],
+  defIV:'介入施策',defDV:'成果指標',
+  methods:[{n:'既存データの統計解析',cost:1,time:2,val:3},{n:'比較試行（介入群・対照群）',cost:4,time:4,val:5},{n:'聞き取り・アンケート調査',cost:2,time:2,val:2},{n:'シミュレーション',cost:2,time:2,val:3}],
+  issues:['対象とする条件が広いと、効果が他の要因に埋もれて検出できない可能性があります。'],
+  special:'{dv}への効果は短期では現れず、一定期間の運用後に現れる（遅延効果）。',
+  safety:[['調査・試行時の作業安全','手順書を定め、危険作業を伴う計測は避ける。']]
+ }
+};
+const FIELD_KEYS=['river','geo','concrete','construction','general'];
+
+// fictional evidence corpus: [title, type, year, n, stance, tags, summary]
+const CORPUS={
+ river:[
+  ['湾曲部外岸における根固め工重量と局所洗掘の水理模型実験','査読論文',2021,24,'support',['根固め工の重量','洗掘深','流速'],'縮尺1/30の模型で根固め工重量を4段階に変え、重量増加に伴い外岸の最大洗掘深が段階的に減少する傾向を確認した。'],
+  ['中小河川における護岸被災事例の統計分析','公的技術報告',2020,312,'support',['洗掘深','出水頻度','護岸変状'],'被災事例を分類し、基礎部の洗掘を起因とする被災が多数を占めると整理した。'],
+  ['根固めブロックの移動限界と河床材料粒径の関係','査読論文',2016,40,'neutral',['根固め工の重量','粒径','流速'],'ブロック移動の限界流速は重量だけでなく河床材料の粒径に強く依存することを示した。'],
+  ['根固め工重量増加後も洗掘が進行した3現場の追跡調査','現場計測データ',2023,3,'contradict',['根固め工の重量','洗掘深','河床勾配'],'急勾配区間では重量を増加しても洗掘の進行が止まらず、効果は限定的であった。'],
+  ['2次元河床変動解析による湾曲部外岸の流速分布再現','学会発表',2022,6,'support',['流速','河床勾配','洗掘深'],'外岸部の高流速域を解析で再現し、根固め工による近傍流速の低減効果を推定した。'],
+  ['護岸基礎部の定期点検記録（社内）','社内報告',2024,58,'neutral',['護岸法勾配','護岸変状','出水頻度'],'定期点検で確認された基礎部変状の記録。出水後の点検時期にばらつきがある。'],
+  ['根固め工の過大設計が下流河床に与える影響','学会発表',2018,4,'contradict',['根固め工の重量','河床勾配','粒径'],'根固め工を過大にすると下流側で河床低下が助長される可能性を指摘した。']
+ ],
+ geo:[
+  ['埋立地盤における細粒分含有率と液状化強度比の関係','査読論文',2019,86,'support',['細粒分含有率','液状化強度比','N値'],'細粒分含有率が高い試料ほど液状化強度比が高くなる傾向を確認した。'],
+  ['深層混合処理の改良率と地震時沈下量の遠心模型実験','査読論文',2022,18,'contradict',['改良率','沈下量','間隙水圧'],'改良率を下げると、細粒分を含む層でも沈下量が許容値を超えるケースが見られた。'],
+  ['大規模地震後の埋立地沈下実態調査','公的技術報告',2017,420,'support',['沈下量','地下水位','細粒分含有率'],'細粒分の多い区域で沈下量が相対的に小さい傾向を報告した。'],
+  ['細粒分を含む砂の繰返し三軸試験データ集','公的技術報告',2014,150,'neutral',['細粒分含有率','間隙水圧','液状化強度比'],'塑性指数により細粒分の効果が大きく異なることを示すデータ集。'],
+  ['改良率を低減した設計の適用事例（社内）','社内報告',2024,5,'support',['改良率','沈下量','改良体強度'],'5件の適用現場で、供用後の沈下量が管理値内に収まっていた。'],
+  ['不均質な埋立地盤における間隙水圧消散の現場計測','現場計測データ',2023,12,'contradict',['間隙水圧','細粒分含有率','地下水位'],'細粒分の分布が不均質な地点では間隙水圧の消散が遅れ、沈下が局所的に増大した。'],
+  ['簡易液状化判定式の適用限界に関する検討','学会発表',2020,9,'neutral',['N値','細粒分含有率','液状化強度比'],'細粒分補正の扱いにより判定結果が大きく変わることを指摘した。']
+ ],
+ concrete:[
+  ['高炉スラグ微粉末置換率とマスコンクリートの温度ひび割れ指数','査読論文',2020,32,'support',['混和材置換率','ひび割れ指数','断熱温度上昇量'],'置換率の増加に伴い断熱温度上昇量が低下し、温度ひび割れ指数が改善した。'],
+  ['プレクーリングによる打込み温度低減と温度応力','公的技術報告',2018,14,'support',['打込み温度','ひび割れ指数','部材厚'],'打込み温度を下げることで最高温度と内外温度差が小さくなり、温度応力が低減した。'],
+  ['高置換率スラグセメントの自己収縮と初期ひび割れ','査読論文',2021,20,'contradict',['混和材置換率','ひび割れ幅','養生温度'],'置換率を高めると自己収縮が増え、温度ひび割れ指数の改善効果が相殺される場合があった。'],
+  ['大型橋脚における埋設温度センサー計測（社内）','社内報告',2023,4,'neutral',['打込み温度','養生温度','部材厚'],'4基の橋脚で内部温度履歴を取得した。外気温の影響が大きい。'],
+  ['温度応力解析の入力条件が解析結果に与える感度','学会発表',2022,10,'neutral',['断熱温度上昇量','ひび割れ指数','部材厚'],'熱膨張係数と断熱温度上昇の設定でひび割れ指数が大きく変動することを示した。'],
+  ['寒冷期打設時の養生温度と初期強度発現','現場計測データ',2024,16,'contradict',['養生温度','圧縮強度','混和材置換率'],'低温養生下では高置換率配合の初期強度発現が遅れ、脱型時期に影響した。'],
+  ['マスコンクリートのひび割れ制御に関する技術資料','公的技術報告',2016,null,'support',['ひび割れ指数','打込み温度','混和材置換率'],'温度ひび割れ指数による照査手法と対策の考え方を整理した資料。']
+ ],
+ construction:[
+  ['資材搬入計画の平準化と重機待機時間の関係','査読論文',2021,28,'support',['資材搬入間隔','重機稼働率','手待ち時間'],'搬入の平準化により重機の待機時間が減少し、稼働率が上昇した。'],
+  ['BIM/CIM活用工事の生産性効果に関する調査','公的技術報告',2023,64,'support',['BIM/CIM活用度','工期','作業員配置'],'活用段階が高い工事ほど工期遅延の発生割合が小さい傾向を報告した。'],
+  ['搬入間隔の最適化を試行した2現場の比較（社内）','社内報告',2024,2,'support',['資材搬入間隔','重機稼働率','工期'],'試行現場で重機稼働率が上昇したが、比較現場との条件差が大きい。'],
+  ['重機IoTログによる稼働実態の分析','現場計測データ',2022,35,'neutral',['重機稼働率','段取り替え回数','天候待ち日数'],'稼働率の変動要因として段取り替えと天候の影響が大きいことを示した。'],
+  ['BIM/CIM導入初期における作業時間の増加','学会発表',2020,11,'contradict',['BIM/CIM活用度','手待ち時間','作業員配置'],'導入初期はモデル作成・調整作業が増え、短期的には工期短縮効果が見られなかった。'],
+  ['天候要因が土工の工期変動に与える影響','査読論文',2015,120,'contradict',['天候待ち日数','工期','重機稼働率'],'工期変動の大部分が天候待ち日数で説明され、計画要因の寄与は小さかった。'],
+  ['タイムスタディによる段取り替えロスの定量化','学会発表',2019,8,'neutral',['段取り替え回数','手待ち時間'],'段取り替え1回あたりの損失時間を工種別に整理した。']
+ ]
+};
+const TYPE_W={'査読論文':88,'公的技術報告':82,'現場計測データ':72,'学会発表':62,'社内報告':56,'取込資料':50,'未検証メモ':32};
+const EV_TYPES=Object.keys(TYPE_W);
+const STANCE={support:'支持',contradict:'反証',neutral:'中立'};
+
+const AGENTS={
+ fac:{name:'ファシリテーターAI',short:'司',color:'#475569',role:'議論の進行・論点整理'},
+ lit:{name:'文献調査AI',short:'文',color:'#2563eb',role:'内蔵資料・取込資料の調査'},
+ evi:{name:'根拠検証AI',short:'検',color:'#0891b2',role:'資料の信頼性・関連度評価'},
+ met:{name:'方法論AI',short:'方',color:'#7c3aed',role:'変数定義・検証計画'},
+ cri:{name:'批判AI',short:'批',color:'#dc2626',role:'弱点・反証の指摘'},
+ ide:{name:'仮説創出AI',short:'創',color:'#d97706',role:'新しい研究方向の提案'},
+ eth:{name:'研究倫理・安全AI',short:'倫',color:'#059669',role:'安全・倫理・データ取扱い'},
+ int:{name:'統合評価AI',short:'統',color:'#0f766e',role:'研究案の比較・統合'},
+ you:{name:'研究者（あなた）',short:'研',color:'#334155',role:''}
+};
+const AG_KEYS=['fac','lit','evi','met','cri','ide','eth','int'];
+
+const TASK_DEFS=[
+ {key:'struct',name:'仮説の構造化',short:'仮説の構造化',agent:'fac',deps:[],dur:6,desc:'仮説から変数・方向性・条件を抽出'},
+ {key:'lit',name:'文献・資料調査',short:'文献・資料調査',agent:'lit',deps:['struct'],dur:10,desc:'内蔵資料・取込資料から関連資料を抽出'},
+ {key:'method',name:'変数定義・測定計画',short:'変数・測定計画',agent:'met',deps:['struct'],dur:8,desc:'測定方法・統制変数・検証手法の選定'},
+ {key:'verify',name:'根拠の信頼性検証',short:'根拠の信頼性検証',agent:'evi',deps:['lit'],dur:8,approval:true,desc:'資料種別・年次・標本数から信頼性を評価'},
+ {key:'ethics',name:'研究倫理・安全性確認',short:'倫理・安全確認',agent:'eth',deps:['method'],dur:5,desc:'作業安全・個人データ・周辺影響の確認'},
+ {key:'critic',name:'批判・反証レビュー',short:'批判・反証レビュー',agent:'cri',deps:['verify','method'],dur:8,desc:'弱点の指摘と棄却条件の明確化'},
+ {key:'debate',name:'複数AI研究討論',short:'複数AI討論',agent:'fac',deps:['critic','ethics'],dur:10,desc:'専門エージェント間の論点整理'},
+ {key:'ideate',name:'新仮説の創出',short:'新仮説の創出',agent:'ide',deps:['debate'],dur:8,desc:'組合せルールによる新しい研究方向の提示'},
+ {key:'evaluate',name:'統合評価・仮説比較',short:'統合評価・比較',agent:'int',deps:['ideate'],dur:7,approval:true,desc:'評価指標による仮説の比較'},
+ {key:'report',name:'研究報告書ドラフト作成',short:'報告書ドラフト',agent:'int',deps:['evaluate'],dur:6,desc:'研究過程を報告書として統合'}
+];
+const ST_LABEL={blocked:'依存待ち',ready:'実行可能',running:'実行中',approval:'承認待ち',done:'完了'};
+const ROUND_T={1:'ラウンド1　論点の共有',2:'ラウンド2　批判と検証方法',3:'ラウンド3　発散：別の研究方向',4:'ラウンド4　収束：暫定評価',5:'研究者との対話'};
+const SEV_ORDER={'高':0,'中':1,'低':2};
+const PALETTE=['#0f766e','#d97706','#7c3aed','#dc2626','#2563eb','#0891b2'];
+
+const SAMPLES=[
+ {key:'river',title:'河道湾曲部における護岸基礎の洗掘対策',field:'river',
+  hypothesis:'河道湾曲部の外岸側で根固め工の重量を従来比1.5倍にすると、計画高水時の護岸基礎部の洗掘深は30%以上低減する。これは外岸近傍の流速が減衰し、河床材料の移動が抑制されるためである。',
+  background:'中小河川の湾曲部で、護岸基礎の洗掘に起因する被災が増えている（架空の設定）。根固め工の仕様見直しにより、被災リスクと維持管理費の低減を目指す。',
+  conditions:'湾曲部（曲率半径/川幅=3〜5）の外岸。河床材料は砂礫（代表粒径20mm程度）。計画高水流量規模の出水を対象とする。',
+  constraints:{budget:'標準',period:'標準',safety:true}},
+ {key:'geo',title:'埋立地盤における液状化対策の合理化',field:'geo',
+  hypothesis:'地下水位が高い埋立地盤において、細粒分含有率が20%以上の層では、深層混合処理の改良率を下げても液状化による沈下量は許容値内に収まる。',
+  background:'液状化対策工のコスト縮減を目的に、細粒分を多く含む層での改良仕様の合理化を検討する（架空の設定）。',
+  conditions:'臨海部の埋立地盤、地下水位GL-1.0m程度、レベル2地震動を想定する。',
+  constraints:{budget:'厳しい',period:'標準',safety:false}},
+ {key:'concrete',title:'マスコンクリートの温度ひび割れ抑制',field:'concrete',
+  hypothesis:'マスコンクリートの打込み温度を5℃下げ、高炉スラグ微粉末による混和材置換率を50%にすると、従来配合と比べて温度ひび割れ指数は1.2以上に改善する。',
+  background:'大型橋脚・底版での温度ひび割れ補修費の削減を目的とする（架空の設定）。',
+  conditions:'部材厚2.5m以上の底版、夏期打設、湿潤養生7日以上。',
+  constraints:{budget:'標準',period:'短期',safety:false}},
+ {key:'construction',title:'BIM/CIMを活用した資材搬入計画の最適化',field:'construction',
+  hypothesis:'BIM/CIMで資材搬入間隔を最適化すると、重機稼働率が向上し工期が短縮する。',
+  background:'都市部の土木工事で重機の手待ちと工程遅延が慢性化している（架空の設定）。',
+  conditions:'',
+  constraints:{budget:'標準',period:'標準',safety:false}}
+];
+
+// ---------- state ----------
+const STORE_KEY='rihrp_offline_studio_v1';
+let DB={version:1,projects:[],currentId:null,settings:{speed:1}};
+let P=null;
+const RT={view:'register',running:false,timer:null,resumeOnApprove:false,playing:false,playTimer:null,typing:null,draft:'',showAddEv:false,editing:null,cmpSel:null,saveT:null};
+
+function newProject(src){
+ const s=src||{title:'新しい研究テーマ',field:'auto',hypothesis:'',background:'',conditions:'',constraints:{budget:'標準',period:'標準',safety:false}};
+ const p={id:uid('prj'),title:s.title,field:s.field,hypothesis:s.hypothesis,background:s.background,conditions:s.conditions,
+  constraints:Object.assign({budget:'標準',period:'標準',safety:false},s.constraints||{}),
+  createdAt:nowStr(),updatedAt:nowStr(),revision:s.hypothesis?1:0,
+  revisions:s.hypothesis?[{rev:1,hypothesis:s.hypothesis,conditions:s.conditions,at:nowStr(),note:'初版登録'}]:[],
+  analysis:null,plan:null,ethics:null,critiques:null,falsification:null,evidence:[],debate:[],debateShown:0,candidates:null,
+  weights:{evidence:25,testability:25,burden:15,importance:25,novelty:10},decisions:[],logs:[],tasks:[],stale:false,genCount:0,reportAt:null,reportNote:'',sampleKey:s.key||null};
+ p.tasks=TASK_DEFS.map(d=>({key:d.key,status:'blocked',progress:0,runs:0}));
+ refreshReady(p);
+ return p;
+}
+function save(){
+ if(P)P.updatedAt=nowStr();
+ try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));setSave('ブラウザに自動保存済み')}
+ catch(e){setSave('ブラウザ保存不可：JSON保存を利用してください')}
+}
+function touch(){clearTimeout(RT.saveT);setSave('保存中…');RT.saveT=setTimeout(save,500)}
+function setSave(t){const el=$('#saveState');if(el)el.textContent=t}
+function load(){
+ try{const s=localStorage.getItem(STORE_KEY);if(s){const d=JSON.parse(s);if(d&&Array.isArray(d.projects))DB=Object.assign(DB,d)}}catch(e){}
+ if(!DB.projects.length){DB.projects=SAMPLES.map(s=>newProject(s));DB.currentId=DB.projects[0].id}
+ DB.projects.forEach(normalize);
+ P=DB.projects.find(p=>p.id===DB.currentId)||DB.projects[0];DB.currentId=P.id;
+}
+function normalize(p){
+ const blank=newProject();
+ Object.keys(blank).forEach(k=>{if(p[k]===undefined)p[k]=blank[k]});
+ if(!Array.isArray(p.tasks)||p.tasks.length!==TASK_DEFS.length)p.tasks=blank.tasks;
+ p.tasks.forEach(t=>{if(t.status==='running')t.status='ready'});
+ refreshReady(p);
+}
+function log(msg,p){p=p||P;p.logs.unshift({t:nowStr(),msg});if(p.logs.length>300)p.logs.length=300}
+function decide(text){P.decisions.push({at:nowStr(),text})}
+
+// ---------- analysis engine ----------
+const NUMRE=/[0-9０-９]+(?:[.．][0-9０-９]+)?\s*(?:%|％|倍|℃|度|mm|cm|m|t|kN|MPa|N\/mm|日|時間|週|か月|ヶ月|年|割|回|‰)/g;
+const VAGUE=['向上','改善','効率化','最適化','有効','大幅','効果的','適切','良好','高める','短縮'];
+const DIRS=[['低減','低減'],['減少','減少'],['抑制','抑制'],['低下','低下'],['短縮','短縮'],['小さく','減少'],['収まる','許容範囲内'],['増加','増加'],['向上','向上'],['上昇','上昇'],['改善','改善'],['大きく','増加']];
+function allVars(){const r=[];FIELD_KEYS.forEach(k=>FIELDS[k].vars.forEach(v=>r.push(Object.assign({field:k},v))));return r}
+function varInfo(n){return allVars().find(v=>v.n===n)||null}
+const unitOf=n=>{const v=varInfo(n);return v&&v.u!=='—'?v.u:'定量指標'};
+const measureOf=n=>{const v=varInfo(n);return v?v.m:'記録・計測'};
+function findVars(text,field){
+ const pool=field==='general'?allVars():FIELDS[field].vars;
+ const res=[];
+ pool.forEach(v=>{let idx=-1;[v.n].concat(v.a||[]).forEach(nm=>{const i=text.indexOf(nm);if(i>=0&&(idx<0||i<idx))idx=i});if(idx>=0&&!res.some(r=>r.n===v.n))res.push({n:v.n,idx,o:!!v.o})});
+ return res.sort((x,y)=>x.idx-y.idx);
+}
+function detectField(text){
+ let best='general',bs=0;
+ ['river','geo','concrete','construction'].forEach(k=>{const F=FIELDS[k];let s=0;F.kw.forEach(w=>{if(text.includes(w))s+=2});s+=findVars(text,k).length;if(s>bs){bs=s;best=k}});
+ return best;
+}
+function analyze(p){
+ const text=p.hypothesis||'';const full=text+' '+(p.conditions||'');
+ const field=(p.field&&p.field!=='auto'&&FIELDS[p.field])?p.field:detectField(full);
+ const F=FIELDS[field];
+ const found=findVars(text,field);
+ const dvObj=found.find(f=>f.o);
+ let dv=dvObj?dvObj.n:null;
+ let iv=null;
+ if(dvObj){const before=found.filter(f=>f.n!==dv&&f.idx<dvObj.idx);iv=before.length?before[before.length-1].n:null}
+ if(!iv){const f=found.find(x=>x.n!==dv);iv=f?f.n:null}
+ const inferred=[];
+ if(!dv){dv=F.defDV===iv?F.vars.find(v=>v.o&&v.n!==iv).n:F.defDV;inferred.push(dv)}
+ if(!iv){iv=F.defIV===dv?F.vars.find(v=>!v.o&&v.n!==dv).n:F.defIV;inferred.push(iv)}
+ const vars=uniq([iv,dv].concat(found.map(f=>f.n)));
+ const nums=(text.match(NUMRE)||[]).map(s=>s.replace(/\s/g,''));
+ const d=DIRS.find(x=>text.includes(x[0]));
+ const a={field,iv,dv,vars,inferred,dir:d?d[1]:'',nums:uniq(nums),hasNum:nums.length>0,
+  hasMech:/ため|により|によって|ことで|ので|メカニズム|機構|原因|に起因/.test(text),
+  hasCond:/において|における|の場合|場合|条件|では|範囲|時に|時の|に限|対象/.test(text)||(p.conditions||'').trim().length>8,
+  hasComp:/比べ|比較|対照|従来|に対し|と比|未対策|現行/.test(text),
+  vague:VAGUE.filter(w=>text.includes(w))};
+ a.quality=[a.hasNum,a.hasMech,a.hasCond,a.hasComp,!a.vague.length||a.hasNum].filter(Boolean).length;
+ return a;
+}
+function A(p){p=p||P;if(!p.analysis)p.analysis=analyze(p);return p.analysis}
+function mods(p){p=p||P;return{budget:p.constraints.budget==='厳しい',time:p.constraints.period==='短期',safety:!!p.constraints.safety}}
+function altVars(p){
+ const a=A(p),F=FIELDS[a.field];
+ const r=mulberry(hash(p.hypothesis+'|'+p.revision+'|'+(p.genCount||0)));
+ const evTags=new Set();(p.evidence||[]).forEach(e=>(e.tags||[]).forEach(t=>evTags.add(t)));
+ let pool=F.vars.map(v=>v.n).filter(n=>n!==a.iv&&n!==a.dv);
+ pool=shuffle(pool,r).sort((x,y)=>(evTags.has(y)?1:0)-(evTags.has(x)?1:0));
+ while(pool.length<3)pool.push(pool[0]||'外部要因');
+ return pool;
+}
+
+// evidence
+function relevance(e,a){
+ const tags=e.tags||[];
+ if(!tags.length)return e.source==='builtin'?0:20;
+ const ov=tags.filter(t=>a.vars.includes(t)).length;
+ const base=ov/Math.max(1,Math.min(3,a.vars.length));
+ return clamp(Math.round(base*78+(tags.includes(a.iv)?12:0)+(tags.includes(a.dv)?10:0)),0,100);
+}
+function reliabilityOf(e){
+ let s=TYPE_W[e.type]||50;const y=+e.year||0;
+ if(y>=2020)s+=5;else if(y&&y<2012)s-=10;
+ const n=e.n;
+ if(n!=null&&n!==''){if(n>=100)s+=5;else if(n<5)s-=14;else if(n<20)s-=5}
+ if(e.note&&/再分類/.test(e.note))s-=0;
+ return clamp(Math.round(s),10,98);
+}
+const relLevel=v=>v==null?'未検証':v>=75?'高':v>=55?'中':'低';
+function gatherEvidence(p){
+ const a=A(p);
+ const imported=(p.evidence||[]).filter(e=>e.source!=='builtin');
+ const keys=a.field==='general'?['river','geo','concrete','construction']:[a.field];
+ let built=[];
+ keys.forEach(k=>CORPUS[k].forEach((x,i)=>built.push({id:'ev_'+k+'_'+i,title:x[0],type:x[1],year:x[2],n:x[3],stance:x[4],tags:x[5],summary:x[6],source:'builtin',accepted:true})));
+ const prev={};(p.evidence||[]).forEach(e=>{prev[e.id]=e});
+ built.forEach(e=>{const o=prev[e.id];if(o){e.accepted=o.accepted;if(o.userStance){e.stance=o.stance;e.userStance=true;e.note=o.note}}});
+ let all=built.concat(imported);
+ all.forEach(e=>{e.relevance=relevance(e,a)});
+ all=all.filter(e=>e.relevance>0||e.source!=='builtin').sort((x,y)=>y.relevance-x.relevance);
+ if(a.field==='general'){const imp=all.filter(e=>e.source!=='builtin');all=all.filter(e=>e.source==='builtin').slice(0,8).concat(imp)}
+ p.evidence=all;
+}
+function verifyEvidence(p){(p.evidence||[]).forEach(e=>{e.reliability=reliabilityOf(e)});p.verified=true}
+function activeEv(p){return(p.evidence||[]).filter(e=>e.accepted!==false)}
+function avgRel(ev){const v=ev.filter(e=>e.reliability!=null);return v.length?Math.round(v.reduce((s,e)=>s+e.reliability,0)/v.length):null}
+
+// plan
+function makePlan(p){
+ const a=A(p),F=FIELDS[a.field],m=mods(p);
+ const ms=F.methods.map(x=>Object.assign({},x,{fit:x.val*2-x.cost*(m.budget?2.5:0.7)-x.time*(m.time?1.8:0.5)})).sort((x,y)=>y.fit-x.fit);
+ const alts=altVars(p);
+ return{methods:ms.slice(0,3),
+  measures:uniq([a.iv,a.dv].concat(a.vars)).slice(0,5).map(n=>({n,u:unitOf(n),m:measureOf(n),role:n===a.iv?'独立変数':n===a.dv?'従属変数':'関連変数'})),
+  controls:alts.slice(0,2).filter(n=>!a.vars.includes(n)).map(n=>({n,u:unitOf(n),m:measureOf(n)})),
+  design:a.hasComp?'仮説中の比較条件（従来仕様など）を対照群とした比較設計':'対照条件（現行仕様・未対策）を新たに設定した2群比較設計',
+  levels:a.hasNum?`${a.iv}を3水準以上（仮説の設定値を含む）で変化させ、各水準で反復3回以上`:`${a.iv}を3水準以上で変化させ、判定基準を事前に数値で設定`};
+}
+// ethics
+function ethicsCheck(p){
+ const a=A(p),F=FIELDS[a.field],plan=p.plan||makePlan(p),m=mods(p);
+ const items=[];const add=(level,text,action)=>items.push({level,text,action});
+ F.safety.forEach(s=>add('要確認',s[0],s[1]));
+ const personal=plan.methods.some(x=>/観察|IoT|入退場|聞き取り|アンケート|稼働ログ|タイムスタディ/.test(x.n));
+ if(personal)add('要確認','作業員の行動・位置・稼働など個人に紐づくデータの取得','目的と利用範囲を事前に説明して同意を得る。個人の人事評価には転用しない。分析前に匿名化・集計化し、閲覧者を限定する。');
+ else add('確認済','個人に紐づくデータの取扱い','現計画では個人データを主対象としない。取得が生じた場合は同意・匿名化を前提とする。');
+ add('要確認','周辺住民・道路利用者への影響','計測機器設置や試験施工に伴う騒音・振動・通行規制を事前に説明し、問い合わせ窓口を設ける。');
+ add('要確認','発注者・協力会社データの利用許諾','研究利用・社外公表の可否と範囲を事前に書面で確認する。');
+ add('確認済','模擬データと実データの区別','本アプリの内蔵資料は架空の模擬データとして表示・管理し、実データと混在させない。');
+ if(m.safety)add('要確認','安全性重視の指定','危険作業を伴う計測手法より、遠隔計測・既存データ解析を優先する計画とする。');
+ return items;
+}
+// critiques
+function makeCritiques(p){
+ const a=A(p),F=FIELDS[a.field],ev=activeEv(p),m=mods(p);const L=[];
+ const add=(sev,cat,text,sug)=>L.push({id:'cr_'+hash(cat+text).toString(36),sev,cat,text,sug,status:'未対応'});
+ if(!a.hasNum)add('高','測定可能性',`仮説に判定基準となる数値（例：${a.dv}をどの程度変化させるか）が含まれていません。`,`「${a.dv}が○○以上（以下）になる」のように閾値と単位（${unitOf(a.dv)}）を明記する。`);
+ if(a.vague.length)add(a.hasNum?'低':'中','用語の明確化',`「${a.vague.join('」「')}」が操作的に定義されていません。`,'何を・どの指標で・どの程度変化させるのかを定義する。');
+ if(!a.hasMech)add('中','因果メカニズム',`${a.iv}が${a.dv}に影響する機構（なぜそうなるのか）が記述されていません。`,'想定するメカニズムを1文で追加し、中間変数も測定対象に含める。');
+ if(!a.hasCond)add('中','適用範囲',`仮説が成立する条件（例：${F.scope}）が限定されていません。`,'対象条件・範囲を明記し、範囲外への一般化を避ける。');
+ if(!a.hasComp)add('中','対照条件','比較の基準（従来仕様・未対策区間など）が設定されていません。','対照群を設けた比較設計にする。');
+ const con=ev.filter(e=>e.stance==='contradict');
+ if(con.length){const top=con.slice().sort((x,y)=>(y.reliability||0)-(x.reliability||0))[0];add((top.reliability||60)>=65?'高':'中','反証根拠',`仮説に反する資料が${con.length}件あります（例：「${top.title}」）。`,'反証資料の条件と本仮説の前提条件の違いを整理し、適用範囲に反映する。')}
+ const sup=ev.filter(e=>e.stance==='support'&&(e.reliability||0)>=75);
+ if(sup.length<2)add('中','根拠の充足度',`信頼性75点以上の支持根拠が${sup.length}件にとどまります。`,'査読論文・公的報告・計測データを追加で収集する。');
+ if(a.vars.length>=4)add('低','交絡の可能性',`関与する変数が${a.vars.length}個あり、${a.vars.slice(2,4).join('・')}が交絡要因となる可能性があります。`,'統制変数として固定するか、多変量解析で影響を分離する。');
+ if(a.inferred.length)add('低','変数の補完',`「${a.inferred.join('」「')}」は本文から読み取れず、分野の既定値で補完しています。`,'仮説本文に独立変数・従属変数を明記する。');
+ F.issues.forEach(t=>add('中','分野固有の論点',t,'検証計画の中で影響の大きさを評価し、結果の適用範囲に反映する。'));
+ if(m.budget)add('低','実行可能性（予算）','予算制約下では高コストの実験手法を採れない可能性があります。','既存データ解析・数値解析を先行させる段階的な計画にする。');
+ if(m.time)add('低','実行可能性（期間）','短期間では長期観測を要する検証が完了しない可能性があります。','既存データで先行検証し、長期観測は次段階に分ける。');
+ return L.sort((x,y)=>SEV_ORDER[x.sev]-SEV_ORDER[y.sev]);
+}
+function refreshCritiques(p){
+ if(!p.critiques)return;
+ const old={};p.critiques.forEach(c=>{old[c.id]=c});
+ p.critiques=makeCritiques(p);
+ p.critiques.forEach(c=>{if(old[c.id])c.status=old[c.id].status});
+}
+function makeFalsification(p){
+ const a=A(p);const alts=altVars(p);
+ return[`${a.iv}を変化させても、${a.dv}に統計的に有意な差が見られない場合`,
+  a.hasNum?`${a.dv}の変化量が仮説で示した基準（${a.nums.join('、')}）に届かない場合`:`事前に設定した${a.dv}の判定基準に届かない場合`,
+  `${alts[0]}を統制すると${a.iv}の効果が消失する場合（代替メカニズムの存在）`,
+  `対照条件でも同程度の${a.dv}の変化が観測される場合`];
+}
+// candidates
+const fill=(t,a)=>t.replace(/\{iv\}/g,a.iv).replace(/\{dv\}/g,a.dv);
+function makeH0(p){const a=A(p);return{id:'h0',label:'H0',type:'主仮説',text:p.hypothesis,vars:a.vars.slice(),origin:'主仮説',status:'主仮説'}}
+function genCandidates(p){
+ const a=A(p),F=FIELDS[a.field];
+ const alts=altVars(p);const r=mulberry(hash(p.hypothesis+'#'+(p.genCount||0)));
+ const T=[
+  {type:'交互作用',text:`${a.iv}が${a.dv}に与える効果は${alts[0]}に依存し、${alts[0]}が一定以上の条件でのみ有意な差が生じる。`,vars:[a.iv,a.dv,alts[0]]},
+  {type:'閾値',text:`${a.iv}の効果には閾値が存在し、ある水準を超えると${a.dv}の変化は頭打ちになる。その水準は${alts[0]}の条件によって異なる。`,vars:[a.iv,a.dv,alts[0]]},
+  {type:'代替メカニズム',text:`${a.dv}の変化は${a.iv}よりも${alts[1]}によって主に説明され、${a.iv}の見かけの効果は${alts[1]}との相関による。`,vars:[alts[1],a.dv,a.iv]},
+  {type:'複合制御',text:`${a.iv}と${alts[2]}を同時に制御すると、単独で制御する場合よりも${a.dv}への効果が大きくなる。`,vars:[a.iv,alts[2],a.dv]},
+  {type:'適用範囲',text:`${a.iv}の効果は${F.scope}に限定され、それ以外の条件では${a.dv}への有意な効果は見られない。`,vars:[a.iv,a.dv]},
+  {type:'分野固有',text:fill(F.special,a),vars:uniq([a.iv,a.dv].concat(findVars(fill(F.special,a),a.field).map(f=>f.n)))}
+ ];
+ const keep=(p.candidates||[]).filter(c=>c.origin!=='主仮説'&&(['採択','保留'].includes(c.status)||c.edited||/研究者/.test(c.origin)));
+ const keepTypes=new Set(keep.map(c=>c.type+c.text));
+ const picks=shuffle(T,r).filter(t=>!keepTypes.has(t.type+t.text)).slice(0,3);
+ let n=keep.length+1;
+ const fresh=picks.map(t=>({id:uid('c'),label:'',type:t.type,text:t.text,vars:uniq(t.vars),origin:'仮説創出AI',status:'候補'}));
+ p.candidates=[makeH0(p)].concat(keep,fresh);
+ p.candidates.forEach((c,i)=>{c.label='H'+i});
+ n;scoreAll(p);
+}
+const TYPE_IMP={主仮説:0,交互作用:4,閾値:6,代替メカニズム:8,複合制御:3,適用範囲:-4,分野固有:5,研究者提案:2};
+const TYPE_NOV={主仮説:34,交互作用:55,閾値:50,代替メカニズム:62,複合制御:47,適用範囲:30,分野固有:66,研究者提案:52};
+const TYPE_BUR={交互作用:10,複合制御:14,閾値:8,代替メカニズム:6,分野固有:10,研究者提案:6};
+function scoreCand(c,p){
+ const a=A(p),F=FIELDS[a.field],ev=activeEv(p),m=mods(p);
+ const r=mulberry(hash(c.text+'|'+c.type));
+ let sup=0,con=0,relN=0;
+ ev.forEach(e=>{const ov=(e.tags||[]).filter(t=>c.vars.includes(t)).length;if(!ov)return;relN++;const w=((e.reliability!=null?e.reliability:55)/100)*(ov/Math.max(1,Math.min(3,c.vars.length)));
+  if(e.stance==='support')sup+=w;else if(e.stance==='contradict'){if(c.type==='代替メカニズム'||c.type==='適用範囲'||c.type==='分野固有')sup+=w*0.6;else con+=w}});
+ const evidence=clamp(Math.round(25+sup*16-con*18+relN*2),5,95);
+ const txt=c.text||'';const hasNum=(txt.match(NUMRE)||[]).length>0;
+ const measurable=c.vars.filter(v=>{const i=varInfo(v);return i&&i.u!=='—'}).length;
+ const vague=VAGUE.some(w=>txt.includes(w));
+ const testability=clamp(Math.round(38+measurable*8+(hasNum?16:0)+(/条件|場合|限定|のみ|において|範囲/.test(txt)?8:0)-(vague&&!hasNum?12:0)-(c.vars.length>3?6:0)),5,95);
+ const plan=p.plan||makePlan(p);const ms=plan.methods.slice(0,2);
+ const avgCost=ms.reduce((s,x)=>s+x.cost,0)/ms.length;const avgTime=ms.reduce((s,x)=>s+x.time,0)/ms.length;
+ const burden=clamp(Math.round(avgCost*10+c.vars.length*5+(TYPE_BUR[c.type]||0)+(m.time&&avgTime>=3?8:0)+r()*8),5,95);
+ const importance=clamp(Math.round(F.importance+(c.vars.some(v=>{const i=varInfo(v);return i&&i.o})?4:-6)+(TYPE_IMP[c.type]||0)+(r()*10-5)),5,95);
+ const novelty=clamp(Math.round((TYPE_NOV[c.type]||45)+(relN<=2?8:relN>=5?-6:0)+(r()*12-6)),5,95);
+ c.scores={evidence,testability,burden,importance,novelty};
+ c.total=totalOf(c.scores,p.weights);
+ return c;
+}
+function totalOf(s,w){const sw=w.evidence+w.testability+w.burden+w.importance+w.novelty||1;return Math.round((s.evidence*w.evidence+s.testability*w.testability+(100-s.burden)*w.burden+s.importance*w.importance+s.novelty*w.novelty)/sw)}
+function scoreAll(p){if(!p.candidates)return;p.candidates.forEach(c=>{if(c.origin==='主仮説'){c.text=p.hypothesis;c.vars=A(p).vars.slice()}scoreCand(c,p)})}
+// debate script
+function generateDebate(p){
+ const a=A(p),F=FIELDS[a.field],ev=activeEv(p);
+ const sup=ev.filter(e=>e.stance==='support'),con=ev.filter(e=>e.stance==='contradict'),neu=ev.filter(e=>e.stance==='neutral');
+ const avg=avgRel(ev);const hs=sup.filter(e=>(e.reliability||0)>=75);
+ const top=ev[0];const topC=con.slice().sort((x,y)=>(y.reliability||0)-(x.reliability||0))[0];
+ const crs=(p.critiques||[]).filter(c=>c.status==='未対応');
+ const plan=p.plan||makePlan(p);const eth=p.ethics||ethicsCheck(p);const alts=altVars(p);
+ const M=[];const add=(round,agent,kind,text)=>M.push({id:uid('m'),round,agent,kind,text});
+ add(1,'fac','進行',`本日の議題は「${p.title}」です。検討する仮説は「${short(p.hypothesis,70)}」。独立変数を「${a.iv}」、従属変数を「${a.dv}」と整理しました。まず根拠の状況を確認します。`);
+ add(1,'lit','根拠',ev.length?`関連資料を${ev.length}件抽出しました（支持${sup.length}件・反証${con.length}件・中立${neu.length}件）。最も関連度が高いのは「${top.title}」です。`:'関連する資料が見つかりませんでした。「04 根拠・反証」から資料を取り込むことを推奨します。');
+ add(1,'evi','検証',avg==null?'まだ信頼性評価を行っていません。':`信頼性評価の平均は${avg}点、75点以上の支持根拠は${hs.length}件です。${hs.length<2?'支持側は件数・質ともに十分とは言えません。':'支持側には一定の裏付けがあります。'}${topC?`一方、反証側の「${topC.title}」は${topC.reliability}点で、無視できない水準です。`:''}`);
+ const c1=crs[0],c2=crs[1];
+ add(2,'cri','反論',crs.length?`弱点を${crs.length}点挙げます。最も重いのは「${c1.cat}」です。${c1.text}${c2?`　次に「${c2.cat}」：${c2.text}`:''}`:'現時点で未対応の重大な弱点は見当たりません。');
+ if(topC)add(2,'lit','根拠',`補足すると、「${topC.title}」は「${topC.summary.replace(/。$/,'')}」という内容で、本仮説の適用範囲を考えるうえで重要です。`);
+ add(2,'met','提案',`検証は「${plan.methods[0].n}」を主軸に、「${(plan.methods[1]||plan.methods[0]).n}」で補完する構成を提案します。${a.iv}は${unitOf(a.iv)}、${a.dv}は${unitOf(a.dv)}で測定します。${a.hasNum?'仮説中の数値を判定基準として使えます。':'まず判定基準となる数値目標を設定する必要があります。'}`);
+ const e1=eth.find(i=>i.level==='要確認')||eth[0];
+ add(2,'eth','確認',`要確認事項が${eth.filter(i=>i.level==='要確認').length}件あります。特に「${e1.text}」は、計画段階で対応方針を決めておくべきです。`);
+ add(2,'cri','反論',F.issues[0]);
+ add(3,'ide','提案',`別の方向を3つ提案します。①${a.iv}の効果が「${alts[0]}」に依存する可能性、②${a.iv}の効果に閾値がある可能性、③「${alts[1]}」が${a.dv}を主に説明している可能性です。`);
+ const ev2=ev.find(e=>(e.tags||[]).includes(alts[0])&&e.stance!=='support')||ev.find(e=>(e.tags||[]).includes(alts[0]));
+ if(ev2)add(3,'lit','根拠',`①については「${ev2.title}」が関連します。${a.iv}以外の要因が効いている可能性を示しています。`);
+ add(3,'cri','反論',`③の代替説明を排除できない限り、主仮説の因果主張は保留とすべきです。「${alts[1]}」を統制変数に加えることを求めます。`);
+ add(3,'met','提案',`「${alts[1]}」は${unitOf(alts[1])}単位で、${measureOf(alts[1])}により把握できます。統制変数として記録計画に加えます。`);
+ const h0=scoreCand(makeH0(p),p);
+ add(4,'int','評価',`暫定評価：主仮説の総合点は${h0.total}点（根拠の充足度${h0.scores.evidence}・検証可能性${h0.scores.testability}・実験負担${h0.scores.burden}）。${h0.total>=65?'検証に進む価値が高いと判断します。':h0.total>=50?'仮説の修正または適用範囲の限定を経て、検証に進むことを推奨します。':'仮説の再構成を推奨します。'}`);
+ add(4,'fac','進行','論点を整理しました。ここからは研究者の判断が必要です。反論や条件の追加は下の入力欄からどうぞ。新しい仮説の採否は「05 新仮説比較」で決定してください。');
+ return M;
+}
+function respondTo(text){
+ const a=A(P),F=FIELDS[a.field],ev=activeEv(P);const R=[];
+ const con=ev.filter(e=>e.stance==='contradict').sort((x,y)=>(y.reliability||0)-(x.reliability||0));
+ let structural=false;
+ if(/予算|コスト|費用|安く|低コスト|安価/.test(text)){
+  P.constraints.budget='厳しい';P.weights.burden=Math.min(45,P.weights.burden+10);P.plan=makePlan(P);
+  R.push(['met','提案',`予算制約を反映し、費用を重視して手法を再選定しました。主軸は「${P.plan.methods[0].n}」（費用${P.plan.methods[0].cost}/5）です。比較評価では「実験負担の低さ」の重みを${P.weights.burden}に引き上げます。`]);
+ }
+ if(/期間|工期内|短期|急ぎ|早く|時間がない|半年|以内|年度内|年内/.test(text)){
+  P.constraints.period='短期';P.plan=makePlan(P);
+  R.push(['int','提案','期間制約を反映しました。長期観測が必要な案は実験負担を高く評価します。既存データで先行検証し、本格的な観測は次段階とする二段構えを推奨します。']);
+ }
+ if(/安全|住民|作業員|倫理|個人情報|プライバシー|同意|人権|労働/.test(text)){
+  P.constraints.safety=true;P.ethics=ethicsCheck(P);
+  const pd=P.ethics.find(i=>/個人/.test(i.text));
+  R.push(['eth','確認',`安全・倫理を重視する方針を記録しました。${pd?`「${pd.text}」については、${pd.action}`:''}危険作業を伴う計測より遠隔計測・既存データ解析を優先します。`]);
+ }
+ if(/データ|根拠|文献|論文|資料|不足|エビデンス/.test(text)&&!/条件が(違|異な)/.test(text)){
+  R.push(['lit','根拠',`現時点の関連資料は${ev.length}件です。手元の報告書やデータは「04 根拠・反証」から取り込めます（.txt / .csv / .json）。取り込んだ資料は根拠検証AIが信頼性を評価します。`]);
+ }
+ if(/条件|場合|範囲|限定|に限り|のみ/.test(text)&&!/条件が(違|異な)/.test(text)){
+  P.conditions=(P.conditions?P.conditions.trim()+' ':'')+'［研究者追加条件］'+text.trim();
+  P.analysis=analyze(P);P.stale=true;structural=true;
+  R.push(['fac','整理',`「${short(text,40)}」を前提条件に追加しました。仮説の構造を再解析しています。全工程へ反映するには「研究フローを再実行」してください。`]);
+ }
+ if(/条件が(違|異な)|適用範囲外|前提が(違|異な)/.test(text)&&con.length){
+  const t=con[0];t.stance='neutral';t.userStance=true;t.note='研究者の指摘により「適用範囲外の事例」として中立に再分類';
+  refreshCritiques(P);structural=true;
+  R.push(['evi','検証',`ご指摘を受け、「${t.title}」を反証から「適用範囲外の事例（中立）」に再分類しました。ただし、その条件差を仮説の適用範囲として明記することが条件です。`]);
+  R.push(['cri','反論','再分類は受け入れますが、適用範囲を狭めた分、成果の一般性は下がります。報告書には除外理由を必ず記載してください。']);
+ }else if(/違う|反論|そうではない|しかし|だが|疑問|本当に|過大|過小|おかしい/.test(text)){
+  R.push(['cri','反論',`反論の趣旨は記録しました。ただし、その主張を支える根拠がまだ登録されていません。${con.length?`現在もっとも強い反証は「${con[0].title}」（信頼性${con[0].reliability!=null?con[0].reliability:'未評価'}点）です。`:''}`]);
+  R.push(['evi','検証','根拠となる資料を取り込めば、同じ基準で信頼性を評価し、議論に反映できます。']);
+ }
+ const mentioned=findVars(text,a.field).map(f=>f.n).filter(n=>!a.vars.includes(n));
+ if(mentioned.length){
+  const v=mentioned[0];
+  const c={id:uid('c'),label:'',type:'研究者提案',text:`${v}を${a.iv}とあわせて評価すると、${a.dv}の説明力が高まる。`,vars:[v,a.iv,a.dv],origin:'研究者×仮説創出AI',status:'候補'};
+  if(!P.candidates)P.candidates=[makeH0(P)];
+  P.candidates.push(c);P.candidates.forEach((x,i)=>{x.label='H'+i});
+  R.push(['ide','提案',`ご指摘の「${v}」を軸にした派生仮説を${c.label}として候補に追加しました（05 新仮説比較）。`]);
+ }
+ if(!R.length)R.push(['fac','整理','ご意見を討論記録に残しました。予算・期間・安全・条件・反論など具体的な論点を含めると、各エージェントがより具体的に応答します。']);
+ if(structural&&P.candidates)scoreAll(P);
+ else if(P.candidates)scoreAll(P);
+ return R;
+}
+function stances(p){
+ const ev=activeEv(p);const sup=ev.filter(e=>e.stance==='support').length,con=ev.filter(e=>e.stance==='contradict').length;
+ const avg=avgRel(ev);const open=(p.critiques||[]).filter(c=>c.status==='未対応');const hi=open.filter(c=>c.sev==='高').length;
+ const h0=(p.candidates||[]).find(c=>c.origin==='主仮説');const S=(l,t)=>({l,t});
+ return{
+  fac:S('中立','info'),
+  lit:!ev.length?S('未調査',''):sup>con?S('支持寄り','good'):sup===con?S('拮抗','warn'):S('懸念','bad'),
+  evi:avg==null?S('未検証',''):avg>=72?S('概ね妥当','good'):avg>=60?S('条件付き','warn'):S('懸念','bad'),
+  met:!p.plan?S('未検討',''):(p.analysis&&p.analysis.hasNum?S('検証可能','good'):S('基準要設定','warn')),
+  cri:!p.critiques?S('未レビュー',''):hi?S('強い懸念','bad'):open.length?S('懸念あり','warn'):S('概ね解消','good'),
+  ide:!p.candidates?S('未提案',''):S('代替案あり','warn'),
+  eth:!p.ethics?S('未確認',''):p.ethics.some(i=>i.level==='要確認')?S('要確認あり','warn'):S('問題なし','good'),
+  int:!h0||h0.total==null?S('未評価',''):h0.total>=65?S('有望','good'):h0.total>=50?S('改善余地','warn'):S('再検討','bad')
+ };
+}
+function consensus(p){
+ const ev=activeEv(p);const hs=ev.filter(e=>e.stance==='support'&&(e.reliability||0)>=75).length;
+ const crs=p.critiques||[];const open=crs.filter(c=>c.status==='未対応');
+ let v=50+hs*6-open.filter(c=>c.sev==='高').length*9-open.filter(c=>c.sev==='中').length*3+crs.filter(c=>c.status!=='未対応').length*3;
+ if((p.candidates||[]).some(c=>c.status==='採択'))v+=8;
+ return clamp(Math.round(v),3,97);
+}
+
+// ---------- orchestrator ----------
+const tdef=k=>TASK_DEFS.find(d=>d.key===k);
+const task=(p,k)=>p.tasks.find(t=>t.key===k);
+function refreshReady(p){p.tasks.forEach(t=>{if(t.status==='blocked'&&tdef(t.key).deps.every(k=>task(p,k).status==='done'))t.status='ready'})}
+function descendants(k){const out=new Set([k]);let grow=true;while(grow){grow=false;TASK_DEFS.forEach(d=>{if(!out.has(d.key)&&d.deps.some(x=>out.has(x))){out.add(d.key);grow=true}})}return out}
+const EFFECTS={
+ struct:p=>{p.analysis=analyze(p)},
+ lit:p=>{gatherEvidence(p)},
+ method:p=>{p.plan=makePlan(p)},
+ verify:p=>{verifyEvidence(p)},
+ ethics:p=>{p.ethics=ethicsCheck(p)},
+ critic:p=>{refreshCritiques(p);if(!p.critiques)p.critiques=makeCritiques(p);p.falsification=makeFalsification(p)},
+ debate:p=>{p.debate=generateDebate(p);p.debateShown=0},
+ ideate:p=>{genCandidates(p)},
+ evaluate:p=>{scoreAll(p)},
+ report:p=>{p.reportAt=nowStr()}
+};
+function overall(p){return Math.round(p.tasks.reduce((s,t)=>s+(t.status==='done'||t.status==='approval'?100:t.progress),0)/p.tasks.length)}
+function startOrch(){
+ if(!P.hypothesis.trim()){toast('研究仮説を入力してください');go('register');return}
+ refreshReady(P);
+ if(P.tasks.every(t=>t.status==='done')){toast('全タスクが完了しています。「全体を再実行」で再実行できます');return}
+ if(!P.tasks.some(t=>['ready','running'].includes(t.status))){toast('研究者の承認待ちのタスクがあります');return}
+ RT.running=true;RT.resumeOnApprove=false;log('▶ オーケストレーター開始');
+ clearInterval(RT.timer);RT.timer=setInterval(tick,260);render();
+}
+function stopOrch(msg){if(RT.running&&msg)log(msg);RT.running=false;clearInterval(RT.timer);RT.timer=null}
+function tick(){if(RT.running&&P)advance(1)}
+function advance(mult){
+ const p=P;refreshReady(p);let changed=false;
+ const running=p.tasks.filter(t=>t.status==='running');
+ for(const t of p.tasks){if(running.length>=3)break;if(t.status==='ready'){t.status='running';t.progress=0;t.startedAt=nowStr();running.push(t);changed=true;const d=tdef(t.key);log(`[開始] ${d.name}（${AGENTS[d.agent].name}）`)}}
+ running.forEach(t=>{const d=tdef(t.key);t.progress=Math.min(100,t.progress+(100/d.dur)*(0.75+Math.random()*0.5)*mult*(DB.settings.speed||1));if(t.progress>=100){completeTask(t);changed=true}});
+ const pending=p.tasks.some(t=>['ready','running'].includes(t.status));
+ if(!pending&&RT.running){
+  if(p.tasks.some(t=>t.status==='approval')){stopOrch('⏸ 研究者の承認待ちのため停止しました');RT.resumeOnApprove=true;toast('研究者の承認が必要なタスクがあります')}
+  else if(p.tasks.every(t=>t.status==='done')){stopOrch('■ 全タスクが完了しました');toast('研究フローが完了しました。06で報告書を確認できます')}
+ }
+ touch();
+ if(changed)render();else updateLive();
+}
+function completeTask(t){
+ const d=tdef(t.key);t.progress=100;t.runs=(t.runs||0)+1;t.endedAt=nowStr();
+ try{EFFECTS[t.key](P)}catch(e){console.error(e);log('[エラー] '+d.name+'：'+e.message)}
+ if(d.approval){t.status='approval';log(`[承認待ち] ${d.name} — 研究者の確認が必要です`)}
+ else{t.status='done';log(`[完了] ${d.name}`)}
+ if(t.key==='debate'&&RT.view==='debate')setTimeout(playDebate,200);
+ refreshReady(P);
+}
+function stepOnce(){
+ if(!P.hypothesis.trim()){toast('研究仮説を入力してください');return}
+ if(RT.running)stopOrch('⏸ ステップ実行のため一時停止');
+ refreshReady(P);
+ if(!P.tasks.some(t=>['ready','running'].includes(t.status))){toast(P.tasks.every(t=>t.status==='done')?'全タスク完了済みです':'承認待ちのタスクがあります');return}
+ log('⏭ ステップ実行');advance(3.2);
+}
+function approve(k){
+ const t=task(P,k),d=tdef(k);if(t.status!=='approval')return;
+ t.status='done';log(`[承認] ${d.name} を研究者が承認`);decide(`「${d.name}」の結果を承認`);refreshReady(P);touch();
+ if(RT.resumeOnApprove&&!P.tasks.some(x=>x.status==='approval')){startOrch()}else render();
+}
+function rerun(k,silent){
+ const set=descendants(k);
+ P.tasks.forEach(t=>{if(set.has(t.key)){t.status='blocked';t.progress=0}});
+ refreshReady(P);if(!silent)log(`↻ 再実行：${tdef(k).name}（下流タスク${set.size-1}件を含む）`);
+ touch();startOrch();
+}
+function reject(k){decide(`「${tdef(k).name}」を差し戻し、再実行`);log(`[差戻し] ${tdef(k).name}`);rerun(k,true)}
+function resetAll(silent){
+ stopOrch();
+ P.tasks=TASK_DEFS.map(d=>({key:d.key,status:'blocked',progress:0,runs:0}));
+ P.analysis=null;P.plan=null;P.ethics=null;P.critiques=null;P.falsification=null;P.debate=[];P.debateShown=0;P.reportAt=null;P.verified=false;
+ P.evidence=(P.evidence||[]).filter(e=>e.source!=='builtin');P.evidence.forEach(e=>{delete e.reliability});
+ if(P.candidates){const keep=P.candidates.filter(c=>c.origin!=='主仮説'&&['採択','保留'].includes(c.status));P.candidates=keep.length?keep:null}
+ refreshReady(P);if(!silent)log('↻ 全タスクをリセットしました');touch();
+}
+function runUpTo(k){
+ if(!P.hypothesis.trim()){toast('研究仮説を入力してください');go('register');return}
+ stopOrch();
+ const need=new Set();(function add(x){need.add(x);tdef(x).deps.forEach(add)})(k);
+ TASK_DEFS.forEach(d=>{if(!need.has(d.key))return;const t=task(P,d.key);if(t.status==='done')return;
+  if(t.status!=='approval'){try{EFFECTS[d.key](P)}catch(e){console.error(e);log('[エラー] '+e.message)}t.runs=(t.runs||0)+1}
+  t.status='done';t.progress=100;t.endedAt=nowStr();log(`[即時実行] ${d.name}${d.approval?'（デモのため自動承認）':''}`)});
+ refreshReady(P);touch();render();
+ if(k==='debate'&&RT.view==='debate')setTimeout(playDebate,150);
+ toast('「'+tdef(k).name+'」まで即時実行しました');
+}
+function startFlow(){
+ if(!P.hypothesis.trim()){toast('研究仮説を入力してください');return}
+ const changed=recordRevision('仮説・条件を修正');
+ if(changed||P.stale||P.tasks.every(t=>t.status==='done'))resetAll(true);
+ P.stale=false;go('tasks');startOrch();
+}
+function recordRevision(note){
+ const last=P.revisions[P.revisions.length-1];
+ if(last&&last.hypothesis===P.hypothesis&&last.conditions===P.conditions)return false;
+ P.revision=(last?last.rev:0)+1;
+ P.revisions.push({rev:P.revision,hypothesis:P.hypothesis,conditions:P.conditions,at:nowStr(),note:last?note:'初版登録'});
+ log(`✎ 改訂 r${P.revision} を記録（${last?note:'初版登録'}）`);touch();return true;
+}
+
+// ---------- debate playback ----------
+function playDebate(){
+ if(RT.playing||!P.debate.length)return;
+ if(P.debateShown>=P.debate.length)return;
+ RT.playing=true;stepPlay();
+}
+function stepPlay(){
+ if(!RT.playing)return;
+ if(P.debateShown>=P.debate.length){RT.playing=false;RT.typing=null;renderChat();renderDebateCtrls();return}
+ const m=P.debate[P.debateShown];RT.typing=m.agent;renderChat();
+ const delay=clamp(500+m.text.length*9,700,1900)/(DB.settings.speed||1);
+ RT.playTimer=setTimeout(()=>{P.debateShown++;RT.typing=null;renderChat();touch();RT.playTimer=setTimeout(stepPlay,240/(DB.settings.speed||1))},delay);
+}
+function stopPlay(){RT.playing=false;RT.typing=null;clearTimeout(RT.playTimer)}
+function sendInterject(){
+ const text=(RT.draft||'').trim();if(!text){toast('発言を入力してください');return}
+ if(!P.hypothesis.trim()){toast('研究仮説を入力してください');return}
+ stopPlay();A(P);
+ P.debateShown=P.debate.length;
+ P.debate.push({id:uid('m'),round:5,agent:'you',kind:'研究者',text});
+ P.debateShown=P.debate.length;
+ decide('討論で発言：'+short(text,80));
+ respondTo(text).forEach(([ag,kind,t])=>P.debate.push({id:uid('m'),round:5,agent:ag,kind,text:t}));
+ RT.draft='';touch();render();setTimeout(playDebate,150);
+}
+
+// ---------- import ----------
+function stanceFromText(t){if(/効果なし|効果は限定|有意差なし|有意な差は(見|認)められ|反する|悪化|超える|増大|見られなかった/.test(t))return'contradict';if(/確認した|有効|低減した|向上した|改善した|減少した|収まった|示した/.test(t))return'support';return'neutral'}
+function tagsFromText(t){const a=A(P);const f=findVars(t,a.field).map(x=>x.n);return f.length?f:findVars(t,'general').map(x=>x.n).slice(0,4)}
+function addImported(o){
+ const e={id:uid('imp'),title:o.title||'無題の資料',type:EV_TYPES.includes(o.type)?o.type:'取込資料',year:+o.year||new Date().getFullYear(),n:o.n===''||o.n==null?null:+o.n,
+  stance:['support','contradict','neutral'].includes(o.stance)?o.stance:stanceFromText((o.summary||'')+(o.title||'')),
+  tags:Array.isArray(o.tags)&&o.tags.length?o.tags:tagsFromText((o.title||'')+' '+(o.summary||'')),summary:short(o.summary||'',220),source:o.source||'import',accepted:true};
+ e.relevance=relevance(e,A(P));if(P.verified||task(P,'verify').status==='done')e.reliability=reliabilityOf(e);
+ P.evidence.push(e);return e;
+}
+function parseCSV(text){
+ const rows=[];let row=[],cell='',q=false;
+ for(let i=0;i<text.length;i++){const c=text[i];
+  if(q){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++}else q=false}else cell+=c}
+  else if(c==='"')q=true;else if(c===','){row.push(cell);cell=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(cell);rows.push(row);row=[];cell=''}else cell+=c}
+ if(cell||row.length){row.push(cell);rows.push(row)}
+ return rows.filter(r=>r.some(x=>x.trim()));
+}
+function importEvidenceFiles(files){
+ let count=0;const jobs=[...files].map(f=>new Promise(res=>{const r=new FileReader();r.onload=()=>{const txt=String(r.result||'');
+  try{
+   if(/\.json$/i.test(f.name)){const d=JSON.parse(txt);const arr=Array.isArray(d)?d:(Array.isArray(d.evidence)?d.evidence:[d]);arr.forEach(o=>{if(o&&typeof o==='object'){addImported(o);count++}})}
+   else if(/\.csv$/i.test(f.name)){const rows=parseCSV(txt);const head=rows[0].map(h=>h.trim().toLowerCase());const hasHead=head.includes('title')||head.includes('タイトル');
+    const idx=k=>head.findIndex(h=>k.includes(h));
+    (hasHead?rows.slice(1):rows).forEach(r=>{const g=(keys,def)=>{if(!hasHead)return def;const i=idx(keys);return i>=0?r[i]:''};
+     const st=(g(['stance','立場'],'')||'').trim();const stMap={'支持':'support','反証':'contradict','中立':'neutral'};
+     addImported({title:hasHead?g(['title','タイトル']):r[0],type:g(['type','種別']),year:g(['year','年']),n:g(['n','標本数']),stance:stMap[st]||st,summary:hasHead?g(['summary','概要']):r.slice(1).join(' ')});count++})}
+   else{const lines=txt.split(/\r?\n/).filter(x=>x.trim());addImported({title:f.name.replace(/\.[^.]+$/,''),summary:lines.join(' '),type:'取込資料'});count++}
+  }catch(e){toast(f.name+' を読み込めませんでした：'+e.message)}
+  res()};r.onerror=()=>{toast(f.name+' の読込に失敗しました');res()};r.readAsText(f)}));
+ Promise.all(jobs).then(()=>{if(count){log(`[取込] ローカル資料 ${count}件を追加`);decide(`ローカル資料${count}件を根拠として取込`);refreshCritiques(P);scoreAll(P);touch();render();toast(count+'件の資料を取り込みました')}});
+}
+function importAll(file){
+ const r=new FileReader();r.onload=()=>{try{
+  const d=JSON.parse(String(r.result));let list=[];
+  if(d&&Array.isArray(d.projects))list=d.projects;else if(d&&d.hypothesis!==undefined)list=[d];else throw new Error('RIHRPのデータ形式ではありません');
+  if(!confirm(`${list.length}件の研究データを読み込み、現在の一覧に追加します。よろしいですか？`))return;
+  list.forEach(p=>{if(DB.projects.some(x=>x.id===p.id))p.id=uid('prj');normalize(p);DB.projects.push(p)});
+  stopOrch();stopPlay();P=list[0];DB.currentId=P.id;save();render();toast(list.length+'件の研究データを読み込みました');
+ }catch(e){toast('読込に失敗しました：'+e.message)}};r.readAsText(file);
+}
+
+// ---------- rendering ----------
+const VIEWS=[
+ {k:'register',n:'01',t:'研究仮説登録'},{k:'tasks',n:'02',t:'AIタスク管理'},{k:'debate',n:'03',t:'複数AI討論'},
+ {k:'evidence',n:'04',t:'根拠・反証'},{k:'compare',n:'05',t:'新仮説比較'},{k:'report',n:'06',t:'研究報告書'}
+];
+function go(v){RT.view=v;RT.editing=null;if(v!=='debate')stopPlay();render();window.scrollTo(0,0);if(v==='debate'&&P.debateShown<P.debate.length)setTimeout(playDebate,250)}
+function navStatus(k){
+ const done=P.tasks.filter(t=>t.status==='done').length;
+ switch(k){
+  case'register':return P.hypothesis.trim()?{t:`r${P.revision||1} 登録済み`,on:true}:{t:'未入力'};
+  case'tasks':return{t:RT.running?`実行中 ${overall(P)}%`:P.tasks.some(t=>t.status==='approval')?'承認待ちあり':`${done}/${P.tasks.length} 完了`,on:RT.running||P.tasks.some(t=>t.status==='approval')};
+  case'debate':return P.debate.length?{t:`発言 ${P.debate.length}件`,on:true}:{t:'未実施'};
+  case'evidence':return P.evidence.length?{t:`資料 ${P.evidence.length}件・指摘 ${(P.critiques||[]).length}件`,on:true}:{t:'未調査'};
+  case'compare':return P.candidates?{t:`候補 ${P.candidates.length}件`,on:true}:{t:'未生成'};
+  case'report':return P.reportAt?{t:'ドラフト作成済み',on:true}:{t:'未作成'};
+ }
+}
+function renderNav(){
+ $('#nav').innerHTML=`<div class="navcap">RESEARCH WORKFLOW</div>`+VIEWS.map(v=>{const s=navStatus(v.k);return`<button class="navitem${RT.view===v.k?' active':''}" data-act="go" data-v="${v.k}"><span class="num">${v.n}</span><span><span class="lbl">${v.t}</span><span class="st${s.on?' on':''}">${esc(s.t)}</span></span></button>`}).join('')+
+ `<div class="navfoot"><b style="color:var(--ink2)">RIHRP</b><br>Research Inspiration &amp; Hypothesis Refinement Platform<br>研究着想・仮説洗練プラットフォーム<div style="margin-top:8px">エージェント8体・タスク10件<br>すべてローカル処理（通信なし）</div></div>`;
+}
+function renderHeader(){
+ $('#projSel').innerHTML=DB.projects.map(p=>`<option value="${p.id}"${p.id===P.id?' selected':''}>${esc(short(p.title||'無題',30))}</option>`).join('');
+ updateGlobal();
+}
+function updateGlobal(){const g=overall(P);$('#gbar').style.width=g+'%';$('#gpct').textContent=g+'%'}
+function render(){renderNav();renderHeader();const f={register:viewRegister,tasks:viewTasks,debate:viewDebate,evidence:viewEvidence,compare:viewCompare,report:viewReport}[RT.view];$('#main').innerHTML=f();afterRender()}
+function afterRender(){if(RT.view==='debate'){const c=$('#chat');if(c)c.scrollTop=c.scrollHeight}}
+function updateLive(){
+ updateGlobal();
+ P.tasks.forEach(t=>{
+  document.querySelectorAll(`[data-pbar="${t.key}"]`).forEach(el=>{el.style.width=Math.round(t.progress)+'%'});
+  document.querySelectorAll(`[data-ptext="${t.key}"]`).forEach(el=>{el.textContent=Math.round(t.progress)+'%'});
+  document.querySelectorAll(`[data-spbar="${t.key}"]`).forEach(el=>{el.setAttribute('width',Math.round(+el.dataset.w*t.progress/100))});
+ });
+ const n=$('#nav .navitem[data-v="tasks"] .st');if(n){const s=navStatus('tasks');n.textContent=s.t}
+}
+const pageHead=(n,t,sub,acts)=>`<div class="page-head"><div><div class="eyebrow">STEP ${n}</div><h1>${t}</h1><p class="sub">${sub}</p></div><div class="acts">${acts||''}</div></div>`;
+const emptyBox=(icon,msg,k,label)=>`<div class="card empty"><div class="big">${icon}</div><p>${msg}</p><div class="acts" style="justify-content:center"><button class="btn pri" data-act="runUpTo" data-k="${k}">${label}</button><button class="btn" data-act="go" data-v="tasks">02 タスク管理で順に実行</button></div></div>`;
+const staleBanner=()=>P.stale?`<div class="banner warn"><span>仮説または前提条件が変更されています。最新の内容を各工程へ反映するには、研究フローを再実行してください。</span><button class="btn sm pri" data-act="startFlow">研究フローを再実行</button></div>`:'';
+const avatar=(k,cls)=>`<span class="${cls||'av'}" style="background:${AGENTS[k].color}">${AGENTS[k].short}</span>`;
+const lvl=(v,c)=>`<span class="lvl${c?' c':''}">${[1,2,3,4,5].map(i=>`<i class="${i<=v?'on':''}"></i>`).join('')}</span>`;
+
+// ----- 01 register -----
+function liveCheckHTML(){
+ if(!P.hypothesis.trim())return'<p class="muted">仮説を入力すると、変数・数値基準・メカニズム・適用条件などをリアルタイムに判定します。</p>';
+ const a=analyze(P),F=FIELDS[a.field];
+ const row=(ok,l,d)=>`<li class="${ok?'ok':'ng'}"><span class="ck">${ok?'✓':'!'}</span><div><b>${l}</b><small>${esc(d)}</small></div></li>`;
+ return`<div class="kv"><span>判定分野</span><b>${esc(F.name)}${P.field==='auto'?'（自動判定）':''}</b></div>
+ <div class="flowline"><span class="pill iv">${esc(a.iv)}</span><span class="arrow">→</span><span class="pill dv">${esc(a.dv)}</span>${a.dir?`<span class="dirtag">${esc(a.dir)}</span>`:''}</div>
+ ${a.inferred.length?`<p class="hint">※「${a.inferred.map(esc).join('」「')}」は本文から読み取れなかったため、分野の既定値で補完しています。</p>`:''}
+ <div style="margin-top:6px">${a.vars.map(v=>`<span class="tag">${esc(v)}</span>`).join('')}</div>
+ <ul class="checks">
+  ${row(a.hasNum,'測定可能な数値基準',a.hasNum?a.nums.join('、'):'数値と単位が見つかりません')}
+  ${row(a.hasMech,'因果メカニズムの記述',a.hasMech?'「〜ため」「〜により」等の説明あり':'なぜそうなるかの説明がありません')}
+  ${row(a.hasCond,'適用条件・範囲',a.hasCond?'条件の記述あり':'成立する条件が限定されていません')}
+  ${row(a.hasComp,'比較対象（対照条件）',a.hasComp?'比較の基準あり':'従来仕様などとの比較がありません')}
+  ${row(!a.vague.length||a.hasNum,'曖昧な表現の有無',a.vague.length?`「${a.vague.join('」「')}」${a.hasNum?'（数値基準あり）':'が未定義'}`:'問題なし')}
+ </ul>
+ <div class="qscore">構造スコア <b>${a.quality}</b> / 5　<span class="muted" style="font-size:12px">（ルールによる形式チェック）</span></div>`;
+}
+function viewRegister(){
+ const c=P.constraints;
+ const fieldOpts=[['auto','自動判定']].concat(FIELD_KEYS.map(k=>[k,FIELDS[k].name])).map(([v,t])=>`<option value="${v}"${P.field===v?' selected':''}>${t}</option>`).join('');
+ const sel=(bind,opts,val)=>`<select class="in" data-bind="${bind}">${opts.map(o=>`<option${o===val?' selected':''}>${o}</option>`).join('')}</select>`;
+ return pageHead('01','研究仮説登録','研究テーマと仮説を登録します。入力内容は右側でリアルタイムに構造チェックされ、「研究フローを開始」で02〜06の工程が自動で進行します。',
+  `<button class="btn" data-act="saveRev">改訂として記録</button><button class="btn pri" data-act="startFlow">研究フローを開始 →</button>`)+staleBanner()+
+ `<div class="grid2"><div>
+  <section class="card"><h2>研究テーマ</h2>
+   <label class="f">研究テーマ名</label><input type="text" data-bind="title" value="${esc(P.title)}" maxlength="80">
+   <label class="f">研究分野<small>自動判定はキーワードから推定します</small></label><select class="in" data-bind="field">${fieldOpts}</select>
+   <label class="f">研究仮説<small>独立変数・従属変数・数値基準・メカニズムを含めると評価が上がります</small></label>
+   <textarea data-bind="hypothesis" rows="5" placeholder="例：〇〇を△△にすると、□□は××%以上低減する。これは〜のためである。">${esc(P.hypothesis)}</textarea>
+   <label class="f">背景・目的</label><textarea data-bind="background" rows="3">${esc(P.background)}</textarea>
+   <label class="f">前提条件・適用範囲</label><textarea data-bind="conditions" rows="3">${esc(P.conditions)}</textarea>
+  </section>
+  <section class="card"><h2>研究条件・制約</h2>
+   <div class="row"><div><label class="f">予算</label>${sel('constraints.budget',['潤沢','標準','厳しい'],c.budget)}</div>
+   <div><label class="f">期間</label>${sel('constraints.period',['余裕あり','標準','短期'],c.period)}</div></div>
+   <label class="chk"><input type="checkbox" data-bind="constraints.safety"${c.safety?' checked':''}> 安全性・倫理面を重視する（遠隔計測・既存データ解析を優先）</label>
+   <p class="hint">制約は方法論AIの手法選定、統合評価AIの実験負担評価、研究倫理・安全AIの確認項目に反映されます。</p>
+  </section>
+  <section class="card"><h2>研究データの管理</h2>
+   <p class="hint" style="margin-top:0">データはこのブラウザ内（localStorage）に自動保存されます。ブラウザ設定やファイル直接起動の制約で保存できない場合に備え、上部の「JSON保存」で定期的にバックアップしてください。</p>
+   <div class="acts" style="margin-top:10px"><button class="btn" data-act="exportOne">この研究をJSON保存</button><button class="btn danger" data-act="deleteProject">この研究を削除</button></div>
+  </section>
+ </div><div>
+  <section class="card"><h2>仮説構造チェック <span class="chip">ライブ</span></h2><div id="liveCheck">${liveCheckHTML()}</div></section>
+  <section class="card"><h2>架空の研究事例を追加</h2><p class="hint" style="margin:0 0 10px">内蔵の模擬研究事例を新しい研究として追加します。</p>
+   <div class="samples">${SAMPLES.map(s=>`<button class="sample" data-act="addSample" data-k="${s.key}"><span class="chip acc">${FIELDS[s.field].name}</span><b>${esc(s.title)}</b></button>`).join('')}</div></section>
+  <section class="card"><h2>改訂履歴 <span class="cnt">${P.revisions.length}件</span></h2>
+   ${P.revisions.length?`<ul class="revs">${P.revisions.slice().reverse().map(r=>`<li><span class="rv">r${r.rev}</span><span class="txt"><b>${esc(r.note)}</b>　<span class="muted">${esc(r.at)}</span><br>${esc(short(r.hypothesis,90))}</span><button class="btn sm ghost" data-act="restoreRev" data-i="${r.rev}">復元</button></li>`).join('')}</ul>`:'<p class="muted" style="margin:0">まだ記録はありません。</p>'}
+  </section>
+ </div></div>`;
+}
+
+// ----- 02 tasks -----
+function dagSVG(){
+ const lv={};TASK_DEFS.forEach(d=>{lv[d.key]=d.deps.length?Math.max(...d.deps.map(k=>lv[k]))+1:0});
+ const cols={};TASK_DEFS.forEach(d=>{(cols[lv[d.key]]=cols[lv[d.key]]||[]).push(d.key)});
+ const W=150,H=70,GX=34,GY=20;const nC=Object.keys(cols).length;const maxR=Math.max(...Object.values(cols).map(c=>c.length));
+ const width=nC*(W+GX)-GX+20,height=maxR*(H+GY)-GY+20;const pos={};
+ Object.keys(cols).forEach(c=>{const arr=cols[c];const top=(height-(arr.length*(H+GY)-GY))/2;arr.forEach((k,i)=>{pos[k]={x:10+(+c)*(W+GX),y:top+i*(H+GY)}})});
+ let edges='',nodes='';
+ TASK_DEFS.forEach(d=>d.deps.forEach(k=>{const a=pos[k],b=pos[d.key];const x1=a.x+W,y1=a.y+H/2,x2=b.x,y2=b.y+H/2;const on=task(P,k).status==='done';
+  edges+=`<path class="edge${on?' on':''}" d="M${x1},${y1} C${x1+GX/2+6},${y1} ${x2-GX/2-6},${y2} ${x2},${y2}"/>`}));
+ TASK_DEFS.forEach(d=>{const t=task(P,d.key),p=pos[d.key],ag=AGENTS[d.agent];const st=t.status==='running'&&!RT.running?'一時停止':ST_LABEL[t.status];
+  const col={done:'var(--good)',approval:'var(--warn)',running:'var(--accentInk)',ready:'var(--info)',blocked:'var(--ink3)'}[t.status];
+  nodes+=`<g class="node ${t.status}"><title>${esc(d.name)}：${esc(d.desc)}</title><rect class="box" x="${p.x}" y="${p.y}" width="${W}" height="${H}" rx="9"/>
+  <circle cx="${p.x+16}" cy="${p.y+17}" r="9" fill="${ag.color}"/><text x="${p.x+16}" y="${p.y+21}" text-anchor="middle" style="fill:#fff;font-size:10px;font-weight:700">${ag.short}</text>
+  <text class="t1" x="${p.x+31}" y="${p.y+21}">${esc(d.short)}</text>
+  <text class="t3" x="${p.x+10}" y="${p.y+43}" style="fill:${col}">${st}${d.approval?'　◆承認':''}</text>
+  <rect class="pb" x="${p.x+10}" y="${p.y+54}" width="${W-20}" height="5" rx="2.5"/><rect class="pf" data-spbar="${d.key}" data-w="${W-20}" x="${p.x+10}" y="${p.y+54}" width="${Math.round((W-20)*t.progress/100)}" height="5" rx="2.5"/></g>`});
+ return`<svg class="dag" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="タスク依存関係グラフ">${edges}${nodes}</svg>`;
+}
+function approvalInfo(k){
+ if(k==='verify'){const ev=activeEv(P);return`資料${ev.length}件（支持${ev.filter(e=>e.stance==='support').length}・反証${ev.filter(e=>e.stance==='contradict').length}）、平均信頼性${avgRel(ev)!=null?avgRel(ev):'—'}点。内容は「04 根拠・反証」で確認・修正できます。`}
+ if(k==='evaluate'){const h=(P.candidates||[]).slice().sort((x,y)=>y.total-x.total)[0];return h?`最高評価は ${h.label}（${h.type}）総合${h.total}点。「05 新仮説比較」で重みや採否を確認できます。`:''}
+ return'';
+}
+function viewTasks(){
+ if(!P.hypothesis.trim())return pageHead('02','AIタスク管理','研究仮説を入力すると、作業計画が自動生成されます。')+`<div class="card empty"><div class="big">◇</div><p>研究仮説が未入力です。</p><button class="btn pri" data-act="go" data-v="register">01 研究仮説登録へ</button></div>`;
+ const t=P.tasks;const cnt=s=>t.filter(x=>x.status===s).length;
+ const apprs=t.filter(x=>x.status==='approval');
+ const spd=DB.settings.speed||1;
+ const ctrls=`<div class="ctrls">
+  ${RT.running?`<button class="btn" data-act="pause">⏸ 一時停止</button>`:`<button class="btn pri" data-act="run">▶ 実行開始</button>`}
+  <button class="btn" data-act="step">⏭ ステップ実行</button>
+  <button class="btn" data-act="resetRun">↻ 全体を再実行</button>
+  <select id="speedSel" aria-label="実行速度">${[0.5,1,2,4].map(s=>`<option value="${s}"${s===spd?' selected':''}>速度 ×${s}</option>`).join('')}</select></div>`;
+ return pageHead('02','AIタスク管理（Agentic AI Task Orchestrator）','仮説から分解された10件のタスクを、依存関係に従って最大3件並列で実行します。◆印のタスクは完了後に研究者の承認が必要です。',ctrls)+staleBanner()+
+ apprs.map(x=>`<div class="banner warn"><span><b>承認待ち：${esc(tdef(x.key).name)}</b>　${esc(approvalInfo(x.key))}</span><span class="acts"><button class="btn sm pri" data-act="approve" data-k="${x.key}">承認する</button><button class="btn sm" data-act="reject" data-k="${x.key}">差し戻して再実行</button><button class="btn sm ghost" data-act="go" data-v="${x.key==='verify'?'evidence':'compare'}">内容を確認</button></span></div>`).join('')+
+ `<div class="stats"><div class="stat"><span>全体進捗</span><b>${overall(P)}%</b></div><div class="stat"><span>完了</span><b>${cnt('done')}/${t.length}</b></div><div class="stat"><span>実行中</span><b>${cnt('running')}</b></div><div class="stat"><span>承認待ち</span><b>${cnt('approval')}</b></div><div class="stat"><span>状態</span><b style="font-size:15px">${RT.running?'実行中':t.every(x=>x.status==='done')?'完了':'停止中'}</b></div></div>
+ <section class="card"><h2>タスク依存関係</h2><div class="dagwrap">${dagSVG()}</div></section>
+ <section class="card"><h2>タスク一覧</h2><div class="tblwrap"><table class="tbl"><thead><tr><th>#</th><th>タスク</th><th>担当エージェント</th><th>依存</th><th>状態</th><th style="min-width:130px">進捗</th><th>実行回数</th><th>操作</th></tr></thead><tbody>
+ ${TASK_DEFS.map((d,i)=>{const x=task(P,d.key);const stc=x.status==='running'&&!RT.running?'paused':x.status;const stl=stc==='paused'?'一時停止':ST_LABEL[x.status];
+  return`<tr><td class="muted">${pad(i+1)}</td><td><b>${esc(d.name)}</b>${d.approval?' <span class="chip warn">◆承認</span>':''}<br><span class="muted" style="font-size:12px">${esc(d.desc)}</span></td>
+  <td><span class="agentcell">${avatar(d.agent,'dot')}${AGENTS[d.agent].name}</span></td>
+  <td class="muted" style="font-size:12px">${d.deps.map(k=>pad(TASK_DEFS.findIndex(z=>z.key===k)+1)).join(', ')||'—'}</td>
+  <td><span class="st-badge st-${stc}">${stl}</span></td>
+  <td><div class="pbar ${x.status}"><i data-pbar="${d.key}" style="width:${Math.round(x.progress)}%"></i></div><span class="muted" style="font-size:11px" data-ptext="${d.key}">${Math.round(x.progress)}%</span></td>
+  <td class="muted">${x.runs||0}</td>
+  <td style="white-space:nowrap">${x.status==='approval'?`<button class="btn sm pri" data-act="approve" data-k="${d.key}">承認</button> <button class="btn sm" data-act="reject" data-k="${d.key}">差戻し</button>`:x.status==='done'?`<button class="btn sm" data-act="rerun" data-k="${d.key}">再実行</button>`:`<span class="muted" style="font-size:12px">—</span>`}</td></tr>`}).join('')}
+ </tbody></table></div></section>
+ <section class="card"><h2>実行ログ <span class="cnt">${P.logs.length}件</span></h2><div class="logbox">${P.logs.length?P.logs.slice(0,120).map(l=>`<span class="lt">${esc(l.t)}</span>  ${esc(l.msg)}`).join('\n'):'まだログはありません。「▶ 実行開始」を押してください。'}</div></section>`;
+}
+
+// ----- 03 debate -----
+function chatHTML(){
+ if(!P.debate.length)return'';
+ let html='',lastR=null;
+ const shown=P.debate.slice(0,P.debateShown);let anim=null;
+ if(shown.length&&shown[shown.length-1].id!==RT.lastAnim){anim=shown[shown.length-1].id;RT.lastAnim=anim}
+ shown.forEach(m=>{
+  if(m.round!==lastR){html+=`<div class="roundsep">${esc(ROUND_T[m.round]||'')}</div>`;lastR=m.round}
+  const ag=AGENTS[m.agent];
+  html+=`<div class="msg${m.agent==='you'?' you':''}${m.id===anim?' new':''}">${avatar(m.agent)}<div class="bubble"><div class="who">${esc(ag.name)} <span class="chip">${esc(m.kind)}</span></div><p>${esc(m.text)}</p></div></div>`;
+ });
+ if(RT.typing)html+=`<div class="typing">${avatar(RT.typing)}<span>${esc(AGENTS[RT.typing].name)}が発言を準備中</span><span class="dots"><span></span><span></span><span></span></span></div>`;
+ return html;
+}
+function renderChat(){
+ const c=$('#chat');if(!c)return;c.innerHTML=chatHTML();c.scrollTop=c.scrollHeight;
+ document.querySelectorAll('.agent').forEach(el=>el.classList.toggle('speaking',el.dataset.ag===RT.typing));
+ const n=$('#nav .navitem[data-v="debate"] .st');if(n)n.textContent=navStatus('debate').t;
+ const dc=$('#debCnt');if(dc)dc.textContent=P.debateShown+'/'+P.debate.length;
+ renderDebateCtrls();
+}
+function renderDebateCtrls(){const el=$('#debCtrls');if(el)el.innerHTML=debateCtrls()}
+function debateCtrls(){
+ const rem=P.debate.length-P.debateShown;
+ return(RT.playing?`<button class="btn" data-act="pausePlay">⏸ 再生を停止</button>`:`<button class="btn pri" data-act="playDebate"${rem?'':' disabled'}>▶ 討論を再生${rem?`（残り${rem}）`:''}</button>`)+
+  `<button class="btn" data-act="showAll"${rem?'':' disabled'}>⏭ すべて表示</button><button class="btn" data-act="regenDebate">↻ 討論を再生成</button>`;
+}
+function viewDebate(){
+ const head=pageHead('03','複数AI討論（Multi-Agent AI Collaboration Studio）','8体の専門エージェントが根拠・批判・検証方法・代替仮説を時系列で議論します。途中で反論や条件変更を入力すると、ルールの範囲内で応答と評価が変化します。',`<span class="acts" id="debCtrls">${debateCtrls()}</span>`);
+ if(!P.debate.length)return head+staleBanner()+emptyBox('◎','まだ討論が行われていません。討論には構造化・文献調査・根拠検証・批判レビュー等の前工程が必要です。','debate','前工程を含めて即時実行');
+ const st=stances(P);const cs=consensus(P);const F=FIELDS[A(P).field];
+ const chips=[['反論する','その反証資料は条件が異なるので、適用範囲外の事例ではないか'],['条件を変更','対象を'+F.scope+'の場合に限定する'],['予算制約','予算が限られているので、低コストの検証方法にしたい'],['期間制約','半年以内に結果を出したい'],['安全・倫理','現場作業員の安全と、作業員データの取扱いを重視したい'],['データ不足','根拠となるデータが不足していると思う']];
+ return head+staleBanner()+`<div class="debate">
+  <aside><section class="card"><h2>参加エージェント</h2><div class="agents">${AG_KEYS.map(k=>`<div class="agent${RT.typing===k?' speaking':''}" data-ag="${k}">${avatar(k)}<span><span class="nm">${AGENTS[k].name}</span><span class="rl">${AGENTS[k].role}</span></span><span class="chip ${st[k].t}">${st[k].l}</span></div>`).join('')}</div></section>
+  <section class="card"><h2>合意度（例示）</h2><div class="meter"><i style="left:calc(${cs}% - 2px)"></i></div><div style="display:flex;justify-content:space-between;font-size:11.5px" class="muted"><span>対立</span><b style="color:var(--ink)">${cs}</b><span>合意</span></div>
+  <p class="hint">支持根拠・未対応の批判・採択状況から算出する例示指標です。</p></section></aside>
+  <section class="card" style="margin-bottom:0"><h2>討論タイムライン <span class="cnt" id="debCnt">${P.debateShown}/${P.debate.length}</span></h2>
+   <div class="chat" id="chat">${chatHTML()}</div>
+   <div class="composer"><div class="qchips">${chips.map(c=>`<button class="qchip" data-act="chip" data-t="${esc(c[1])}">${c[0]}</button>`).join('')}</div>
+    <div class="cr"><textarea id="draft" placeholder="研究者として反論・条件変更・質問を入力（Ctrl+Enterで送信）">${esc(RT.draft)}</textarea><button class="btn pri" data-act="send">発言する</button></div>
+    <p class="hint">キーワード（予算・期間・安全・条件・反論・データ・変数名など）に応じて、該当するエージェントが応答し、計画や評価が更新されます。</p></div>
+  </section></div>`;
+}
+
+// ----- 04 evidence -----
+function viewEvidence(){
+ const acts=`<button class="btn" data-act="importEv">資料を取込（.txt/.csv/.json）</button><button class="btn" data-act="toggleAddEv">＋ 手動で追加</button>`;
+ const head=pageHead('04','根拠・反証','内蔵の架空資料とローカルから取り込んだ資料を整理し、信頼性・関連度の評価、批判レビュー、棄却条件、検証計画、研究倫理・安全の確認を行います。',acts);
+ const ev=P.evidence;
+ const addForm=RT.showAddEv?`<div class="addform"><b>資料を手動で追加</b><label class="f">タイトル</label><input type="text" id="ae_title">
+  <div class="row"><div><label class="f">種別</label><select class="in" id="ae_type">${EV_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div><div><label class="f">発表年</label><input type="number" id="ae_year" value="${new Date().getFullYear()}"></div><div><label class="f">標本数・事例数</label><input type="number" id="ae_n" placeholder="不明なら空欄"></div><div><label class="f">立場</label><select class="in" id="ae_stance"><option value="support">支持</option><option value="contradict">反証</option><option value="neutral" selected>中立</option></select></div></div>
+  <label class="f">概要</label><textarea id="ae_sum" rows="2"></textarea><div class="acts" style="margin-top:10px"><button class="btn pri" data-act="addEv">追加する</button><button class="btn" data-act="toggleAddEv">閉じる</button></div></div>`:'';
+ if(!ev.length&&!P.critiques)return head+staleBanner()+addForm+emptyBox('▤','まだ資料調査が行われていません。','critic','根拠調査〜批判レビューまで即時実行');
+ const sup=ev.filter(e=>e.stance==='support').length,con=ev.filter(e=>e.stance==='contradict').length;const avg=avgRel(activeEv(P));
+ const evHTML=ev.map(e=>`<div class="ev${e.accepted===false?' off':''}"><div class="t">${esc(e.title)}</div>
+  <div class="meta">${e.source==='builtin'?'<span class="chip mock">架空・模擬データ</span>':'<span class="chip info">取込資料</span>'}<span class="chip">${esc(e.type)}</span><span class="chip">${esc(e.year)}年</span><span class="chip">n=${e.n==null?'不明':esc(e.n)}</span>
+  <span class="chip ${e.stance==='support'?'good':e.stance==='contradict'?'bad':''}">${STANCE[e.stance]}</span>${e.reliability!=null?`<span class="chip ${e.reliability>=75?'good':e.reliability>=55?'warn':'bad'}">信頼性 ${relLevel(e.reliability)}</span>`:'<span class="chip">未検証</span>'}</div>
+  ${e.summary?`<div class="sum">${esc(e.summary)}</div>`:''}${e.note?`<div class="sum" style="color:var(--warn)">※ ${esc(e.note)}</div>`:''}
+  <div class="bars"><span>信頼性</span><span class="minibar"><i style="width:${e.reliability||0}%"></i></span><b>${e.reliability!=null?e.reliability:'—'}</b><span>関連度</span><span class="minibar"><i style="width:${e.relevance||0}%;background:var(--info)"></i></span><b>${e.relevance!=null?e.relevance:'—'}</b></div>
+  <div style="margin-top:6px">${(e.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
+  <div class="foot">立場：<select data-evstance="${e.id}">${Object.keys(STANCE).map(s=>`<option value="${s}"${e.stance===s?' selected':''}>${STANCE[s]}</option>`).join('')}</select>
+   <button class="btn sm" data-act="evAccept" data-id="${e.id}">${e.accepted===false?'根拠に含める':'根拠から除外'}</button>${e.source!=='builtin'?`<button class="btn sm danger" data-act="evDel" data-id="${e.id}">削除</button>`:''}</div></div>`).join('');
+ const crs=P.critiques||[];
+ const crHTML=crs.length?crs.map(c=>`<div class="crit s${c.sev}${c.status!=='未対応'?' closed':''}"><div class="h"><span class="chip ${c.sev==='高'?'bad':c.sev==='中'?'warn':'info'}">重要度 ${c.sev}</span><b>${esc(c.cat)}</b><span class="chip">${c.status}</span>
+  <span style="margin-left:auto" class="acts">${c.status==='未対応'?`<button class="btn sm good" data-act="crStatus" data-id="${c.id}" data-s="対応済">対応済にする</button><button class="btn sm" data-act="crStatus" data-id="${c.id}" data-s="却下">指摘を却下</button>`:`<button class="btn sm" data-act="crStatus" data-id="${c.id}" data-s="未対応">未対応に戻す</button>`}</span></div>
+  <p>${esc(c.text)}</p><div class="sug">${esc(c.sug)}</div></div>`).join(''):'<p class="muted">批判・反証レビューは未実行です。</p>';
+ const plan=P.plan;const eth=P.ethics;
+ return head+staleBanner()+addForm+
+ `<div class="stats"><div class="stat"><span>資料数</span><b>${ev.length}</b></div><div class="stat"><span>支持</span><b style="color:var(--good)">${sup}</b></div><div class="stat"><span>反証</span><b style="color:var(--bad)">${con}</b></div><div class="stat"><span>平均信頼性</span><b>${avg!=null?avg:'—'}</b></div><div class="stat"><span>未対応の指摘</span><b>${crs.filter(c=>c.status==='未対応').length}</b></div></div>
+ <div class="grid2"><section class="card"><h2>根拠資料 <span class="cnt">関連度順</span>${task(P,'verify').status!=='done'&&task(P,'verify').status!=='approval'&&ev.length?'<button class="btn sm" data-act="runUpTo" data-k="verify" style="margin-left:auto">信頼性を検証</button>':''}</h2>
+  <p class="hint" style="margin:-4px 0 10px">信頼性＝資料種別・発表年・標本数による例示スコア。関連度＝仮説の変数との一致度。立場はプルダウンで修正できます。</p>
+  <div class="evlist">${evHTML||'<p class="muted">資料がありません。</p>'}</div></section>
+ <div><section class="card"><h2>批判・反証レビュー <span class="cnt">${crs.length}件</span>${!P.critiques?'<button class="btn sm" data-act="runUpTo" data-k="critic" style="margin-left:auto">レビューを実行</button>':''}</h2>${crHTML}</section>
+  <section class="card"><h2>この仮説が棄却される条件</h2>${P.falsification?`<ol class="fals">${P.falsification.map(f=>`<li>${esc(f)}</li>`).join('')}</ol><p class="hint">検証前に棄却条件を定めておくことで、結果の後付け解釈を防ぎます。</p>`:'<p class="muted">批判・反証レビュー後に表示されます。</p>'}</section>
+  <section class="card"><h2>検証計画（方法論AI）</h2>${plan?`<h3 style="margin-top:0">検証手法</h3>${plan.methods.map((m,i)=>`<div class="mth"><span>${i===0?'<span class="chip acc">主</span> ':i===1?'<span class="chip">補</span> ':'<span class="chip">代替</span> '}${esc(m.n)}</span><span style="display:flex;gap:10px;font-size:11px" class="muted">費用${lvl(m.cost,1)} 期間${lvl(m.time,1)} 妥当性${lvl(m.val)}</span></div>`).join('')}
+   <h3>測定項目</h3><div class="tblwrap"><table class="tbl"><tbody>${plan.measures.map(m=>`<tr><td><span class="chip ${m.role==='独立変数'?'info':m.role==='従属変数'?'acc':''}">${m.role}</span></td><td><b>${esc(m.n)}</b></td><td class="muted">${esc(m.u)}</td><td style="font-size:12.5px">${esc(m.m)}</td></tr>`).join('')}${plan.controls.map(m=>`<tr><td><span class="chip warn">統制変数</span></td><td><b>${esc(m.n)}</b></td><td class="muted">${esc(m.u)}</td><td style="font-size:12.5px">${esc(m.m)}</td></tr>`).join('')}</tbody></table></div>
+   <h3>研究デザイン</h3><p style="margin:0;font-size:13px">${esc(plan.design)}。${esc(plan.levels)}。</p>`:'<p class="muted">変数定義・測定計画は未実行です。</p>'}</section>
+  <section class="card"><h2>研究倫理・安全チェック</h2>${eth?eth.map(i=>`<div class="ethi"><span class="chip ${i.level==='要確認'?'warn':'good'}">${i.level}</span><div><b>${esc(i.text)}</b><div class="a">${esc(i.action)}</div></div></div>`).join(''):'<p class="muted">研究倫理・安全性確認は未実行です。</p>'}</section>
+ </div></div>`;
+}
+
+// ----- 05 compare -----
+function radarSVG(cands){
+ const axes=[['evidence','根拠の充足度'],['testability','検証可能性'],['lowBurden','実験負担の低さ'],['importance','研究上の重要性'],['novelty','新規性（例示）']];
+ const cx=180,cy=150,R=105,N=axes.length;const pt=(i,v)=>{const ang=-Math.PI/2+i*2*Math.PI/N;return[cx+Math.cos(ang)*R*v/100,cy+Math.sin(ang)*R*v/100]};
+ let g='';[25,50,75,100].forEach(l=>{g+=`<polygon class="grid" points="${axes.map((_,i)=>pt(i,l).join(',')).join(' ')}"/>`});
+ axes.forEach((a,i)=>{const[x,y]=pt(i,100);const[lx,ly]=pt(i,122);g+=`<line class="grid" x1="${cx}" y1="${cy}" x2="${x}" y2="${y}"/><text x="${lx}" y="${ly+4}" text-anchor="middle">${a[1]}</text>`});
+ cands.forEach(c=>{const col=PALETTE[P.candidates.indexOf(c)%PALETTE.length];const v={evidence:c.scores.evidence,testability:c.scores.testability,lowBurden:100-c.scores.burden,importance:c.scores.importance,novelty:c.scores.novelty};
+  g+=`<polygon points="${axes.map((a,i)=>pt(i,v[a[0]]).join(',')).join(' ')}" fill="${col}" fill-opacity=".12" stroke="${col}" stroke-width="2"/>`;
+  axes.forEach((a,i)=>{const[x,y]=pt(i,v[a[0]]);g+=`<circle cx="${x}" cy="${y}" r="3" fill="${col}"/>`})});
+ return`<svg class="radar" viewBox="0 0 360 300" style="width:100%;max-width:440px;height:auto" role="img" aria-label="仮説比較レーダーチャート">${g}</svg>`;
+}
+function viewCompare(){
+ const acts=`<button class="btn" data-act="regenCand">↻ 新しい仮説を再生成</button>`;
+ const head=pageHead('05','新仮説比較','仮説創出AIが組合せルールで提示した研究方向と主仮説を、5つの例示指標で比較します。研究者は候補を採択・保留・却下・修正でき、採択した仮説を主仮説として研究フローを再実行できます。',acts);
+ if(!P.candidates)return head+staleBanner()+emptyBox('◈','まだ新しい仮説が生成されていません。','evaluate','前工程を含めて即時実行');
+ const cs=P.candidates;const w=P.weights;
+ if(!RT.cmpSel||!RT.cmpSel.every(id=>cs.some(c=>c.id===id)))RT.cmpSel=cs.slice(0,4).map(c=>c.id);
+ const sorted=cs.slice().sort((x,y)=>y.total-x.total);const best=sorted[0];
+ const sc=(l,v,inv)=>`<span>${l}</span><span class="minibar"><i style="width:${v}%;${inv?'background:var(--warn)':''}"></i></span><b>${v}</b>`;
+ const stChip=s=>s==='採択'?'good':s==='却下'?'bad':s==='保留'?'warn':s==='主仮説'?'acc':'';
+ const cards=cs.map(c=>{const ed=RT.editing===c.id;return`<div class="cand${c.origin==='主仮説'?' main':''}${c.status==='却下'?' rej':''}">
+  <div class="hd"><span class="lb">${c.label}</span><span class="chip">${esc(c.type)}</span><span class="chip ${stChip(c.status)}">${esc(c.status)}</span>${c.edited?'<span class="chip info">研究者修正</span>':''}<span class="tot">${c.total}<small> 点</small></span></div>
+  ${ed?`<textarea id="candEdit" rows="4">${esc(c.text)}</textarea>`:`<p class="tx">${esc(c.text)}</p>`}
+  <div class="muted" style="font-size:11.5px">提案：${esc(c.origin)}　変数：${c.vars.map(esc).join('・')}</div>
+  <div class="sc">${sc('根拠の充足度',c.scores.evidence)}${sc('検証可能性',c.scores.testability)}${sc('実験負担',c.scores.burden,1)}${sc('研究上の重要性',c.scores.importance)}${sc('新規性（例示）',c.scores.novelty)}</div>
+  <div class="ft">${ed?`<button class="btn sm pri" data-act="candSave" data-id="${c.id}">保存して再評価</button><button class="btn sm" data-act="candCancel">取消</button>`:
+   c.origin==='主仮説'?`<button class="btn sm" data-act="candEdit" data-id="${c.id}">修正して再実行</button><span class="muted" style="font-size:11.5px">現在の主仮説</span>`:
+   `<button class="btn sm good" data-act="candStatus" data-id="${c.id}" data-s="採択">採択</button><button class="btn sm" data-act="candStatus" data-id="${c.id}" data-s="保留">保留</button><button class="btn sm danger" data-act="candStatus" data-id="${c.id}" data-s="却下">却下</button><button class="btn sm" data-act="candEdit" data-id="${c.id}">修正</button>${c.status==='採択'?`<button class="btn sm pri" data-act="setMain" data-id="${c.id}">主仮説にして再実行</button>`:''}`}</div></div>`}).join('');
+ const wl=[['evidence','根拠の充足度'],['testability','検証可能性'],['burden','実験負担の低さ'],['importance','研究上の重要性'],['novelty','新規性（例示）']];
+ const selC=cs.filter(c=>RT.cmpSel.includes(c.id));
+ return head+staleBanner()+
+ `<div class="banner acc"><span>現在の重み付けでの最高評価：<b>${best.label}（${esc(best.type)}）総合 ${best.total}点</b>　— 評価値はルールに基づく例示であり、仮説の真偽や新規性を保証するものではありません。</span></div>
+ <div class="cands" style="margin-bottom:16px">${cards}</div>
+ <section class="card"><h2>評価の重み付け</h2><div class="wts">${wl.map(([k,l])=>`<div><label><span>${l}</span><b data-wv="${k}">${w[k]}</b></label><input type="range" min="0" max="50" value="${w[k]}" data-w="${k}"></div>`).join('')}</div><p class="hint">重みを変えると総合点・順位・チャートが即座に更新されます。実験負担は低いほど高得点として合算します。</p></section>
+ <div class="chartrow"><section class="card"><h2>指標別比較（レーダー）</h2><div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;margin-bottom:6px">${cs.map(c=>`<label class="chk" style="margin:0"><input type="checkbox" data-cmp="${c.id}"${RT.cmpSel.includes(c.id)?' checked':''}> ${c.label}</label>`).join('')}</div>
+  <div style="display:flex;justify-content:center">${radarSVG(selC)}</div><div class="legend">${selC.map(c=>`<span style="--c:${PALETTE[P.candidates.indexOf(c)%PALETTE.length]}">${c.label} ${esc(c.type)}</span>`).join('')}</div></section>
+ <section class="card"><h2>総合点ランキング</h2><div id="rank">${rankHTML()}</div>
+  <div class="tblwrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>仮説</th><th>根拠</th><th>検証</th><th>負担</th><th>重要</th><th>新規</th><th>総合</th></tr></thead><tbody>${sorted.map(c=>`<tr><td><b>${c.label}</b> <span class="muted" style="font-size:11.5px">${esc(c.type)}</span></td><td>${c.scores.evidence}</td><td>${c.scores.testability}</td><td>${c.scores.burden}</td><td>${c.scores.importance}</td><td>${c.scores.novelty}</td><td><b>${c.total}</b></td></tr>`).join('')}</tbody></table></div>
+  <div class="disc">指標の算出：根拠＝関連資料の立場×信頼性、検証可能性＝測定可能な変数・数値基準・条件の明示、実験負担＝検証手法の費用・期間と変数の数、重要性＝分野の重要度と成果変数の有無、新規性＝仮説類型と既存資料の少なさ（いずれも例示）。</div></section></div>`;
+}
+function rankHTML(){const s=P.candidates.slice().sort((x,y)=>y.total-x.total);return s.map((c,i)=>`<div class="hbar"><b>${c.label}</b><span class="b"><i style="width:${c.total}%;background:${PALETTE[P.candidates.indexOf(c)%PALETTE.length]}"></i></span><span style="font-family:var(--mono);font-weight:700">${c.total}</span></div>`).join('')}
+
+// ----- 06 report -----
+function buildReport(p){
+ const a=p.analysis,F=a?FIELDS[a.field]:null,ev=activeEv(p);const na='<p class="na">（未実行）</p>';
+ const sorted=(p.candidates||[]).slice().sort((x,y)=>y.total-x.total);
+ const nexts=[];
+ const openHi=(p.critiques||[]).filter(c=>c.status==='未対応'&&c.sev==='高');
+ if(openHi.length)nexts.push(`重要度「高」の未対応指摘（${openHi.map(c=>c.cat).join('・')}）への対応方針を決定する。`);
+ const adopted=(p.candidates||[]).filter(c=>c.status==='採択');
+ if(adopted.length)nexts.push(`採択した仮説（${adopted.map(c=>c.label).join('・')}）について、検証計画と棄却条件を具体化する。`);
+ if(ev.filter(e=>e.stance==='support'&&(e.reliability||0)>=75).length<2)nexts.push('信頼性の高い支持根拠（査読論文・公的報告・計測データ）を追加収集する。');
+ if(p.ethics&&p.ethics.some(i=>i.level==='要確認'))nexts.push('研究倫理・安全の要確認事項について、関係者と対応方針を合意する。');
+ if(p.plan)nexts.push(`「${p.plan.methods[0].n}」による予備検証の実施計画（期間・費用・担当）を作成する。`);
+ if(!nexts.length)nexts.push('研究フローを実行し、評価結果を確認する。');
+ const tdone=p.tasks.filter(t=>t.status==='done').length;
+ return`<div class="rp-title"><div class="rp-kicker">RIHRP 研究報告書（ドラフト）</div><div class="rp-name">Research Inspiration &amp; Hypothesis Refinement Platform／研究着想・仮説洗練プラットフォーム</div><h1>${esc(p.title)}</h1>
+ <table class="rp-meta"><tr><th>研究分野</th><td>${F?esc(F.name):'—'}</td><th>改訂</th><td>r${p.revision||1}</td></tr><tr><th>作成日時</th><td>${esc(p.reportAt||nowStr())}</td><th>工程</th><td>${tdone}/${p.tasks.length} 完了</td></tr></table>
+ <p class="rp-warn">本報告書は、オフライン環境のルールベース・シミュレーションにより自動生成した草案です。AIモデルによる推論ではなく、内蔵資料はすべて架空の模擬データです。評価値は例示指標であり、科学的な真偽や新規性を保証しません。</p></div>
+ <h2>1. 研究概要</h2><h3>背景・目的</h3><p>${esc(p.background)||'—'}</p><h3>前提条件・適用範囲</h3><p>${esc(p.conditions)||'—'}</p>
+ <h3>研究条件・制約</h3><p>予算：${esc(p.constraints.budget)}　期間：${esc(p.constraints.period)}　安全性・倫理重視：${p.constraints.safety?'あり':'なし'}</p>
+ <h2>2. 主仮説と構造</h2><blockquote>${esc(p.hypothesis)}</blockquote>
+ ${a?`<table><tr><th>独立変数</th><td>${esc(a.iv)}</td><th>従属変数</th><td>${esc(a.dv)}</td></tr><tr><th>変化の方向</th><td>${esc(a.dir||'—')}</td><th>数値基準</th><td>${esc(a.nums.join('、')||'なし')}</td></tr><tr><th>因果メカニズム</th><td>${a.hasMech?'記述あり':'記述なし'}</td><th>適用条件／対照</th><td>${a.hasCond?'あり':'なし'}／${a.hasComp?'あり':'なし'}</td></tr></table><p>構造スコア：${a.quality} / 5</p>`:na}
+ <h2>3. 研究作業の実行状況</h2><table><tr><th>タスク</th><th>担当</th><th>状態</th><th>完了日時</th></tr>${TASK_DEFS.map(d=>{const t=task(p,d.key);return`<tr><td>${esc(d.name)}</td><td>${AGENTS[d.agent].name}</td><td>${ST_LABEL[t.status]}</td><td>${esc(t.endedAt||'—')}</td></tr>`}).join('')}</table>
+ <h2>4. 根拠の整理</h2>${ev.length?`<p>関連資料${ev.length}件（支持${ev.filter(e=>e.stance==='support').length}件・反証${ev.filter(e=>e.stance==='contradict').length}件・中立${ev.filter(e=>e.stance==='neutral').length}件）、平均信頼性${avgRel(ev)!=null?avgRel(ev):'—'}点。</p>
+ <table><tr><th>資料</th><th>種別</th><th>年</th><th>立場</th><th>信頼性</th><th>関連度</th></tr>${ev.slice(0,12).map(e=>`<tr><td>${esc(e.title)}${e.source==='builtin'?'〔架空〕':'〔取込〕'}${e.note?`<br><small>${esc(e.note)}</small>`:''}</td><td>${esc(e.type)}</td><td>${esc(e.year)}</td><td>${STANCE[e.stance]}</td><td>${e.reliability!=null?e.reliability:'—'}</td><td>${e.relevance}</td></tr>`).join('')}</table>`:na}
+ <h2>5. 批判・反証レビュー</h2>${p.critiques?`<table><tr><th>重要度</th><th>観点</th><th>指摘</th><th>状態</th></tr>${p.critiques.map(c=>`<tr><td>${c.sev}</td><td>${esc(c.cat)}</td><td>${esc(c.text)}<br><small>改善案：${esc(c.sug)}</small></td><td>${c.status}</td></tr>`).join('')}</table>`:na}
+ ${p.falsification?`<h3>棄却条件</h3><ol>${p.falsification.map(f=>`<li>${esc(f)}</li>`).join('')}</ol>`:''}
+ <h2>6. 検証計画</h2>${p.plan?`<p><b>研究デザイン：</b>${esc(p.plan.design)}。${esc(p.plan.levels)}。</p><ul>${p.plan.methods.map((m,i)=>`<li>${i===0?'主':i===1?'補':'代替'}：${esc(m.n)}（費用${m.cost}/5・期間${m.time}/5・妥当性${m.val}/5）</li>`).join('')}</ul>
+ <table><tr><th>区分</th><th>変数</th><th>単位</th><th>測定方法</th></tr>${p.plan.measures.map(m=>`<tr><td>${m.role}</td><td>${esc(m.n)}</td><td>${esc(m.u)}</td><td>${esc(m.m)}</td></tr>`).join('')}${p.plan.controls.map(m=>`<tr><td>統制変数</td><td>${esc(m.n)}</td><td>${esc(m.u)}</td><td>${esc(m.m)}</td></tr>`).join('')}</table>`:na}
+ <h2>7. 研究倫理・安全</h2>${p.ethics?`<table><tr><th>区分</th><th>項目</th><th>対応方針</th></tr>${p.ethics.map(i=>`<tr><td>${i.level}</td><td>${esc(i.text)}</td><td>${esc(i.action)}</td></tr>`).join('')}</table>`:na}
+ <h2>8. 複数AI討論の記録</h2>${p.debate.length?`<table><tr><th>ラウンド</th><th>発言者</th><th>内容</th></tr>${p.debate.map(m=>`<tr><td>${esc((ROUND_T[m.round]||'').split('　')[0])}</td><td>${esc(AGENTS[m.agent].name)}</td><td>${esc(m.text)}</td></tr>`).join('')}</table>`:na}
+ <h2>9. 新仮説の比較</h2>${sorted.length?`<p>重み：根拠${p.weights.evidence}・検証可能性${p.weights.testability}・実験負担の低さ${p.weights.burden}・重要性${p.weights.importance}・新規性${p.weights.novelty}</p>
+ <table><tr><th>仮説</th><th>内容</th><th>根拠</th><th>検証</th><th>負担</th><th>重要</th><th>新規</th><th>総合</th><th>判断</th></tr>${sorted.map(c=>`<tr><td>${c.label}<br><small>${esc(c.type)}</small></td><td>${esc(c.text)}</td><td>${c.scores.evidence}</td><td>${c.scores.testability}</td><td>${c.scores.burden}</td><td>${c.scores.importance}</td><td>${c.scores.novelty}</td><td><b>${c.total}</b></td><td>${esc(c.status)}</td></tr>`).join('')}</table>`:na}
+ <h2>10. 研究者の判断記録と所見</h2>${p.decisions.length?`<ul>${p.decisions.slice(-30).map(d=>`<li><small>${esc(d.at)}</small>　${esc(d.text)}</li>`).join('')}</ul>`:'<p>判断記録はありません。</p>'}
+ ${p.reportNote?`<h3>研究者所見</h3><p class="pre">${esc(p.reportNote)}</p>`:''}
+ <h2>11. 次のステップ（提案）</h2><ol>${nexts.map(n=>`<li>${esc(n)}</li>`).join('')}</ol>
+ <p class="rp-foot">Generated by RIHRP Offline Research Studio（Research Inspiration &amp; Hypothesis Refinement Platform／研究着想・仮説洗練プラットフォーム）— offline rule-based simulation</p>`;
+}
+const REPORT_CSS=`.report{background:#fff;color:#111827;max-width:900px;margin:0 auto;padding:40px 46px;border-radius:6px;font-family:"Yu Mincho","YuMincho","Hiragino Mincho ProN","Yu Gothic",serif;font-size:13.5px;line-height:1.8;box-shadow:0 4px 24px rgba(15,23,42,.12)}
+.report h1{font-size:22px;margin:6px 0 12px;font-family:"Yu Gothic","Meiryo",sans-serif}.report h2{font-size:15.5px;margin:28px 0 8px;padding-bottom:4px;border-bottom:2px solid #0f766e;font-family:"Yu Gothic","Meiryo",sans-serif}
+.report h3{font-size:13.5px;margin:14px 0 4px;font-family:"Yu Gothic","Meiryo",sans-serif}.report p{margin:4px 0}.report table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px}
+.report th,.report td{border:1px solid #d6dde4;padding:5px 8px;text-align:left;vertical-align:top}.report th{background:#f1f5f7;font-weight:700;white-space:nowrap}
+.report blockquote{margin:8px 0;padding:10px 14px;border-left:4px solid #0f766e;background:#f0faf8}.report .rp-kicker{font:700 11.5px Consolas,monospace;letter-spacing:.12em;color:#0f766e}
+.report .rp-warn{font-size:12px;background:#fff7e6;border:1px solid #f3d7a0;padding:8px 12px;border-radius:4px}.report .na{color:#6b7280}.report small{color:#4b5563}
+.report .rp-meta th{width:16%}.report .rp-name{font-size:11.5px;color:#4b5563;margin-top:2px}.report .rp-foot{margin-top:30px;font-size:11px;color:#6b7280;text-align:right}.report .pre{white-space:pre-wrap}
+@media (max-width:700px){.report{padding:22px 16px}}@media print{.report{box-shadow:none;padding:0;max-width:none}}`;
+function viewReport(){
+ const head=pageHead('06','研究報告書','研究過程（仮説・根拠・批判・討論・比較・研究者の判断）を報告書として統合します。HTML・テキスト・JSONで保存、またはブラウザの印刷機能でPDF化できます。',
+  `<button class="btn pri" data-act="dlHtml">HTMLで保存</button><button class="btn" data-act="dlTxt">テキストで保存</button><button class="btn" data-act="dlJson">JSONで保存</button><button class="btn" data-act="print">印刷 / PDF</button>`);
+ const notDone=!P.reportAt;
+ return head+staleBanner()+(notDone?`<div class="banner info no-print"><span>報告書ドラフト作成タスクは未完了です。現時点のデータで報告書を表示しています。</span><button class="btn sm pri" data-act="runUpTo" data-k="report">全工程を即時実行して完成させる</button></div>`:'')+
+ `<section class="card no-print"><h2>研究者所見</h2><textarea data-bind="reportNote" rows="3" placeholder="報告書に記載する研究者の所見・判断理由を入力">${esc(P.reportNote)}</textarea><p class="hint">入力内容は報告書の「10. 研究者の判断記録と所見」に反映されます（表示は画面切替時に更新）。</p></section>
+ <div class="report" id="reportBody">${buildReport(P)}</div>`;
+}
+function reportText(){
+ const div=document.createElement('div');div.innerHTML=buildReport(P);
+ div.querySelectorAll('tr').forEach(tr=>{tr.appendChild(document.createTextNode('\n'))});
+ div.querySelectorAll('th,td').forEach(c=>{c.appendChild(document.createTextNode(' | '))});
+ div.querySelectorAll('h1,h2,h3').forEach(h=>{h.insertBefore(document.createTextNode('\n\n'+(h.tagName==='H2'?'■ ':h.tagName==='H3'?'◇ ':'')),h.firstChild);h.appendChild(document.createTextNode('\n'))});
+ div.querySelectorAll('p,li,blockquote,table').forEach(e=>{e.appendChild(document.createTextNode('\n'))});
+ div.querySelectorAll('li').forEach(e=>{e.insertBefore(document.createTextNode('・'),e.firstChild)});
+ return div.textContent.replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+}
+function fileSafe(s){return String(s||'research').replace(/[\\/:*?"<>|\s]+/g,'_').slice(0,40)}
+
+// ---------- events ----------
+document.addEventListener('click',e=>{
+ const el=e.target.closest('[data-act]');if(!el||el.disabled)return;
+ const act=el.dataset.act,k=el.dataset.k,id=el.dataset.id;
+ switch(act){
+  case'go':go(el.dataset.v);break;
+  case'newProject':{stopOrch();stopPlay();const p=newProject();DB.projects.push(p);P=p;DB.currentId=p.id;touch();go('register');toast('新しい研究を作成しました');break}
+  case'addSample':{stopOrch();stopPlay();const s=SAMPLES.find(x=>x.key===k);const p=newProject(s);DB.projects.push(p);P=p;DB.currentId=p.id;touch();go('register');toast('架空の研究事例を追加しました');break}
+  case'deleteProject':{if(!confirm(`「${P.title}」を削除します。元に戻せません。よろしいですか？`))return;stopOrch();stopPlay();DB.projects=DB.projects.filter(p=>p.id!==P.id);if(!DB.projects.length)DB.projects.push(newProject(SAMPLES[0]));P=DB.projects[0];DB.currentId=P.id;save();go('register');toast('研究を削除しました');break}
+  case'exportAll':download(`rihrp_backup_${dateTag()}.json`,JSON.stringify(DB,null,1),'application/json');toast('全研究データをJSONで保存しました');break;
+  case'exportOne':download(`rihrp_${fileSafe(P.title)}_${dateTag()}.json`,JSON.stringify({version:1,projects:[P]},null,1),'application/json');break;
+  case'importAll':$('#fileJson').click();break;
+  case'saveRev':if(!P.hypothesis.trim()){toast('研究仮説を入力してください');return}if(recordRevision('研究者による修正')){P.stale=P.tasks.some(t=>t.status!=='blocked'&&t.status!=='ready');toast('改訂 r'+P.revision+' を記録しました');render()}else toast('前回の改訂から変更はありません');break;
+  case'restoreRev':{const r=P.revisions.find(x=>x.rev===+el.dataset.i);if(r&&confirm(`r${r.rev} の仮説と前提条件を復元します。よろしいですか？`)){P.hypothesis=r.hypothesis;P.conditions=r.conditions;P.stale=true;touch();render();toast('r'+r.rev+' を復元しました')}break}
+  case'startFlow':startFlow();break;
+  case'run':startOrch();break;
+  case'pause':stopOrch('⏸ 研究者が一時停止');touch();render();break;
+  case'step':stepOnce();break;
+  case'resetRun':if(confirm('全タスクをリセットして最初から再実行します（取込資料・採択済み候補・判断記録は保持）。よろしいですか？')){resetAll();decide('研究フロー全体を再実行');startOrch()}break;
+  case'approve':approve(k);break;
+  case'reject':reject(k);break;
+  case'rerun':rerun(k);break;
+  case'runUpTo':runUpTo(k);break;
+  case'playDebate':playDebate();renderDebateCtrls();break;
+  case'pausePlay':stopPlay();renderChat();renderDebateCtrls();break;
+  case'showAll':stopPlay();P.debateShown=P.debate.length;touch();renderChat();renderDebateCtrls();break;
+  case'regenDebate':{if(!P.hypothesis.trim())return;stopPlay();const t=task(P,'debate');if(t.status==='done'||t.status==='approval'){EFFECTS.debate(P);log('↻ 討論を再生成');touch();render();setTimeout(playDebate,200)}else runUpTo('debate');break}
+  case'chip':RT.draft=el.dataset.t;{const d=$('#draft');if(d){d.value=RT.draft;d.focus()}}break;
+  case'send':sendInterject();break;
+  case'importEv':if(!P.hypothesis.trim()){toast('研究仮説を入力してください');return}$('#fileEv').click();break;
+  case'toggleAddEv':RT.showAddEv=!RT.showAddEv;render();break;
+  case'addEv':{const t=$('#ae_title').value.trim();if(!t){toast('タイトルを入力してください');return}if(!P.hypothesis.trim()){toast('研究仮説を入力してください');return}
+   addImported({title:t,type:$('#ae_type').value,year:$('#ae_year').value,n:$('#ae_n').value,stance:$('#ae_stance').value,summary:$('#ae_sum').value,source:'manual'});
+   RT.showAddEv=false;decide('資料を手動追加：'+t);refreshCritiques(P);scoreAll(P);touch();render();toast('資料を追加しました');break}
+  case'evAccept':{const ev=P.evidence.find(x=>x.id===id);if(ev){ev.accepted=ev.accepted===false;decide(`資料「${short(ev.title,30)}」を${ev.accepted?'根拠に含める':'根拠から除外'}`);refreshCritiques(P);scoreAll(P);touch();render()}break}
+  case'evDel':{const ev=P.evidence.find(x=>x.id===id);if(ev&&confirm(`「${ev.title}」を削除しますか？`)){P.evidence=P.evidence.filter(x=>x.id!==id);refreshCritiques(P);scoreAll(P);touch();render()}break}
+  case'crStatus':{const c=(P.critiques||[]).find(x=>x.id===id);if(c){c.status=el.dataset.s;decide(`指摘「${c.cat}」を${c.status}に変更`);touch();render()}break}
+  case'regenCand':{if(!P.candidates){runUpTo('evaluate');return}P.genCount=(P.genCount||0)+1;genCandidates(P);RT.cmpSel=null;log('↻ 新仮説を再生成');decide('新仮説を再生成');touch();render();toast('新しい仮説を生成しました');break}
+  case'candStatus':{const c=P.candidates.find(x=>x.id===id);if(c){c.status=c.status===el.dataset.s?'候補':el.dataset.s;decide(`${c.label}（${c.type}）を「${c.status}」に設定`);touch();render()}break}
+  case'candEdit':RT.editing=id;render();{const t=$('#candEdit');if(t)t.focus()}break;
+  case'candCancel':RT.editing=null;render();break;
+  case'candSave':{const c=P.candidates.find(x=>x.id===id);const v=$('#candEdit').value.trim();if(!c||!v)return;
+   if(c.origin==='主仮説'){RT.editing=null;P.hypothesis=v;decide('主仮説を修正：'+short(v,60));startFlow();return}
+   c.text=v;c.edited=true;const f=findVars(v,A(P).field).map(x=>x.n);if(f.length>=2)c.vars=uniq(f);scoreCand(c,P);RT.editing=null;decide(`${c.label}を修正`);touch();render();toast(c.label+' を再評価しました');break}
+  case'setMain':{const c=P.candidates.find(x=>x.id===id);if(!c||!confirm(`${c.label}を主仮説として採用し、研究フローを再実行します。よろしいですか？`))return;
+   decide(`${c.label}（${c.type}）を主仮説に採択`);c.status='候補';P.hypothesis=c.text;P.candidates=P.candidates.filter(x=>x.id!==c.id);recordRevision(`${c.label}（${c.type}）を主仮説に採択`);resetAll(true);P.stale=false;go('tasks');startOrch();break}
+  case'dlHtml':{const html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(P.title)} 研究報告書</title><style>body{margin:0;background:#eef2f5;padding:24px}${REPORT_CSS}</style></head><body><div class="report">${buildReport(P)}</div></body></html>`;
+   download(`RIHRP報告書_${fileSafe(P.title)}_${dateTag()}.html`,html,'text/html;charset=utf-8');toast('報告書をHTMLで保存しました');break}
+  case'dlTxt':download(`RIHRP報告書_${fileSafe(P.title)}_${dateTag()}.txt`,reportText());toast('報告書をテキストで保存しました');break;
+  case'dlJson':download(`rihrp_${fileSafe(P.title)}_${dateTag()}.json`,JSON.stringify({version:1,projects:[P]},null,1),'application/json');break;
+  case'print':window.print();break;
+ }
+});
+function setPath(obj,path,val){const ks=path.split('.');let o=obj;for(let i=0;i<ks.length-1;i++)o=o[ks[i]];o[ks[ks.length-1]]=val}
+document.addEventListener('input',e=>{
+ const t=e.target;
+ if(t.dataset.bind&&t.type!=='checkbox'&&t.tagName!=='SELECT'){
+  setPath(P,t.dataset.bind,t.value);
+  if(['hypothesis','conditions','field'].includes(t.dataset.bind)&&P.analysis)P.stale=true;
+  if(t.dataset.bind==='title')renderHeader();
+  const lc=$('#liveCheck');if(lc&&['hypothesis','conditions'].includes(t.dataset.bind))lc.innerHTML=liveCheckHTML();
+  touch();renderNav();
+ }
+ if(t.id==='draft')RT.draft=t.value;
+ if(t.dataset.w){P.weights[t.dataset.w]=+t.value;const b=document.querySelector(`[data-wv="${t.dataset.w}"]`);if(b)b.textContent=t.value;scoreAll(P);touch();
+  clearTimeout(RT.wT);RT.wT=setTimeout(()=>{const y=window.scrollY;render();window.scrollTo(0,y)},180)}
+});
+document.addEventListener('change',e=>{
+ const t=e.target;
+ if(t.id==='projSel'){stopOrch();stopPlay();P=DB.projects.find(p=>p.id===t.value)||P;DB.currentId=P.id;RT.cmpSel=null;RT.draft='';touch();render();return}
+ if(t.id==='speedSel'){DB.settings.speed=+t.value;touch();return}
+ if(t.id==='fileJson'){if(t.files[0])importAll(t.files[0]);t.value='';return}
+ if(t.id==='fileEv'){if(t.files.length)importEvidenceFiles(t.files);t.value='';return}
+ if(t.dataset.bind&&(t.tagName==='SELECT'||t.type==='checkbox')){
+  setPath(P,t.dataset.bind,t.type==='checkbox'?t.checked:t.value);
+  if(t.dataset.bind==='field'){if(P.analysis)P.stale=true;const lc=$('#liveCheck');if(lc)lc.innerHTML=liveCheckHTML()}
+  if(t.dataset.bind.startsWith('constraints')){if(P.plan)P.plan=makePlan(P);if(P.ethics)P.ethics=ethicsCheck(P);if(P.critiques)refreshCritiques(P);scoreAll(P);decide(`研究条件を変更（${t.dataset.bind==='constraints.safety'?'安全性重視：'+(t.checked?'あり':'なし'):t.value}）`)}
+  touch();renderNav();return;
+ }
+ if(t.dataset.evstance){const ev=P.evidence.find(x=>x.id===t.dataset.evstance);if(ev){ev.stance=t.value;ev.userStance=true;ev.note='研究者が立場を「'+STANCE[t.value]+'」に修正';decide(`資料「${short(ev.title,30)}」の立場を${STANCE[t.value]}に修正`);refreshCritiques(P);scoreAll(P);touch();render()}return}
+ if(t.dataset.cmp){const id=t.dataset.cmp;RT.cmpSel=RT.cmpSel||[];if(t.checked){if(!RT.cmpSel.includes(id))RT.cmpSel.push(id)}else RT.cmpSel=RT.cmpSel.filter(x=>x!==id);const y=window.scrollY;render();window.scrollTo(0,y)}
+});
+document.addEventListener('keydown',e=>{if(e.target.id==='draft'&&e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();sendInterject()}});
+window.addEventListener('beforeunload',()=>{try{localStorage.setItem(STORE_KEY,JSON.stringify(DB))}catch(e){}});
+
+// ---------- boot ----------
+(function boot(){
+ const st=document.createElement('style');st.textContent=REPORT_CSS;document.head.appendChild(st);
+ load();render();save();
+})();
+</script>
+</body>
+</html>
