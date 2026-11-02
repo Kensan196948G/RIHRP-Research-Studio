@@ -17,7 +17,8 @@
   `RIHRP_CF_ACCESS_ALLOWED_EMAILS` に一致する利用者にだけアプリのセッションを発行する（自動ログイン）。
 - 信頼の境界:
   - アプリは 127.0.0.1:18110 でのみ待ち受け、外部からは Tunnel + Access 経由でのみ到達できる。
-  - `RIHRP_CF_ACCESS_LOOPBACK_ONLY=true`（既定）では、ループバック以外からの `/api/auth/access` を拒否する。
+  - `RIHRP_CF_ACCESS_LOOPBACK_ONLY` は任意の追加防御（既定 false）。uvicorn は proxy headers を既定で信頼するため、
+    Tunnel 経由の `request.client.host` は利用者の実 IP になり、この判定は `--no-proxy-headers` のときだけ意味を持つ。
   - **`Cf-Access-Authenticated-User-Email` のような平文ヘッダーは信頼しない**（JWT 検証を必須にする）。
   - 許可 email が空のときは全拒否（fail closed）。未登録ユーザーの自動作成は既定で無効。
 - パスワードログイン（`/api/auth/login`）は開発・フォールバック用に残すが、本番の入口は Cloudflare Access とする。

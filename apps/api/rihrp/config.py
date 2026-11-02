@@ -31,8 +31,9 @@ class Settings(BaseSettings):
     cf_access_aud: str = ""
     # 自動ログインを許可する email（カンマ区切り）。空なら全拒否（fail closed）。
     cf_access_allowed_emails: str = ""
-    # トンネル経由（127.0.0.1 からの接続）だけを信頼する。
-    cf_access_loopback_only: bool = True
+    # ループバック接続だけを許可する追加防御。uvicorn は既定で proxy headers を信頼するため
+    # Tunnel 経由の request.client.host は実 IP になる（--no-proxy-headers のときだけ有効）。
+    cf_access_loopback_only: bool = False
     # 未登録ユーザーの自動作成（既定は無効）。
     cf_access_provision: bool = False
     cf_access_default_role: str = "viewer"

@@ -48,13 +48,14 @@ RIHRP_TRUST_CF_ACCESS=true
 RIHRP_CF_ACCESS_TEAM_DOMAIN=winter-lake-f4c9.cloudflareaccess.com
 RIHRP_CF_ACCESS_AUD=<Access アプリの AUD タグ>
 RIHRP_CF_ACCESS_ALLOWED_EMAILS=<許可する email（カンマ区切り）>
-RIHRP_CF_ACCESS_LOOPBACK_ONLY=true
+RIHRP_CF_ACCESS_LOOPBACK_ONLY=false
 RIHRP_CF_ACCESS_PROVISION=false
 ```
 
 - AUD は Cloudflare API（`/accounts/<id>/access/apps/<app id>`）の `aud`、team domain は Access のログイン URL から確認できる。
 - 確認: `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:18110/api/auth/access` は **401**（Assertion 無し）を返す。
-  ループバック外からの接続は **403**、未設定なら **404**。
+  未設定なら **404**。`LOOPBACK_ONLY=true` のときはループバック外からの接続が **403** になるが、
+  uvicorn は proxy headers を既定で信頼するため Tunnel 経由では client host が実 IP になり、通常は false のまま使う。
 - 自動ログインを止める（切り戻し）: `RIHRP_TRUST_CF_ACCESS=false` にして `systemctl --user restart rihrp.service`。
   パスワードログイン（`/api/auth/login`）はそのまま使える。
 - 注意: 許可 email が空のときは全拒否（fail closed）。ユーザーは `users.email` と Access の email を一致させる。

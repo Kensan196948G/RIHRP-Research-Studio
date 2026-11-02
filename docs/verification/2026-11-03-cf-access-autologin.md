@@ -54,11 +54,18 @@ RIHRP_TRUST_CF_ACCESS=true
 RIHRP_CF_ACCESS_TEAM_DOMAIN=winter-lake-f4c9.cloudflareaccess.com
 RIHRP_CF_ACCESS_AUD=<Access アプリの AUD>
 RIHRP_CF_ACCESS_ALLOWED_EMAILS=<単一の email>
-RIHRP_CF_ACCESS_LOOPBACK_ONLY=true
+RIHRP_CF_ACCESS_LOOPBACK_ONLY=false
 RIHRP_CF_ACCESS_PROVISION=false
 ```
 
 Cloudflare Access 側: アプリ「RIHRP Research Studio」の allow policy を **単一 email のみ**に絞る（ドメイン許可は削除）。
+
+### 4.1 設計の修正（実測に基づく）
+
+- 配備前の実測で、uvicorn は proxy headers を既定で信頼し、Tunnel 経由の `request.client.host` が
+  **利用者の実 IP**（例 `2001:268:...`）になることを確認した（`journalctl -u rihrp.service`）。
+- そのため `RIHRP_CF_ACCESS_LOOPBACK_ONLY` の既定を **false** にした。この判定は uvicorn を
+  `--no-proxy-headers` で動かす場合の追加防御として残す。境界は **JWT 検証 + email allowlist** が担う。
 
 ## 5. 実測（配備後）
 

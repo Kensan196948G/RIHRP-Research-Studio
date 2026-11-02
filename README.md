@@ -160,7 +160,8 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 - 本番は Cloudflare Access を前段に置く（`research.mirai-dx-platform.com` で稼働中）。
 - **Cloudflare Access の自動ログイン**: `RIHRP_TRUST_CF_ACCESS=true` のとき、`/api/auth/access` が
   `Cf-Access-Jwt-Assertion` を RS256 署名・iss・aud・有効期限まで検証し、許可 email の利用者にアプリのセッションを発行する。
-  平文の `Cf-Access-Authenticated-User-Email` は信頼しない。ループバック限定（既定）・email allowlist・fail closed。
+  平文の `Cf-Access-Authenticated-User-Email` は信頼しない。email allowlist・未設定時は全拒否（fail closed）。
+  ループバック限定は任意の追加防御（uvicorn の proxy headers 設定に依存）。
 
 ## 07. 配備
 
