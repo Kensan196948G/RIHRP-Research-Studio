@@ -45,6 +45,18 @@ export function formatDate(value: string | null | undefined): string {
   }).format(date);
 }
 
+export function formatShortDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 export function shortHash(hash: string | null | undefined): string {
   if (!hash) return "—";
   return `${hash.slice(0, 12)}…`;

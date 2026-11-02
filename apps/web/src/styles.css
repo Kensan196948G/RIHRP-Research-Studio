@@ -187,7 +187,7 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .table tr:last-child td { border-bottom: none; }
 .table tbody tr:hover { background: #fbfdfe; }
-.table .num { font-variant-numeric: tabular-nums; }
+.table .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .table .actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .table .row-link { cursor: pointer; }
 .table .row-link:hover .row-title { color: var(--accent); }

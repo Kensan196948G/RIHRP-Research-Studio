@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import type { Claim, Project, Source } from "../types";
-import { canEdit, canReview, countUnresolved, formatDate, shortHash, VERDICT_HINT, VERDICT_LABEL } from "../utils";
+import { canEdit, canReview, countUnresolved, formatShortDate, shortHash, VERDICT_HINT, VERDICT_LABEL } from "../utils";
 import { EmptyState, ErrorBanner, Loading, Modal, ReportStatusBadge, useToast, VerdictBadge } from "../components/ui";
 
 type Tab = "overview" | "sources" | "claims" | "reports";
@@ -307,8 +307,8 @@ export function ProjectPage() {
               <div className="card-head"><h2 className="card-title">テーマ情報</h2></div>
               <dl className="kv">
                 <dt>状態</dt><dd>{project.status === "active" ? "進行中" : "アーカイブ"}</dd>
-                <dt>作成</dt><dd>{formatDate(project.created_at)}</dd>
-                <dt>更新</dt><dd>{formatDate(project.updated_at)}</dd>
+                <dt>作成</dt><dd>{formatShortDate(project.created_at)}</dd>
+                <dt>更新</dt><dd>{formatShortDate(project.updated_at)}</dd>
                 <dt>検証済み</dt><dd>{project.stats.verified} 件</dd>
                 <dt>根拠不足</dt><dd>{project.stats.insufficient} 件</dd>
                 <dt>未検証（未実行）</dt><dd>{project.stats.unchecked} 件</dd>
@@ -360,7 +360,7 @@ export function ProjectPage() {
                     <td className="small muted" style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{source.origin || "—"}</td>
                     <td className="mono muted">{shortHash(source.content_sha256)}</td>
                     <td className="num">{source.used_by_claims ?? 0}</td>
-                    <td className="muted small nowrap">{formatDate(source.created_at)}</td>
+                    <td className="muted small nowrap">{formatShortDate(source.created_at)}</td>
                     <td>
                       <div className="actions">
                         <button type="button" className="btn btn-sm" onClick={() => void openSourceDetail(source)}>詳細</button>
@@ -407,7 +407,7 @@ export function ProjectPage() {
                       <td style={{ maxWidth: 620 }}>{claim.text}</td>
                       <td><VerdictBadge verdict={claim.last_verdict} /></td>
                       <td className="num">{claim.evidence_count}</td>
-                      <td className="muted small nowrap">{formatDate(claim.last_verified_at)}</td>
+                      <td className="muted small nowrap">{formatShortDate(claim.last_verified_at)}</td>
                       <td>
                         <div className="actions">
                           <button type="button" className="btn btn-sm" onClick={() => setClaimDetail(claim)}>詳細</button>
@@ -463,7 +463,7 @@ export function ProjectPage() {
                       <td className="num">v{report.version}</td>
                       <td className="num">{report.claim_count}</td>
                       <td className="muted small">{report.submitted_by_name ?? "—"}</td>
-                      <td className="muted small nowrap">{formatDate(report.updated_at)}</td>
+                      <td className="muted small nowrap">{formatShortDate(report.updated_at)}</td>
                       <td>
                         <button type="button" className="btn btn-sm" onClick={() => navigate(`/reports/${report.id}`)}>開く</button>
                       </td>
@@ -766,7 +766,7 @@ function ClaimDetailModal({
     >
       <div className="row" style={{ marginBottom: 8 }}>
         <VerdictBadge verdict={claim.last_verdict} />
-        <span className="muted small">最終検証: {formatDate(claim.last_verified_at)}</span>
+        <span className="muted small">最終検証: {formatShortDate(claim.last_verified_at)}</span>
       </div>
       <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>{claim.text}</p>
       {claim.last_verdict ? <p className="hint" style={{ marginBottom: 12 }}>{VERDICT_HINT[claim.last_verdict]}</p> : <p className="hint" style={{ marginBottom: 12 }}>まだ検証していません。</p>}

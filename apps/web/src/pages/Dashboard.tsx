@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { Project } from "../types";
 import { useAuth } from "../auth";
-import { canEdit, countUnresolved, formatDate, shortHash } from "../utils";
+import { canEdit, countUnresolved, formatShortDate, shortHash } from "../utils";
 import { EmptyState, ErrorBanner, Loading, Modal, useToast } from "../components/ui";
 
 function totalOf(projects: Project[], key: keyof Project["stats"]): number {
@@ -168,7 +168,7 @@ export function DashboardPage() {
                       {project.stats.contradicted}
                     </td>
                     <td className="num">{project.stats.review_pending}</td>
-                    <td className="muted small nowrap">{formatDate(project.updated_at)}</td>
+                    <td className="muted small nowrap">{formatShortDate(project.updated_at)}</td>
                   </tr>
                 );
               })}
