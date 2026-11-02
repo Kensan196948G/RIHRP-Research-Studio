@@ -273,3 +273,31 @@ def test_approved_report_flags_post_approval_tamper(
     assert fetched["status"] == "approved"
     assert fetched["integrity"]["contradicted"] == 1
     assert fetched["integrity"]["needs_reapproval"] is True
+
+
+def test_blocked_approval_persists_verification(
+    editor_client: TestClient, reviewer_client: TestClient, users: dict[str, str]
+) -> None:
+    project, source, claim = build_verified_claim(editor_client)
+    report = create_report_with_claim(editor_client, project, claim)
+    assert editor_client.post(f"/api/reports/{report['id']}/submit").status_code == 200
+
+    with engine.begin() as connection:
+        connection.execute(
+            text("UPDATE sources SET content = content || '（改竄）' WHERE id = :id"),
+            {"id": source["id"]},
+        )
+
+    blocked = reviewer_client.post(
+        f"/api/reports/{report['id']}/review",
+        json={"decision": "approved", "comment": ""},
+    )
+    assert blocked.status_code == 409
+
+    # 拒否後も検証結果と監査は残る（ロールバックで消えない）
+    fetched_claim = editor_client.get(f"/api/claims/{claim['id']}").json()["claim"]
+    assert fetched_claim["last_verdict"] == "contradicted"
+    audit = reviewer_client.get("/api/audit?limit=100").json()["events"]
+    assert any(event["action"] == "report.verified" for event in audit)
+    report_after = editor_client.get(f"/api/reports/{report['id']}").json()["report"]
+    assert report_after["status"] == "in_review"

@@ -262,7 +262,9 @@ def review_report(
             raise ApiError(403, "forbidden", "自分が提出したレポートは承認できません。")
         summary = verify_report_row(db, report, actor_id=principal.user_id)
         if summary["contradicted"] > 0:
-            db.rollback()
+            # 承認は拒否するが、検証結果（claim の判定・監査）は事実として残す。
+            # ロールバックすると画面の判定が古いままになり、再検証の証跡も消える。
+            db.commit()
             raise ApiError(
                 409,
                 "approval_blocked",

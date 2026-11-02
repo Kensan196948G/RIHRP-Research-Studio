@@ -390,7 +390,7 @@ export function ProjectPage() {
                 <span className="muted small">検証は決定論的です（引用の実在と数値の一致）。</span>
               </div>
             ) : null}
-            <div className="table-wrap">
+            <div className="table-wrap claims-table">
               <table className="table">
                 <thead>
                   <tr>
@@ -423,6 +423,28 @@ export function ProjectPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            <div className="claims-cards" aria-label="主張一覧">
+              {claims.map((claim) => (
+                <div key={claim.id} className="claim-card">
+                  <div className="claim-card-text">{claim.text}</div>
+                  <div className="row">
+                    <VerdictBadge verdict={claim.last_verdict} />
+                    <span className="muted small">根拠 {claim.evidence_count}</span>
+                    <span className="muted small">最終検証 {formatShortDate(claim.last_verified_at)}</span>
+                  </div>
+                  <div className="row">
+                    <button type="button" className="btn btn-sm" onClick={() => setClaimDetail(claim)}>詳細</button>
+                    {editable ? (
+                      <>
+                        <button type="button" className="btn btn-sm" onClick={() => setEvidenceClaim(claim)}>根拠</button>
+                        <button type="button" className="btn btn-sm" onClick={() => void verifyClaim(claim.id)}>検証</button>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
             </div>
           </>
         )

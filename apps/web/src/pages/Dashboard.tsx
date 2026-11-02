@@ -110,6 +110,8 @@ export function DashboardPage() {
         </div>
       </div>
 
+      <div className="dashboard-grid">
+        <div>
       {loading ? (
         <Loading label="テーマを読み込んでいます…" />
       ) : projects.length === 0 ? (
@@ -125,16 +127,20 @@ export function DashboardPage() {
           }
         />
       ) : (
-        <div className="table-wrap">
-          <table className="table">
+        <>
+        <div className="table-wrap dashboard-table">
+          <table className="table table-fixed">
+            <colgroup>
+              <col style={{ width: "58%" }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "16%" }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>テーマ</th>
-                <th>出典</th>
-                <th>主張</th>
                 <th>未検証</th>
                 <th>矛盾</th>
-                <th>レビュー待ち</th>
                 <th>更新</th>
               </tr>
             </thead>
@@ -153,21 +159,20 @@ export function DashboardPage() {
                   >
                     <td>
                       <div className="row-title" style={{ fontWeight: 600 }}>{project.title}</div>
-                      <div className="muted small" style={{ maxWidth: 520, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div className="muted small" style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {project.summary || "概要は未設定です。"}
                       </div>
+                      <div className="muted small">
+                        出典 {project.stats.sources} ・ 主張 {project.stats.claims}
+                        {unresolved > 0 ? ` ・ 要対応 ${unresolved}` : ""}
+                        {project.stats.review_pending > 0 ? ` ・ レビュー待ち ${project.stats.review_pending}` : ""}
+                      </div>
                       <div className="muted small mono">#{shortHash(project.id)}</div>
-                    </td>
-                    <td className="num">{project.stats.sources}</td>
-                    <td className="num">
-                      {project.stats.claims}
-                      {unresolved > 0 ? <span className="muted small">（要対応 {unresolved}）</span> : null}
                     </td>
                     <td className="num">{project.stats.unverified}</td>
                     <td className="num" style={{ color: project.stats.contradicted ? "var(--danger)" : undefined, fontWeight: project.stats.contradicted ? 700 : undefined }}>
                       {project.stats.contradicted}
                     </td>
-                    <td className="num">{project.stats.review_pending}</td>
                     <td className="muted small nowrap">{formatShortDate(project.updated_at)}</td>
                   </tr>
                 );
@@ -175,7 +180,102 @@ export function DashboardPage() {
             </tbody>
           </table>
         </div>
+
+        <div className="project-cards" aria-label="テーマ一覧">
+          {projects.map((project) => (
+            <button key={project.id} type="button" className="project-card" onClick={() => navigate(`/projects/${project.id}`)}>
+              <div className="project-card-title">{project.title}</div>
+              <div className="muted small">
+                出典 {project.stats.sources} ・ 主張 {project.stats.claims} ・ 更新 {formatShortDate(project.updated_at)}
+              </div>
+              <div className="row" style={{ gap: 6, marginTop: 4 }}>
+                <span className="badge badge-unverified">未検証 {project.stats.unverified}</span>
+                <span className="badge badge-contradicted">矛盾 {project.stats.contradicted}</span>
+                {project.stats.review_pending ? <span className="badge badge-in_review">レビュー {project.stats.review_pending}</span> : null}
+              </div>
+            </button>
+          ))}
+        </div>
+        </>
       )}
+        </div>
+
+        <aside className="attention-rail" aria-label="要対応">
+          <div className="card">
+            <div className="card-head">
+              <h2 className="card-title">要対応</h2>
+              <span className="badge badge-unverified" style={{ marginLeft: "auto" }}>
+                {totals.unverified + totals.contradicted + totals.reviewPending + totals.changesRequested} 件
+              </span>
+            </div>
+            <div className="attention-list">
+              <div className="attention-row">
+                <span className="attention-dot attention-dot-warn" aria-hidden="true" />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600 }}>未検証の主張</div>
+                  <div className="muted small">数値が根拠に見つからない</div>
+                </div>
+                <b>{totals.unverified}</b>
+              </div>
+              <div className="attention-row">
+                <span className="attention-dot attention-dot-danger" aria-hidden="true" />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600 }}>矛盾</div>
+                  <div className="muted small">承認が止まる項目</div>
+                </div>
+                <b style={{ color: totals.contradicted ? "var(--danger)" : undefined }}>{totals.contradicted}</b>
+              </div>
+              <div className="attention-row">
+                <span className="attention-dot attention-dot-info" aria-hidden="true" />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600 }}>レビュー待ち</div>
+                  <div className="muted small">承認または差し戻し</div>
+                </div>
+                <b>{totals.reviewPending}</b>
+              </div>
+              <div className="attention-row">
+                <span className="attention-dot attention-dot-warn" aria-hidden="true" />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600 }}>差し戻し</div>
+                  <div className="muted small">修正後の再提出が必要</div>
+                </div>
+                <b>{totals.changesRequested}</b>
+              </div>
+            </div>
+          </div>
+
+          <div className="card" style={{ marginTop: 12 }}>
+            <h2 className="card-title" style={{ marginBottom: 8 }}>対応が必要なテーマ</h2>
+            {projects.length === 0 ? (
+              <p className="muted small">テーマがありません。</p>
+            ) : (
+              <div className="attention-list">
+                {[...projects]
+                  .sort((a, b) => {
+                    const score = (p: Project) => p.stats.contradicted * 3 + p.stats.unverified + p.stats.review_pending * 2 + p.stats.changes_requested * 2;
+                    return score(b) - score(a);
+                  })
+                  .slice(0, 5)
+                  .map((project) => (
+                    <button key={project.id} type="button" className="attention-project" onClick={() => navigate(`/projects/${project.id}`)}>
+                      <span className="attention-project-title">{project.title}</span>
+                      <span className="muted small">
+                        未検証 {project.stats.unverified} / 矛盾 {project.stats.contradicted} / レビュー {project.stats.review_pending}
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          <div className="card" style={{ marginTop: 12 }}>
+            <h2 className="card-title" style={{ marginBottom: 6 }}>検証の考え方</h2>
+            <p className="muted small">
+              矛盾（contradicted）は承認を止めます。未検証・根拠不足は承認を止めませんが、件数を承認画面とエクスポートに残します。
+            </p>
+          </div>
+        </aside>
+      </div>
 
       {creating ? (
         <Modal title="新しいテーマ" onClose={() => setCreating(false)} width={620}>

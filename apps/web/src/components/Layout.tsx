@@ -59,8 +59,9 @@ export function Layout() {
               <div className="user-name">{user?.name}</div>
               <div className="user-role">{user ? ROLE_LABEL[user.role] : ""}</div>
             </div>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={onLogout}>
-              ログアウト
+            <button type="button" className="btn btn-ghost btn-sm" onClick={onLogout} aria-label="ログアウト" title="ログアウト">
+              <span className="logout-label">ログアウト</span>
+              <span className="logout-glyph" aria-hidden="true">⎋</span>
             </button>
           </div>
         </div>

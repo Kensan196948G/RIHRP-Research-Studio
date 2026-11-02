@@ -349,6 +349,31 @@ export function ReportEditorPage() {
       ) : null}
 
       <div className="report-layout">
+        <nav className="section-rail" aria-label="セクション一覧">
+          <div className="rail-title">セクション</div>
+          {draft.sections.length === 0 ? <p className="muted small">未作成</p> : null}
+          {draft.sections.map((section, si) => {
+            const issue = section.paragraphs.some((paragraph) =>
+              paragraph.claimIds.some((claimId) => {
+                const verdict = claimMap.get(claimId)?.last_verdict;
+                return verdict === "contradicted" || verdict === "unverified" || verdict === "insufficient";
+              }),
+            );
+            return (
+              <button
+                key={section.id}
+                type="button"
+                className="rail-item"
+                onClick={() => document.getElementById(`sec-${section.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              >
+                <span className="rail-num">{String(si + 1).padStart(2, "0")}</span>
+                <span className="rail-text">{section.heading || "無題セクション"}</span>
+                {issue ? <span className="rail-issue" title="要対応の主張を含みます" /> : null}
+              </button>
+            );
+          })}
+          {editable ? <button type="button" className="btn btn-ghost btn-sm" onClick={addSection}>+ セクション</button> : null}
+        </nav>
         <div>
           {draft.sections.length === 0 ? (
             <div className="empty">
@@ -359,7 +384,7 @@ export function ReportEditorPage() {
           ) : null}
 
           {draft.sections.map((section, si) => (
-            <div className="section-block" key={section.id}>
+            <div className="section-block" key={section.id} id={`sec-${section.id}`}>
               <div className="section-head">
                 <input
                   value={section.heading}

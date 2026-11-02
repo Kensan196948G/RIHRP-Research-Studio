@@ -188,6 +188,8 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .table tr:last-child td { border-bottom: none; }
 .table tbody tr:hover { background: #fbfdfe; }
 .table .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table-fixed { table-layout: fixed; }
+.table-fixed td { overflow: hidden; }
 .table .actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .table .row-link { cursor: pointer; }
 .table .row-link:hover .row-title { color: var(--accent); }
@@ -276,7 +278,7 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .modal-close { margin-left: auto; }
 
 /* ------------------------------------------------------------------ editor */
-.report-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.report-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
 .editor-toolbar {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   position: sticky; top: 57px; z-index: 10;
@@ -349,8 +351,12 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .toast.is-error { background: #7a1a12; }
 
 /* ------------------------------------------------------------------ responsive */
+@media (max-width: 1280px) {
+  .report-layout { grid-template-columns: 184px minmax(0, 1fr) 300px; }
+}
 @media (max-width: 1100px) {
   .report-layout { grid-template-columns: minmax(0, 1fr) 300px; }
+  .section-rail { display: none; }
   .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 900px) {
@@ -382,3 +388,93 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
 }
 .chip-select:hover .chip-text { text-decoration: underline; }
 .chip-text { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* dashboard: 要対応レール（OpenDesign モックの右レールに合わせる） */
+.dashboard-grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+.attention-rail { display: flex; flex-direction: column; }
+.attention-list { display: flex; flex-direction: column; gap: 6px; }
+.attention-row {
+  display: flex; align-items: center; gap: 9px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface-2); padding: 8px 10px;
+}
+.attention-row b { font-size: 17px; font-variant-numeric: tabular-nums; }
+.attention-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.attention-dot-warn { background: var(--warn); }
+.attention-dot-danger { background: var(--danger); }
+.attention-dot-info { background: #1d4ed8; }
+.attention-project {
+  display: flex; flex-direction: column; gap: 2px; text-align: left;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+  padding: 8px 10px; cursor: pointer;
+}
+.attention-project:hover { border-color: var(--accent-line); background: var(--surface-2); }
+.attention-project-title { font-size: 12.5px; font-weight: 600; }
+@media (max-width: 1100px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+
+/* report editor: セクション一覧レール */
+.section-rail {
+  position: sticky; top: 120px; align-self: start;
+  display: flex; flex-direction: column; gap: 4px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); padding: 10px;
+}
+.rail-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 4px 6px; }
+.rail-item {
+  display: flex; align-items: center; gap: 6px; text-align: left;
+  border: 1px solid transparent; border-radius: 6px; background: transparent;
+  padding: 6px 7px; cursor: pointer; font-size: 12px; color: var(--ink);
+  min-width: 0;
+}
+.rail-item:hover { background: var(--surface-2); }
+.rail-item .rail-num { font-family: var(--mono); font-size: 10px; color: var(--muted); flex: none; }
+.rail-item .rail-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.rail-issue { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); flex: none; }
+
+/* mobile: サイドバーのログアウトとテーマ一覧 */
+.logout-glyph { display: none; }
+.project-cards { display: none; }
+@media (max-width: 900px) {
+  .user-card { flex-direction: column; gap: 6px; align-items: center; }
+  .logout-label { display: none; }
+  .logout-glyph { display: inline; font-size: 15px; line-height: 1; }
+}
+@media (max-width: 640px) {
+  .dashboard-table { display: none; }
+  .project-cards { display: flex; flex-direction: column; gap: 8px; }
+  .project-card {
+    text-align: left; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px;
+  }
+  .project-card:hover { border-color: var(--accent-line); }
+  .project-card-title { font-weight: 650; font-size: 14px; }
+}
+
+/* mobile: 表は横スクロール、主張はカード表示 */
+.claims-cards { display: none; }
+.claim-card {
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); padding: 12px;
+}
+.claim-card-text { font-size: 13px; line-height: 1.55; }
+@media (max-width: 640px) {
+  .table { min-width: 560px; }
+  .claims-table { display: none; }
+  .claims-cards { display: flex; flex-direction: column; gap: 8px; }
+  .tabs { overflow-x: auto; }
+  .tab { padding: 8px 10px; white-space: nowrap; }
+}
+
+/* 後段の base 定義より優先させる（セクション一覧は狭幅で隠す） */
+@media (max-width: 1100px) {
+  .section-rail { display: none; }
+}
+
+/* grid/flex 子要素の最小幅を 0 にし、狭幅でのはみ出しを防ぐ */
+.report-layout > * { min-width: 0; }
+.section-block, .section-head, .section-body, .paragraph-block { min-width: 0; }
+.section-head input { min-width: 0; }
+.editor-toolbar .input { min-width: 0; }

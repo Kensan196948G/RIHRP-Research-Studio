@@ -123,7 +123,7 @@ RIHRP_DATABASE_URL=postgresql+psycopg://rihrp_app:<パスワード>@127.0.0.1:54
 # テスト DB を用意（初回のみ）
 createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指定可
 
-.venv/bin/pytest -q            # 28 passed
+.venv/bin/pytest -q            # 30 passed
 (cd apps/web && npx vitest run) # 4 passed
 .venv/bin/ruff check apps/api tests
 .venv/bin/ruff format --check apps/api tests
@@ -160,6 +160,8 @@ createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指
 | テーマ / 出典（SHA-256）/ 主張 / 根拠 / 検証 | 実装済み | pytest、API 実測、UI 実測 |
 | レポート / 版 / 検証 / 提出 / 承認 / 差し戻し | 実装済み | pytest、UI 実測（提出→承認） |
 | 承認後の整合性警告（根拠変更で矛盾になった場合） | 実装済み | pytest（`test_approved_report_flags_post_approval_tamper`）、画面確認 |
+| モバイル表示（カード / 表スクロール / レール非表示） | 実装済み | Playwright 実測（390px、横スクロール 0） |
+| キーボード（Esc / フォーカスリング） | 実装済み | Playwright 実測（2px ティール） |
 | OpenDesign 設計参照との比較 | 実施済み | `docs/design/01-webui-design.md` 第 8 章 |
 | Markdown エクスポート | 実装済み | pytest、API 実測 |
 | 監査ログ（append-only） | 実装済み | pytest |
@@ -171,7 +173,7 @@ createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指
 
 ## 09. 既知の問題・制約
 
-1. **CI 未設定**: `.github/workflows/*` の作成が環境の self-evolution ポリシーゲート（DEPLOY = critical）で拒否された。迂回せず、ローカルで lint / test / build / health check を実施している。CI を有効化するには、ポリシー管理者による許可が必要。
+1. **CI 未設定**: `.github/workflows/*` の作成が環境の self-evolution ポリシーゲート（DEPLOY = critical）で拒否された。迂回せず、CI 相当の検証を `tools/ci.sh` に集約してローカルで実行している。CI を有効化するには、ポリシー管理者による許可が必要。
 2. **OpenDesign Studio の run は `failed` 表示**: 再実行で成果物（8 画面のプロトタイプ）は生成されたが、run の状態は `failed`（`od_next_next_run_claim_failed`、daemon journal に `SQLITE_BUSY_SNAPSHOT`）。成果物は `docs/design/opendesign/` に保存し、実装との差異を [docs/design/01-webui-design.md](docs/design/01-webui-design.md) 第 8 章に記載した。
 3. **本番公開・Cloudflare Access 未実装**: 組織方針の高リスク変更に該当するため、承認後に実装する。
 4. **マージ未実施**: `claude-automerge check` の実測で、`allowlist` 未登録 / `auto-merge-enabled=False` / `branch-protection` なし / 必須チェック 0 / 独立レビュー証跡なし のため fail。ユーザー規則により、許可リスト未登録のリポジトリは自動マージしない（許可リストの変更はユーザーの明示指示が必要）。
@@ -183,7 +185,7 @@ createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指
 - `pytest`: **28 passed**（実 PostgreSQL `rihrp_test`）
 - `vitest`: **4 passed**
 - `ruff check` / `ruff format --check`: pass
-- `tsc -b` / `vite build`: pass（224 kB / gzip 70 kB）
+- `tsc -b` / `vite build`: pass（227 kB / gzip 71 kB）
 - `alembic upgrade head`: 適用済み（`2dee6c390541`）
 - Health Check: `/healthz` 200、`/readyz` 200（migration 一致）
 - 主要フロー実測: editor ログイン → 検証（2 verified / 1 unverified）→ 提出 → reviewer 承認 → Markdown エクスポート
@@ -191,6 +193,7 @@ createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指
 - 監査: 上記操作が `audit_events` に記録されていることを確認
 - OpenDesign: design direction（`tech-utility`）取得、Studio で 8 画面のプロトタイプ生成（run は failed 表示）、実装との差異を文書化
 - systemd 配備: `rihrp.service` 起動、`/healthz` 200 / `/readyz` 200（migration `2dee6c390541`）
+- UI: ダッシュボード要対応レール、エディタのセクション一覧レール、モバイル 390px（横スクロール 0、カード表示）、モーダル Esc、フォーカスリング 2px を実測
 - Backup / Restore: `infra/db/backup.sh` で dump 作成、`infra/db/restore_check.sh` で別 DB に復元（users=4 / projects=1 / claims=4 / reports=1）
 - Migration rollback: `rihrp_test` で `alembic downgrade base` → `upgrade head` を実測（最終 `2dee6c390541 (head)`）
 
@@ -203,6 +206,9 @@ createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指
 - ADR: [0001](docs/adr/0001-web-stack.md) / [0002](docs/adr/0002-deterministic-verification.md) / [0003](docs/adr/0003-approval-rule.md) / [0004](docs/adr/0004-auth-session.md) / [0005](docs/adr/0005-audit-append-only.md)
 - API: [docs/api/openapi.yaml](docs/api/openapi.yaml)
 - 運用手順: [docs/runbooks/operations.md](docs/runbooks/operations.md)
+- 要件トレーサビリティ: [docs/requirements/traceability.md](docs/requirements/traceability.md)
+- 検証記録: [docs/verification/2026-11-02.md](docs/verification/2026-11-02.md)
+- CI 相当の一括検証: `tools/ci.sh`
 
 ## 12. ライセンス
 
