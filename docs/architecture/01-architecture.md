@@ -11,7 +11,7 @@
                               ├─ /api/*     JSON API
                               ├─ /assets/*  React build
                               └─ /           SPA fallback
-[Cloudflare Tunnel / Access]（本番のみ前段。MVP では未接続）
+[Cloudflare Tunnel / Access]（本番の前段。research.mirai-dx-platform.com で稼働中）
 ```
 
 - **単一オリジン**: API が React のビルド成果物を配信する。CORS を開けない。
@@ -102,4 +102,5 @@ audit_events(id, actor_id, action, entity_type, entity_id, project_id, details j
 
 - `infra/native/rihrp.service`（user unit）: `uvicorn rihrp.main:app --host 127.0.0.1 --port 18110`。
 - `infra/native/deploy.sh <commit>`: 依存同期 → migration → ビルド済み web を配置 → restart → health check。
-- 本番公開（Cloudflare Tunnel / custom domain）は高リスク変更として Approval PR に分離する。
+- 本番公開は Cloudflare Tunnel（`rihrp-cloudflared.service`）+ Cloudflare Access で構成済み（`docs/verification/2026-11-03.md`）。
+- 公開 DNS・custom domain・Access の変更は高リスク変更として Approval PR + ユーザーの明示 Y/N とする。

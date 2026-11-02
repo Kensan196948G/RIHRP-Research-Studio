@@ -1,7 +1,7 @@
 # 要件トレーサビリティ
 
 - 対象: 要件 [`docs/requirements/01-requirements.md`](../requirements/01-requirements.md) v0.1
-- 日付: 2026-11-02
+- 日付: 2026-11-03
 - 「テスト」列は `tests/` の自動テスト、または実測記録を示す。
 
 ## 機能要件
@@ -62,6 +62,8 @@
 | NFR-13 一意制約競合の 409 化 | `sources.py` / `claims.py` / `admin.py`（`IntegrityError`） | コードレビュー（競合時の防御） | ✅ |
 | NFR-14 リクエスト相関 ID | `main.py` / `request_context.py` / `audit.py` | `test_audit_records_request_id_and_header` | ✅ |
 | NFR-15 依存関係の脆弱性 0 | React Router v7.18.5 / pytest 9.0.3 | `npm audit --omit=dev` / `pip-audit` | ✅ |
+| NFR-16 同時更新の直列化 | `services.py`（`SELECT … FOR UPDATE`）、承認・主張変更・project 削除 | `tests/integration/test_locking.py`（ロック後の最新行参照）。**並行実行の自動テストは未追加** | ⚠️ |
+| NFR-17 監査ログの TRUNCATE 保護 | migration `0003_audit_truncate`（`BEFORE TRUNCATE` トリガー） | `test_audit_events_reject_update_and_delete`、`test_app_role_cannot_disable_audit_trigger`（所有者ロールでは skip）、CI のロール分離 | ✅ |
 | NFR-5 監査 append-only | `audit.py`、API なし、DB トリガー（`0002`） | `test_audit_is_not_mutable`、`test_audit_events_reject_update_and_delete` | ✅ |
 | NFR-6 Node 22 / Python 3.12 / Docker なし | systemd unit | 実測 | ✅ |
 | NFR-7 migration 未適用で 503 | `routers/health.py` | `test_health_and_ready` | ✅ |
