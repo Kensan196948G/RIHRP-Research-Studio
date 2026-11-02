@@ -146,3 +146,21 @@ def test_change_password(client: TestClient, users: dict[str, str]) -> None:
             ).status_code
             == 401
         )
+
+
+def test_password_change_revokes_other_sessions(users: dict[str, str]) -> None:
+    with (
+        TestClient(__import__("rihrp.main", fromlist=["app"]).app) as first,
+        TestClient(__import__("rihrp.main", fromlist=["app"]).app) as second,
+    ):
+        login(first, "editor")
+        login(second, "editor")
+        assert second.get("/api/auth/me").status_code == 200
+
+        changed = first.post(
+            "/api/auth/change-password",
+            json={"current_password": TEST_PASSWORD, "new_password": "another-password-789"},
+        )
+        assert changed.status_code == 200
+        assert second.get("/api/auth/me").status_code == 401
+        assert first.get("/api/auth/me").status_code == 200

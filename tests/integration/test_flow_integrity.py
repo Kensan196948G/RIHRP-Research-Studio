@@ -374,3 +374,19 @@ def test_approved_report_flags_claim_edit(
     assert fetched["status"] == "approved"
     assert fetched["integrity"]["unchecked"] == 1
     assert fetched["integrity"]["needs_reapproval"] is True
+
+
+def test_claim_list_reports_evidence_count(
+    editor_client: TestClient, users: dict[str, str]
+) -> None:
+    project = create_project(editor_client)
+    source = create_source(editor_client, project["id"])
+    claim = create_claim(editor_client, project["id"], "導入可能量は 1,240 MW と試算された。")
+    for quote in ["導入可能量は 1,240 MW", "2026年度の実証事業は 3 件"]:
+        response = editor_client.post(
+            f"/api/claims/{claim['id']}/evidence",
+            json={"source_id": source["id"], "quote": quote, "note": ""},
+        )
+        assert response.status_code == 201, response.text
+    listed = editor_client.get(f"/api/projects/{project['id']}/claims").json()["claims"]
+    assert [c["evidence_count"] for c in listed if c["id"] == claim["id"]] == [2]

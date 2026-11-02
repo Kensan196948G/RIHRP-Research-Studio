@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session as OrmSession
 
 from ..audit import write_audit
@@ -50,11 +50,18 @@ def list_claims(
         ).scalars()
     )
     evidence_counts: dict[str, int] = {}
-    for claim in claims:
-        evidence_counts[claim.id] = len(_load_evidence(db, claim.id))
+    if claims:
+        evidence_counts = dict(
+            db.execute(
+                select(ClaimEvidence.claim_id, func.count())
+                .where(ClaimEvidence.claim_id.in_([claim.id for claim in claims]))
+                .group_by(ClaimEvidence.claim_id)
+            ).all()
+        )
     return {
         "claims": [
-            claim_to_dict(c) | {"evidence_count": evidence_counts.get(c.id, 0)} for c in claims
+            claim_to_dict(claim) | {"evidence_count": int(evidence_counts.get(claim.id, 0))}
+            for claim in claims
         ]
     }
 

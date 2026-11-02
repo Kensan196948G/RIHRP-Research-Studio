@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Request, Response
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session as OrmSession
 
 from ..audit import write_audit
@@ -137,12 +137,23 @@ def change_password(
     if user is None or not verify_password(payload.current_password, user.password_hash):
         raise ApiError(401, "invalid_credentials", "現在のパスワードが一致しません。")
     user.password_hash = hash_password(payload.new_password)
+    # パスワード変更時は、現在のセッション以外を失効させる（盗まれたセッションの継続を防ぐ）。
+    revoked = db.execute(
+        update(SessionRow)
+        .where(
+            SessionRow.user_id == user.id,
+            SessionRow.id != principal.session_id,
+            SessionRow.revoked_at.is_(None),
+        )
+        .values(revoked_at=utcnow())
+    ).rowcount
     write_audit(
         db,
         actor_id=principal.user_id,
         action="user.password_changed",
         entity_type="user",
         entity_id=principal.user_id,
+        details={"other_sessions_revoked": int(revoked or 0)},
     )
     db.commit()
     return {"ok": True}

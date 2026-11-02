@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import type { Claim, Project, Verdict } from "../types";
-import { formatShortDate, VERDICT_HINT } from "../utils";
+import { claimCode, formatShortDate, VERDICT_HINT } from "../utils";
 import { EmptyState, ErrorBanner, Loading, VerdictBadge } from "../components/ui";
 
 const ORDER: Record<string, number> = { contradicted: 0, unverified: 1, insufficient: 2, verified: 3 };
@@ -123,6 +123,7 @@ export function VerificationPage() {
               <article className="verification-item" key={claim.id}>
                 <div className="row" style={{ alignItems: "flex-start" }}>
                   <VerdictBadge verdict={claim.last_verdict} />
+                  <span className="muted small mono">{claimCode(claim.id)}</span>
                   <span className="muted small">根拠 {claim.evidence_count}</span>
                   <span className="muted small">最終検証 {formatShortDate(claim.last_verified_at)}</span>
                   <div className="spacer" />

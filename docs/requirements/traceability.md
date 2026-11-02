@@ -16,6 +16,7 @@
 | FR-2.1 テーマ CRUD（UI・削除含む） | `routers/projects.py`、テーマ編集モーダル | `test_main_flow_end_to_end`、`test_project_update_and_archive`、UI 実測（削除は管理者のみ表示） | ✅ |
 | FR-2.2 要対応件数 | `services.py::project_stats` | `test_main_flow_end_to_end`、UI 実測 | ✅ |
 | FR-2.3 テーマ詳細 | `routers/projects.py::get_project` + 各一覧 API | UI 実測 | ✅ |
+| FR-2.4 テーマ検索 | ダッシュボードのクライアント検索 | UI 実測（1 件 / 該当なし） | ✅ |
 | FR-3.1 出典の kind/origin/title | `routers/sources.py::create_source` | `test_main_flow_end_to_end` | ✅ |
 | FR-3.2 本文の SHA-256 | `services.py::sha256_text` | `test_main_flow_end_to_end`（export に sha を含む） | ✅ |
 | FR-3.3 同一内容の重複拒否 | `sources.py::create_source`（409） | `test_duplicate_source_rejected` | ✅ |
@@ -39,6 +40,7 @@
 | FR-7.1 監査対象 | `audit.py::write_audit` 各ルータ | `test_main_flow_end_to_end`（actions） | ✅ |
 | FR-7.2 同一 Tx / fail closed | 各ルータで `db.commit()` 前に監査 | `test_main_flow_end_to_end` | ✅ |
 | FR-7.3 更新・削除不可 | ルータなし | `test_audit_is_not_mutable` | ✅ |
+| FR-7.4 最近の活動 | ダッシュボード（reviewer/admin のみ） | UI 実測 | ✅ |
 | FR-9.1 セッション保守 | `rihrp/maintenance.py` | `test_purge_sessions_removes_only_expired` | ✅ |
 | FR-8.1 利用者管理（作成・ロール変更・無効化） | `routers/admin.py`、利用者画面 | `test_admin_can_list_users`、`test_admin_cannot_demote_self`、UI 実測 | ✅ |
 | FR-8.3 パスワード変更 | `routers/auth.py::change_password`、設定画面 | `test_change_password`、UI 実測 | ✅ |
@@ -54,6 +56,8 @@
 | NFR-4 秘密をログに出さない | `security.py`、監査 details | コードレビュー | ✅ |
 | NFR-9 本文サイズ上限 | `main.py`（2 MiB、413） | `test_oversized_body_rejected` | ✅ |
 | NFR-10 Cookie 属性 | `auth.py::_set_cookies` | `test_session_cookie_flags` | ✅ |
+| NFR-11 パスワード変更時のセッション失効 | `auth.py::change_password` | `test_password_change_revokes_other_sessions` | ✅ |
+| NFR-12 一覧の N+1 回避 | `claims.py`（`GROUP BY`） | `test_claim_list_reports_evidence_count` | ✅ |
 | NFR-5 監査 append-only | `audit.py`、API なし | `test_audit_is_not_mutable` | ✅ |
 | NFR-6 Node 22 / Python 3.12 / Docker なし | systemd unit | 実測 | ✅ |
 | NFR-7 migration 未適用で 503 | `routers/health.py` | `test_health_and_ready` | ✅ |

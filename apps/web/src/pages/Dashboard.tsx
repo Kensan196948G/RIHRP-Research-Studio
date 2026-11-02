@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
-import type { Project } from "../types";
+import type { AuditEvent, Project } from "../types";
 import { useAuth } from "../auth";
-import { canEdit, countUnresolved, formatShortDate, shortHash } from "../utils";
+import { auditActionLabel, canEdit, canReview, countUnresolved, formatShortDate, shortHash } from "../utils";
 import { EmptyState, ErrorBanner, Loading, Modal, useToast } from "../components/ui";
 
 function totalOf(projects: Project[], key: keyof Project["stats"]): number {
@@ -21,6 +21,8 @@ export function DashboardPage() {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState("");
+  const [recent, setRecent] = useState<AuditEvent[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -38,6 +40,28 @@ export function DashboardPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!user || !canReview(user.role)) return;
+    let cancelled = false;
+    api
+      .audit(6)
+      .then((result) => {
+        if (!cancelled) setRecent(result.events);
+      })
+      .catch(() => {
+        if (!cancelled) setRecent([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const filteredProjects = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return projects;
+    return projects.filter((project) => `${project.title} ${project.summary}`.toLowerCase().includes(needle));
+  }, [projects, query]);
 
   const totals = useMemo(
     () => ({
@@ -78,6 +102,14 @@ export function DashboardPage() {
           <div className="page-desc">研究テーマの状態と、対応が必要な項目をまとめています。</div>
         </div>
         <div className="spacer" />
+        <input
+          className="input"
+          style={{ maxWidth: 240 }}
+          placeholder="テーマを検索"
+          aria-label="テーマを検索"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
         {canEdit(user?.role) ? (
           <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
             + 新しいテーマ
@@ -126,6 +158,8 @@ export function DashboardPage() {
             ) : undefined
           }
         />
+      ) : filteredProjects.length === 0 ? (
+        <EmptyState title="該当するテーマがありません" description="検索条件を変えてください。" />
       ) : (
         <>
         <div className="table-wrap dashboard-table">
@@ -145,7 +179,7 @@ export function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {projects.map((project) => {
+              {filteredProjects.map((project) => {
                 const unresolved = countUnresolved(project.stats);
                 return (
                   <tr
@@ -182,7 +216,7 @@ export function DashboardPage() {
         </div>
 
         <div className="project-cards" aria-label="テーマ一覧">
-          {projects.map((project) => (
+          {filteredProjects.map((project) => (
             <button key={project.id} type="button" className="project-card" onClick={() => navigate(`/projects/${project.id}`)}>
               <div className="project-card-title">{project.title}</div>
               <div className="muted small">
@@ -267,6 +301,27 @@ export function DashboardPage() {
               </div>
             )}
           </div>
+
+          {canReview(user?.role) ? (
+            <div className="card" style={{ marginTop: 12 }}>
+              <div className="card-head">
+                <h2 className="card-title">最近の活動</h2>
+                <Link to="/audit" className="small" style={{ marginLeft: "auto" }}>監査ログ</Link>
+              </div>
+              {recent.length === 0 ? (
+                <p className="muted small">履歴がありません。</p>
+              ) : (
+                <ul className="list-reset stack" style={{ gap: 8 }}>
+                  {recent.map((event) => (
+                    <li key={event.id} className="small">
+                      <div style={{ fontWeight: 600 }}>{auditActionLabel(event.action)}</div>
+                      <div className="muted">{event.actor_name ?? "—"} / {formatShortDate(event.created_at)}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
 
           <div className="card" style={{ marginTop: 12 }}>
             <h2 className="card-title" style={{ marginBottom: 6 }}>検証の考え方</h2>

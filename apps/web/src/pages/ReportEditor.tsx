@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ApiError, api } from "../api";
 import { useAuth } from "../auth";
 import type { Claim, Report, ReportContent, VerificationSummary } from "../types";
-import { canEdit, canReview, formatDate, shortHash, VERDICT_LABEL } from "../utils";
+import { canEdit, canReview, claimCode, formatDate, shortHash, VERDICT_LABEL } from "../utils";
 import { ErrorBanner, Loading, Modal, ReportStatusBadge, useToast, VerdictBadge } from "../components/ui";
 
 function newSection(): ReportContent["sections"][number] {
@@ -579,6 +579,7 @@ export function ReportEditorPage() {
                     disabled={!editable}
                     onClick={() => addClaimToSelected(claim.id)}
                   >
+                    <span className="muted small mono">{claimCode(claim.id)}</span>
                     <span className="claim-text">{claim.text}</span>
                     <span className="row">
                       <VerdictBadge verdict={claim.last_verdict} />

@@ -57,6 +57,38 @@ export function formatShortDate(value: string | null | undefined): string {
   }).format(date);
 }
 
+export const AUDIT_ACTION_LABEL: Record<string, string> = {
+  "auth.login": "ログイン",
+  "auth.logout": "ログアウト",
+  "user.created": "利用者作成",
+  "user.updated": "利用者更新",
+  "user.password_changed": "パスワード変更",
+  "project.created": "テーマ作成",
+  "project.updated": "テーマ更新",
+  "project.deleted": "テーマ削除",
+  "source.created": "出典登録",
+  "source.deleted": "出典削除",
+  "claim.created": "主張作成",
+  "claim.updated": "主張更新",
+  "claim.deleted": "主張削除",
+  "claim.verified": "主張検証",
+  "evidence.created": "根拠追加",
+  "evidence.deleted": "根拠削除",
+  "report.created": "レポート作成",
+  "report.updated": "レポート更新",
+  "report.submitted": "レポート提出",
+  "report.verified": "レポート検証",
+  "report.reviewed": "レポート審査",
+};
+
+export function auditActionLabel(action: string): string {
+  return AUDIT_ACTION_LABEL[action] ?? action;
+}
+
+export function claimCode(id: string): string {
+  return `CLM-${id.slice(0, 4).toUpperCase()}`;
+}
+
 export function shortHash(hash: string | null | undefined): string {
   if (!hash) return "—";
   return `${hash.slice(0, 12)}…`;

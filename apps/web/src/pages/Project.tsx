@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import type { Claim, Project, Source } from "../types";
-import { canEdit, canReview, countUnresolved, formatShortDate, shortHash, VERDICT_HINT, VERDICT_LABEL } from "../utils";
+import { canEdit, canReview, claimCode, countUnresolved, formatShortDate, shortHash, VERDICT_HINT, VERDICT_LABEL } from "../utils";
 import { EmptyState, ErrorBanner, Loading, Modal, ReportStatusBadge, useToast, VerdictBadge } from "../components/ui";
 
 type Tab = "overview" | "sources" | "claims" | "reports";
@@ -434,7 +434,10 @@ export function ProjectPage() {
                 <tbody>
                   {claims.map((claim) => (
                     <tr key={claim.id}>
-                      <td style={{ maxWidth: 620 }}>{claim.text}</td>
+                      <td style={{ maxWidth: 620 }}>
+                        <div className="muted small mono">{claimCode(claim.id)}</div>
+                        <div>{claim.text}</div>
+                      </td>
                       <td><VerdictBadge verdict={claim.last_verdict} /></td>
                       <td className="num">{claim.evidence_count}</td>
                       <td className="muted small nowrap">{formatShortDate(claim.last_verified_at)}</td>
@@ -847,6 +850,7 @@ function ClaimDetailModal({
     >
       <div className="row" style={{ marginBottom: 8 }}>
         <VerdictBadge verdict={claim.last_verdict} />
+        <span className="muted small mono">{claimCode(claim.id)}</span>
         <span className="muted small">最終検証: {formatShortDate(claim.last_verified_at)}</span>
       </div>
       {editing ? (

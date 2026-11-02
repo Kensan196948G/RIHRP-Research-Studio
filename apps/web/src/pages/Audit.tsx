@@ -1,32 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import type { AuditEvent } from "../types";
-import { formatDate } from "../utils";
+import { auditActionLabel, formatDate } from "../utils";
 import { EmptyState, ErrorBanner, Loading } from "../components/ui";
 
-const ACTION_LABEL: Record<string, string> = {
-  "auth.login": "ログイン",
-  "auth.logout": "ログアウト",
-  "user.created": "利用者作成",
-  "user.updated": "利用者更新",
-  "user.password_changed": "パスワード変更",
-  "project.created": "テーマ作成",
-  "project.updated": "テーマ更新",
-  "project.deleted": "テーマ削除",
-  "source.created": "出典登録",
-  "source.deleted": "出典削除",
-  "claim.created": "主張作成",
-  "claim.updated": "主張更新",
-  "claim.deleted": "主張削除",
-  "claim.verified": "主張検証",
-  "evidence.created": "根拠追加",
-  "evidence.deleted": "根拠削除",
-  "report.created": "レポート作成",
-  "report.updated": "レポート更新",
-  "report.submitted": "レポート提出",
-  "report.verified": "レポート検証",
-  "report.reviewed": "レポート審査",
-};
+
 
 export function AuditPage() {
   const [events, setEvents] = useState<AuditEvent[]>([]);
@@ -104,7 +82,7 @@ export function AuditPage() {
                   <td className="muted small nowrap">{formatDate(event.created_at)}</td>
                   <td>{event.actor_name ?? "—"}</td>
                   <td>
-                    <div style={{ fontWeight: 600 }}>{ACTION_LABEL[event.action] ?? event.action}</div>
+                    <div style={{ fontWeight: 600 }}>{auditActionLabel(event.action)}</div>
                     <div className="muted small mono">{event.action}</div>
                   </td>
                   <td className="small">
