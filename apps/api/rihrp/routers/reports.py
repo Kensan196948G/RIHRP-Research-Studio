@@ -134,7 +134,7 @@ def create_report(
     principal: Principal = Depends(require_editor),
     db: OrmSession = Depends(get_db),
 ) -> dict:
-    get_project_or_404(db, project_id)
+    lock_project(db, project_id)
     report = Report(
         project_id=project_id,
         title=payload.title.strip(),

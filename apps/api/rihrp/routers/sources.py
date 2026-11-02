@@ -17,6 +17,7 @@ from ..services import (
     get_project_or_404,
     get_source_or_404,
     iso,
+    lock_project,
     sha256_text,
     source_to_dict,
     utcnow,
@@ -64,7 +65,7 @@ def create_source(
     principal: Principal = Depends(require_editor),
     db: OrmSession = Depends(get_db),
 ) -> dict:
-    get_project_or_404(db, project_id)
+    lock_project(db, project_id)
     digest = sha256_text(payload.content)
     existing = db.execute(
         select(Source).where(Source.project_id == project_id, Source.content_sha256 == digest)

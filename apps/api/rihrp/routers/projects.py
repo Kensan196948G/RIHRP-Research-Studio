@@ -11,7 +11,7 @@ from ..auth import Principal, get_principal, require_admin, require_editor
 from ..db import get_db
 from ..models import Project
 from ..schemas import ProjectIn, ProjectPatch
-from ..services import get_project_or_404, iso, project_stats, utcnow
+from ..services import get_project_or_404, iso, lock_project, project_stats, utcnow
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -114,6 +114,7 @@ def delete_project(
     db: OrmSession = Depends(get_db),
 ) -> dict:
     project = get_project_or_404(db, project_id)
+    project = lock_project(db, project.id)
     write_audit(
         db,
         actor_id=principal.user_id,

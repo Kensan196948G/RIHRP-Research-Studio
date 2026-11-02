@@ -83,6 +83,19 @@ def get_claim_or_404(db: Session, claim_id: str) -> Claim:
     return claim
 
 
+def get_claim_for_update(db: Session, claim_id: str) -> Claim:
+    """ロック後の最新行を identity map に反映して返す。"""
+    claim = db.execute(
+        select(Claim)
+        .where(Claim.id == claim_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).scalar_one_or_none()
+    if claim is None:
+        raise ApiError(404, "not_found", "主張が見つかりません。")
+    return claim
+
+
 def get_source_or_404(db: Session, source_id: str) -> Source:
     source = db.get(Source, source_id)
     if source is None:

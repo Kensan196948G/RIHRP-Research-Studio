@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from rihrp.db import SessionLocal
 from rihrp.models import Claim, Report
-from rihrp.services import get_report_for_update, lock_project
+from rihrp.services import get_claim_for_update, get_report_for_update, lock_project
 from tests.integration.test_flow_integrity import build_verified_claim, create_report_with_claim
 
 
@@ -59,10 +59,5 @@ def test_claim_lock_refreshes_stale_identity_map(
             row.text = "別のセッションで更新した主張テキスト。"
             other.commit()
         lock_project(stale, project["id"])
-        refreshed = stale.execute(
-            select(Claim)
-            .where(Claim.id == claim["id"])
-            .with_for_update()
-            .execution_options(populate_existing=True)
-        ).scalar_one()
+        refreshed = get_claim_for_update(stale, claim["id"])
         assert refreshed.text == "別のセッションで更新した主張テキスト。"

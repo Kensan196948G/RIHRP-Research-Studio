@@ -16,6 +16,7 @@ from ..schemas import ClaimIn, ClaimPatch, EvidenceIn
 from ..services import (
     _load_evidence,
     claim_to_dict,
+    get_claim_for_update,
     get_claim_or_404,
     get_project_or_404,
     get_source_or_404,
@@ -75,7 +76,7 @@ def create_claim(
     principal: Principal = Depends(require_editor),
     db: OrmSession = Depends(get_db),
 ) -> dict:
-    get_project_or_404(db, project_id)
+    lock_project(db, project_id)
     claim = Claim(project_id=project_id, text=payload.text.strip(), created_by=principal.user_id)
     db.add(claim)
     db.flush()
@@ -111,7 +112,7 @@ def update_claim(
 ) -> dict:
     claim = get_claim_or_404(db, claim_id)
     lock_project(db, claim.project_id)
-    claim = db.execute(select(Claim).where(Claim.id == claim_id).with_for_update()).scalar_one()
+    claim = get_claim_for_update(db, claim_id)
     claim.text = payload.text.strip()
     claim.last_verdict = None
     claim.last_details = None
@@ -136,14 +137,7 @@ def delete_claim(
 ) -> dict:
     claim = get_claim_or_404(db, claim_id)
     lock_project(db, claim.project_id)
-    claim = db.execute(
-        select(Claim)
-        .where(Claim.id == claim_id)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    ).scalar_one_or_none()
-    if claim is None:
-        raise ApiError(404, "not_found", "主張が見つかりません。")
+    claim = get_claim_for_update(db, claim_id)
     referenced = _claim_referenced_in_reports(db, claim.id)
     if referenced:
         raise ApiError(
@@ -175,14 +169,7 @@ def add_evidence(
 ) -> dict:
     claim = get_claim_or_404(db, claim_id)
     lock_project(db, claim.project_id)
-    claim = db.execute(
-        select(Claim)
-        .where(Claim.id == claim_id)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    ).scalar_one_or_none()
-    if claim is None:
-        raise ApiError(404, "not_found", "主張が見つかりません。")
+    claim = get_claim_for_update(db, claim_id)
     source = get_source_or_404(db, payload.source_id)
     if source.project_id != claim.project_id:
         raise ApiError(422, "validation_error", "出典と主張のテーマが一致しません。")
@@ -273,7 +260,7 @@ def verify_claim_endpoint(
 ) -> dict:
     claim = get_claim_or_404(db, claim_id)
     lock_project(db, claim.project_id)
-    claim = db.execute(select(Claim).where(Claim.id == claim_id).with_for_update()).scalar_one()
+    claim = get_claim_for_update(db, claim_id)
     result = verify_claim_row(db, claim, actor_id=principal.user_id)
     db.commit()
     return {"claim": claim_to_dict(claim, _load_evidence(db, claim.id)), "result": result}
