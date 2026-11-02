@@ -174,7 +174,7 @@ createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指
 1. **CI 未設定**: `.github/workflows/*` の作成が環境の self-evolution ポリシーゲート（DEPLOY = critical）で拒否された。迂回せず、ローカルで lint / test / build / health check を実施している。CI を有効化するには、ポリシー管理者による許可が必要。
 2. **OpenDesign Studio の run は `failed` 表示**: 再実行で成果物（8 画面のプロトタイプ）は生成されたが、run の状態は `failed`（`od_next_next_run_claim_failed`、daemon journal に `SQLITE_BUSY_SNAPSHOT`）。成果物は `docs/design/opendesign/` に保存し、実装との差異を [docs/design/01-webui-design.md](docs/design/01-webui-design.md) 第 8 章に記載した。
 3. **本番公開・Cloudflare Access 未実装**: 組織方針の高リスク変更に該当するため、承認後に実装する。
-4. **マージ未実施**: リポジトリが `~/.claude/automerge/repos.json` の許可リストに無いため、ユーザー規則により自動マージしない。
+4. **マージ未実施**: `claude-automerge check` の実測で、`allowlist` 未登録 / `auto-merge-enabled=False` / `branch-protection` なし / 必須チェック 0 / 独立レビュー証跡なし のため fail。ユーザー規則により、許可リスト未登録のリポジトリは自動マージしない（許可リストの変更はユーザーの明示指示が必要）。
 5. **外部 URL の自動取得なし**: URL は識別子として保存し、本文は貼付を正とする（改竄検出の単純化）。
 6. **モバイル実機・スクリーンリーダーの検証未実施**（CSS / ARIA の実装のみ）。
 
