@@ -22,7 +22,7 @@
 
 | 項目 | 結果 |
 |---|---|
-| `pytest -q` | **93 passed / 1 skipped**（Access 関連 34 件を追加: unit 22 / integration 12） |
+| `pytest -q` | **96 passed / 1 skipped**（Access 関連 37 件を追加: unit 25 / integration 12） |
 | `ruff check` / `ruff format --check` | pass |
 | `python infra/db/export_openapi.py --check` | pass（`/api/auth/access` を反映） |
 | `vitest run` | **10 passed**（`auth.test.tsx` 4 件 + `pages/Login.test.tsx` 1 件: 自動サインイン / 無効時のフォールバック / ログアウト直後の抑止 / 500 時に自動サインインしない / セッション確認エラーの表示） |

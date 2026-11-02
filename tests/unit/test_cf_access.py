@@ -299,13 +299,29 @@ def test_load_jwks_returns_503_on_empty_keys(monkeypatch):
     assert excinfo.value.status_code == 503
 
 
-def test_load_jwks_returns_503_for_non_object_payload(monkeypatch):
-    """JSON が null / 配列 / 文字列のときも 500 ではなく 503 にする（実パース経路）。"""
+class _FakeHttpResponse:
+    def __init__(self, body: bytes) -> None:
+        self._body = body
 
-    def non_object(_settings):
-        return PyJWKSet.from_dict({"keys": "not-a-list"})
+    def __enter__(self):
+        return self
 
-    monkeypatch.setattr(cf_access, "_fetch_jwks", non_object)
+    def __exit__(self, *exc_info) -> bool:
+        return False
+
+    def read(self) -> bytes:
+        return self._body
+
+
+@pytest.mark.parametrize("payload", [b"null", b"[]", b'"string"', b"{not json"])
+def test_load_jwks_returns_503_for_non_object_payload(monkeypatch, payload: bytes):
+    """JWKS が JSON の null / 配列 / 文字列 / 不正 JSON でも 500 にせず 503 にする。
+
+    ``_fetch_jwks`` を差し替えず、実際の HTTP 応答パース経路を通す。
+    """
+    monkeypatch.setattr(
+        cf_access.urllib.request, "urlopen", lambda *_args, **_kwargs: _FakeHttpResponse(payload)
+    )
 
     with pytest.raises(ApiError) as excinfo:
         cf_access.load_jwks(make_settings())
