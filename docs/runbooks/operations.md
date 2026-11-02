@@ -16,6 +16,27 @@ systemctl --user restart rihrp.service
 journalctl --user -u rihrp.service --since "30 min ago"
 ```
 
+## 1.1 本番公開（Cloudflare Tunnel / Access）
+
+| 項目 | 値 |
+|---|---|
+| 公開 URL | `https://research.mirai-dx-platform.com`（Cloudflare Access 保護） |
+| Tunnel unit | `rihrp-cloudflared.service`（systemd --user、`~/.cloudflared/rihrp-config.yml`） |
+| Tunnel ID | `35974e49-9cad-423b-86cd-ab77ff0a2021` |
+| DNS | `research.mirai-dx-platform.com` CNAME → `<tunnel-id>.cfargotunnel.com`（proxied） |
+| Access | アプリ「RIHRP Research Studio」（self_hosted）、policy `rihrp-allow`（allow: `kensan1969@gmail.com` / `mirai-const.co.jp` / `takamatsu-cg.co.jp`） |
+
+```bash
+systemctl --user status rihrp-cloudflared.service
+journalctl --user -u rihrp-cloudflared.service --since "30 min ago"
+curl -sS -o /dev/null -w '%{http_code}\n' https://research.mirai-dx-platform.com/   # 未認証は 302
+```
+
+- Access の認証後画面（OTP/SSO）の確認は人間が行う。AI は未認証 302 までを検証できる。
+- 本番設定は `RIHRP_ENV=production` / `RIHRP_COOKIE_SECURE=true` / `RIHRP_SEED_DEMO=false`。
+  この構成では `http://127.0.0.1` に対する `tests/e2e/preview_smoke.py` は Cookie が Secure のため 401 になる（`https://` 経由で実行する）。
+- 公開 DNS・custom domain・Access の変更は組織方針の高リスク変更（Approval PR + ユーザーの明示 Y/N）。
+
 ## 2. 配備
 
 ```bash
@@ -73,7 +94,7 @@ DELETE FROM sessions WHERE expires_at < now() - interval '7 days';
 ## 7. 監視（未実装）
 
 - systemd の `Restart=on-failure` のみ。
-- 外部合成監視（5 分ごとの `/readyz`）とアラートは未実装。本番公開時に追加する。
+- 外部合成監視（5 分ごとの `/readyz`）とアラートは未実装。公開 URL は稼働中だが、外形監視は未追加。
 
 ## 4.1 セッションの定期削除
 
