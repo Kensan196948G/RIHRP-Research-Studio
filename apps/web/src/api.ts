@@ -56,6 +56,8 @@ export const api = {
     }),
   logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   me: () => request<{ user: import("./types").User; csrf_token: string }>("/api/auth/me"),
+  accessLogin: () =>
+    request<{ user: import("./types").User; csrf_token: string }>("/api/auth/access"),
   changePassword: (current_password: string, new_password: string) =>
     request<{ ok: boolean }>("/api/auth/change-password", {
       method: "POST",

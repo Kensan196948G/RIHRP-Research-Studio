@@ -81,7 +81,7 @@ audit_events(id, actor_id, action, entity_type, entity_id, project_id, details j
 - セッション: 32 バイト乱数 → SHA-256 を `sessions.token_hash` に保存。Cookie `rihrp_session` は HttpOnly / SameSite=Lax / Path=/。
 - CSRF: ログイン時に `rihrp_csrf` Cookie（JS 可読）とセッション行の `csrf_token` を発行。状態変更は `X-CSRF-Token` と Cookie の一致を検証。
 - 認可: ルータ依存で `require_role(...)`。プロジェクト単位の分離は MVP では行わず、組織内の全テーマを共有する（要件 FR-8 の範囲）。
-- 本番: Cloudflare Access を前段に置き、アプリは Access 済みリクエストのみ受ける（`RIHRP_TRUST_CF_ACCESS=true` のときのみ `Cf-Access-Authenticated-User-Email` を信頼）。
+- 本番: Cloudflare Access を前段に置き、アプリは Access 済みリクエストのみ受ける。`RIHRP_TRUST_CF_ACCESS=true` のとき `/api/auth/access` が `Cf-Access-Jwt-Assertion` を検証して自動ログインする（平文ヘッダーは信頼しない。ADR-0004）。
 
 ## 6. エラーと監査
 

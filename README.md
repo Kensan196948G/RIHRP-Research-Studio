@@ -16,7 +16,7 @@
 > PR [#1](https://github.com/Kensan196948G/RIHRP-Research-Studio/pull/1) は **main へマージ済み**（merge commit `5e3f410`）。独立レビュー（pr-verifier）は **6 巡で合格**（critical 0 / high 0）。
 > **CI（GitHub Actions）有効**: API (ruff / pytest) / Web (tsc / vitest / build) / Secret scan (gitleaks) の 3 ジョブ。
 > **本番公開済み**: [research.mirai-dx-platform.com](https://research.mirai-dx-platform.com)（Cloudflare Tunnel + Access。未認証は 302）。
-> **最終検証（2026-11-03）:** pytest 59 passed / 1 skipped / vitest 5 / CI success 3/3 / `npm audit`（開発依存含む）0 / `pip-audit` 0 / Dependabot open critical・high 0 / スケール（1,000 主張）p95 claims 180ms・export 42ms / 通し E2E 成功。詳細は [`docs/verification/2026-11-03.md`](docs/verification/2026-11-03.md)。
+> **最終検証（2026-11-03）:** pytest **96 passed / 1 skipped** / vitest **10** / CI success 3/3 / `npm audit`（開発依存含む）0 / `pip-audit` 0 / Dependabot open critical・high 0 / スケール（1,000 主張）p95 claims 180ms・export 42ms / 通し E2E 成功。詳細は [`docs/verification/2026-11-03.md`](docs/verification/2026-11-03.md) と [`2026-11-03-cf-access-autologin.md`](docs/verification/2026-11-03-cf-access-autologin.md)。
 
 ## 01. これは何か
 
@@ -124,8 +124,8 @@ RIHRP_DATABASE_URL=postgresql+psycopg://rihrp_app:<パスワード>@127.0.0.1:54
 # テスト DB を用意（初回のみ）
 createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指定可
 
-.venv/bin/pytest -q            # 59 passed / 1 skipped
-(cd apps/web && npx vitest run) # 5 passed
+.venv/bin/pytest -q            # 96 passed / 1 skipped
+(cd apps/web && npx vitest run) # 10 passed
 .venv/bin/ruff check apps/api tests
 .venv/bin/ruff format --check apps/api tests
 tools/ci.sh --no-install       # CI 相当を一括実行
@@ -158,6 +158,10 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 - 秘密情報は環境変数（リポジトリ外の設定ファイル）。`.env*` はコミットしない。
 - 監査ログは append-only（更新・削除 API なし）。
 - 本番は Cloudflare Access を前段に置く（`research.mirai-dx-platform.com` で稼働中）。
+- **Cloudflare Access の自動ログイン**: `RIHRP_TRUST_CF_ACCESS=true` のとき、`/api/auth/access` が
+  `Cf-Access-Jwt-Assertion` を RS256 署名・iss・aud・有効期限まで検証し、許可 email の利用者にアプリのセッションを発行する。
+  平文の `Cf-Access-Authenticated-User-Email` は信頼しない。email allowlist・未設定時は全拒否（fail closed）。
+  ループバック限定は任意の追加防御（uvicorn の proxy headers 設定に依存）。
 
 ## 07. 配備
 
@@ -169,7 +173,7 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 
 | 機能 | 状態 | 根拠 |
 |---|---|---|
-| 認証・セッション・CSRF・RBAC | 実装済み | pytest（60 件中 59 passed / 1 skipped）、UI 実測 |
+| 認証・セッション・CSRF・RBAC | 実装済み | pytest（97 件中 96 passed / 1 skipped）、UI 実測 |
 | テーマ / 出典（SHA-256）/ 主張 / 根拠 / 検証 | 実装済み | pytest、API 実測、UI 実測 |
 | レポート / 版 / 検証 / 提出 / 承認 / 差し戻し | 実装済み | pytest、UI 実測（提出→承認） |
 | 承認後の整合性警告（根拠変更で矛盾になった場合） | 実装済み | pytest（`test_approved_report_flags_post_approval_tamper`）、画面確認 |
@@ -202,6 +206,7 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 | systemd 配備 / health check | 実装済み | 実測（第 10 章） |
 | GitHub Actions CI | 実装済み | run `41513750337` success（API / Web / Secret scan） |
 | Cloudflare Tunnel / Access | 実装済み | `research.mirai-dx-platform.com`（未認証 302）。`docs/verification/2026-11-03.md` |
+| Cloudflare Access 自動ログイン（JWT 検証） | 実装済み | `tests/unit/test_cf_access.py`（25 件）、`tests/integration/test_access_login.py`（12 件）、`apps/web/src/auth.test.tsx`（4 件）、`apps/web/src/pages/Login.test.tsx`（1 件）、`docs/verification/2026-11-03-cf-access-autologin.md` |
 | Dependabot アラート（脆弱性検知） | 有効 | open の critical / high = 0（dev 依存の 4 件は PR #3 で修正、再スキャン後に実測） |
 | PDF / Office 取り込み、外部 URL 自動取得 | 未実装 | 将来（要件 §5 の対象外） |
 
@@ -221,11 +226,12 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 
 - 独立レビュー（pr-verifier）: **6 巡で合格**（critical 0 / high 0 / medium 0 / low 0）。各巡の件数は [`2026-11-03-reviews.json`](docs/verification/2026-11-03-reviews.json)。主な対応は、監査ログの TRUNCATE 保護と DB ロール分離、承認と主張変更の直列化（`SELECT … FOR UPDATE`）、ロック後の identity map 更新、project 削除と子作成の直列化、数値境界判定。
 - CI（GitHub Actions）: run `41513750337`（head `6446935`）と main push の run `41533037024`（`5e3f410`）がいずれも **success 3/3**（API (ruff / pytest) / Web (tsc / vitest / build) / Secret scan (gitleaks)）。
-- `pytest`: **59 passed / 1 skipped**（skip は所有者ロールのため対象外、`test_audit_immutable.py:40`）、`vitest`: 5 passed。
+- `pytest`: **96 passed / 1 skipped**（skip は所有者ロールのため対象外、`test_audit_immutable.py:40`）、`vitest`: 10 passed（PR #4 の Access 自動ログイン 37 件 + UI 5 件を含む）。
 - main マージ: PR #1 → merge commit **`5e3f410`**（2026-11-03 06:57 JST）。マージゲートは 18/20（高リスク 2 件はユーザーの明示 Y のうえ GitHub UI で人間がマージ）。
 - 配備（2026-11-03 07:00 JST 時点）: `infra/native/deploy.sh` → 稼働 commit **`5e3f410`**、`/healthz` 200・`/readyz` 200（`0003_audit_truncate`）。
 - 本番公開: `research.mirai-dx-platform.com`（Cloudflare Tunnel `35974e49…` + Access アプリ／policy `rihrp-allow`）。未認証は 302。
 - Dependabot アラート: 有効化。開発依存の critical 3 / high 1（vite / tinypool / vitest）は PR #3 で修正し、open の critical / high = **0 件**（再スキャン後に実測）。
+- Cloudflare Access 自動ログイン（PR #4）: `pytest` **96 passed / 1 skipped**、`vitest` **10 passed**（Access 関連 37 件 + UI 5 件を追加）。
 - 詳細: [docs/verification/2026-11-03.md](docs/verification/2026-11-03.md)
 
 ### 2026-11-02

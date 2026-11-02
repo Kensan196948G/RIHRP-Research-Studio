@@ -24,7 +24,19 @@ class Settings(BaseSettings):
     session_ttl_minutes: int = 480
     seed_demo: bool = True
     login_rate_limit: int = 10
+    # Cloudflare Access の ID をアプリのセッションへ引き継ぐ（自動ログイン）。
+    # 有効時は Cf-Access-Jwt-Assertion の署名・iss・aud・期限を検証する（cf_access.py）。
     trust_cf_access: bool = False
+    cf_access_team_domain: str = ""
+    cf_access_aud: str = ""
+    # 自動ログインを許可する email（カンマ区切り）。空なら全拒否（fail closed）。
+    cf_access_allowed_emails: str = ""
+    # ループバック接続だけを許可する追加防御。uvicorn は既定で proxy headers を信頼するため
+    # Tunnel 経由の request.client.host は実 IP になる（--no-proxy-headers のときだけ有効）。
+    cf_access_loopback_only: bool = False
+    # 未登録ユーザーの自動作成（既定は無効）。
+    cf_access_provision: bool = False
+    cf_access_default_role: str = "viewer"
     audit_retention_days: int = 365
     web_dist: Path = REPO_ROOT / "apps/web/dist"
 
