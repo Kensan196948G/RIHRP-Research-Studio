@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
@@ -12,9 +12,10 @@ from ..auth import Principal, require_admin, require_reviewer
 from ..db import get_db
 from ..errors import ApiError
 from ..models import AuditEvent, User
+from ..models import Session as SessionRow
 from ..schemas import UserIn, UserPatch
 from ..security import hash_password
-from ..services import audit_to_dict, user_to_dict
+from ..services import audit_to_dict, user_to_dict, utcnow
 
 router = APIRouter(prefix="/api", tags=["admin"])
 
@@ -111,6 +112,14 @@ def update_user(
     if payload.is_active is not None:
         user.is_active = payload.is_active
         changes["is_active"] = payload.is_active
+        if payload.is_active is False:
+            # 無効化時は残っているセッションを即時失効させる
+            revoked = db.execute(
+                update(SessionRow)
+                .where(SessionRow.user_id == user.id, SessionRow.revoked_at.is_(None))
+                .values(revoked_at=utcnow())
+            ).rowcount
+            changes["sessions_revoked"] = int(revoked or 0)
     write_audit(
         db,
         actor_id=principal.user_id,

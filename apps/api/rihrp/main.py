@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from . import __version__
 from .config import get_settings
 from .db import SessionLocal
 from .errors import error_body, install_error_handlers
+from .request_context import request_id_var
 from .routers import admin, auth, claims, health, projects, reports, sources
 from .seed import seed_all
 
@@ -57,6 +59,13 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
+        token = request_id_var.set(uuid.uuid4().hex)
+        try:
+            return await _security_headers(request, call_next)
+        finally:
+            request_id_var.reset(token)
+
+    async def _security_headers(request: Request, call_next):
         # 本文サイズの上限（出典 1 MiB + JSON 余裕）。巨大な本文での DoS を避ける。
         content_length = request.headers.get("content-length")
         if content_length is not None:
@@ -82,6 +91,7 @@ def create_app() -> FastAPI:
                 "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
                 "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'",
             )
+        response.headers.setdefault("X-Request-Id", request_id_var.get())
         return response
 
     dist: Path = get_settings().web_dist

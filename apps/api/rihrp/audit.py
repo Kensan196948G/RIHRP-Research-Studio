@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from .models import AuditEvent
+from .request_context import request_id_var
 
 
 def write_audit(
@@ -25,7 +26,7 @@ def write_audit(
         entity_id=(entity_id or "")[:36],
         project_id=project_id,
         details=details or {},
-        request_id=request_id[:36],
+        request_id=(request_id or request_id_var.get())[:36],
     )
     db.add(event)
     return event

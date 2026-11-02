@@ -401,12 +401,18 @@ def make_version(
 # ---------------------------------------------------------------- export
 def render_markdown(db: Session, report: Report) -> str:
     project = db.get(Project, report.project_id)
-    claims = {
-        claim.id: claim
-        for claim in db.execute(
-            select(Claim).where(Claim.project_id == report.project_id)
-        ).scalars()
-    }
+    # エクスポートに含めるのは、レポートが実際に参照している主張だけ。
+    referenced_ids = collect_report_claim_ids(report.content or {})
+    claims: dict[str, Claim] = {}
+    if referenced_ids:
+        claims = {
+            claim.id: claim
+            for claim in db.execute(
+                select(Claim).where(
+                    Claim.id.in_(referenced_ids), Claim.project_id == report.project_id
+                )
+            ).scalars()
+        }
     evidence_by_claim: dict[str, list[tuple[ClaimEvidence, Source | None]]] = {
         claim_id: _load_evidence(db, claim_id) for claim_id in claims
     }
@@ -448,9 +454,13 @@ def render_markdown(db: Session, report: Report) -> str:
 
     lines.append("## 根拠付録")
     lines.append("")
-    if not claims:
+    if not referenced_ids:
         lines.append("（参照された主張はありません）")
-    for claim in claims.values():
+    for claim_id in referenced_ids:
+        claim = claims.get(claim_id)
+        if claim is None:
+            lines.append(f"- [未登録の主張: {claim_id}]")
+            continue
         label = VERDICT_LABELS.get(claim.last_verdict or "", "未検証")
         lines.append(f"- [{label}] {claim.text}")
         for evidence, source in evidence_by_claim.get(claim.id, []):

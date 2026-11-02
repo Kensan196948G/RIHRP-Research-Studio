@@ -37,13 +37,13 @@
 | FR-6.7 同時編集の競合検知 | `reports.py::update_report`（`expected_version`） | `test_report_save_rejects_stale_version` | ✅ |
 | FR-6.4 承認 / 差し戻し（矛盾ゼロ） | `reports.py::review_report` | `test_tampered_snapshot_blocks_approval`、`test_review_requires_comment_for_changes` | ✅ |
 | FR-6.5 提出者本人の承認拒否 | `reports.py::review_report`（403） | `test_self_approval_forbidden` | ✅ |
-| FR-6.6 Markdown エクスポート | `services.py::render_markdown` | `test_main_flow_end_to_end`、実測 | ✅ |
+| FR-6.6 Markdown エクスポート（参照主張のみ） | `services.py::render_markdown` | `test_main_flow_end_to_end`、`test_export_includes_only_referenced_claims` | ✅ |
 | FR-7.1 監査対象 | `audit.py::write_audit` 各ルータ | `test_main_flow_end_to_end`（actions） | ✅ |
 | FR-7.2 同一 Tx / fail closed | 各ルータで `db.commit()` 前に監査 | `test_main_flow_end_to_end` | ✅ |
 | FR-7.3 更新・削除不可 | ルータなし | `test_audit_is_not_mutable` | ✅ |
 | FR-7.4 最近の活動 | ダッシュボード（reviewer/admin のみ） | UI 実測 | ✅ |
 | FR-9.1 セッション保守 | `rihrp/maintenance.py` | `test_purge_sessions_removes_only_expired` | ✅ |
-| FR-8.1 利用者管理（作成・ロール変更・無効化） | `routers/admin.py`、利用者画面 | `test_admin_can_list_users`、`test_admin_cannot_demote_self`、UI 実測 | ✅ |
+| FR-8.1 利用者管理（作成・ロール変更・無効化・セッション失効） | `routers/admin.py`、利用者画面 | `test_admin_can_list_users`、`test_admin_cannot_demote_self`、`test_deactivated_user_sessions_are_revoked`、UI 実測 | ✅ |
 | FR-8.3 パスワード変更 | `routers/auth.py::change_password`、設定画面 | `test_change_password`、UI 実測 | ✅ |
 | FR-8.2 デモ seed | `seed.py`（`RIHRP_SEED_PASSWORD` 必須） | 実測（ローカル） | ✅ |
 
@@ -60,6 +60,7 @@
 | NFR-11 パスワード変更時のセッション失効 | `auth.py::change_password` | `test_password_change_revokes_other_sessions` | ✅ |
 | NFR-12 一覧の N+1 回避 | `claims.py`（`GROUP BY`） | `test_claim_list_reports_evidence_count` | ✅ |
 | NFR-13 一意制約競合の 409 化 | `sources.py` / `claims.py` / `admin.py`（`IntegrityError`） | コードレビュー（競合時の防御） | ✅ |
+| NFR-14 リクエスト相関 ID | `main.py` / `request_context.py` / `audit.py` | `test_audit_records_request_id_and_header` | ✅ |
 | NFR-5 監査 append-only | `audit.py`、API なし、DB トリガー（`0002`） | `test_audit_is_not_mutable`、`test_audit_events_reject_update_and_delete` | ✅ |
 | NFR-6 Node 22 / Python 3.12 / Docker なし | systemd unit | 実測 | ✅ |
 | NFR-7 migration 未適用で 503 | `routers/health.py` | `test_health_and_ready` | ✅ |

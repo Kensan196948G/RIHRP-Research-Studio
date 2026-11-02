@@ -123,7 +123,7 @@ RIHRP_DATABASE_URL=postgresql+psycopg://rihrp_app:<パスワード>@127.0.0.1:54
 # テスト DB を用意（初回のみ）
 createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指定可
 
-.venv/bin/pytest -q            # 43 passed
+.venv/bin/pytest -q            # 47 passed
 (cd apps/web && npx vitest run) # 5 passed
 .venv/bin/ruff check apps/api tests
 .venv/bin/ruff format --check apps/api tests
@@ -181,6 +181,9 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 | 監査ログの DB レベル append-only | 実装済み | migration `0002_audit_immutable`、`test_audit_events_reject_update_and_delete` |
 | 主張の判定・本文フィルタ | 実装済み | UI 実測（矛盾 0 件 / 根拠不足 1 件 / 検索 1 件） |
 | モーダルのフォーカストラップ | 実装済み | Playwright 実測（Tab 25 回で外に出ない） |
+| エクスポートは参照主張のみ | 実装済み | `test_export_includes_only_referenced_claims` |
+| 利用者無効化時のセッション失効 | 実装済み | `test_deactivated_user_sessions_are_revoked` |
+| リクエスト相関 ID（監査・ヘッダー） | 実装済み | `test_audit_records_request_id_and_header` |
 | OpenDesign 設計参照との比較 | 実施済み | `docs/design/01-webui-design.md` 第 8 章 |
 | Markdown エクスポート | 実装済み | pytest、API 実測 |
 | 監査ログ（append-only） | 実装済み | pytest |
@@ -208,7 +211,7 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 - `alembic upgrade head`: 適用済み（`2dee6c390541`）
 - Health Check: `/healthz` 200、`/readyz` 200（migration 一致）
 - 主要フロー実測: editor ログイン → 検証（2 verified / 1 unverified）→ 提出 → reviewer 承認 → Markdown エクスポート
-- セキュリティ: セキュリティヘッダー、Cookie 属性（HttpOnly / SameSite）、2 MiB 超の本文 413 を自動テスト
+- セキュリティ: セキュリティヘッダー、Cookie 属性（HttpOnly / SameSite）、2 MiB 超の本文 413、無効化時のセッション失効を自動テスト
 - UI 実測（Round 3）: ログイン後の戻り先復元、主張編集（判定リセット）、テーマ編集、版履歴モーダル、設定画面、ロール変更、テーマ削除（管理者のみ）
 - 改竄試験: 出典本文を変更 → `contradicted`（`evidence_tampered`）→ 承認 API が **409 approval_blocked**
 - 監査: 上記操作が `audit_events` に記録されていることを確認

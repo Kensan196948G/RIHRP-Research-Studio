@@ -164,3 +164,28 @@ def test_password_change_revokes_other_sessions(users: dict[str, str]) -> None:
         assert changed.status_code == 200
         assert second.get("/api/auth/me").status_code == 401
         assert first.get("/api/auth/me").status_code == 200
+
+
+def test_deactivated_user_sessions_are_revoked(users: dict[str, str]) -> None:
+    from sqlalchemy import select
+
+    from rihrp.db import SessionLocal
+    from rihrp.main import app
+    from rihrp.models import Session as SessionRow
+
+    with TestClient(app) as viewer:
+        login(viewer, "viewer")
+        assert viewer.get("/api/auth/me").status_code == 200
+
+        with TestClient(app) as admin:
+            login(admin, "admin")
+            response = admin.patch(f"/api/users/{users['viewer']}", json={"is_active": False})
+            assert response.status_code == 200
+
+        assert viewer.get("/api/auth/me").status_code == 401
+
+    with SessionLocal() as db:
+        sessions = db.execute(
+            select(SessionRow).where(SessionRow.user_id == users["viewer"])
+        ).scalars()
+        assert all(session.revoked_at is not None for session in sessions)

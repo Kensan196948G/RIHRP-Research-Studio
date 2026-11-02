@@ -390,3 +390,51 @@ def test_claim_list_reports_evidence_count(
         assert response.status_code == 201, response.text
     listed = editor_client.get(f"/api/projects/{project['id']}/claims").json()["claims"]
     assert [c["evidence_count"] for c in listed if c["id"] == claim["id"]] == [2]
+
+
+def test_export_includes_only_referenced_claims(
+    editor_client: TestClient, users: dict[str, str]
+) -> None:
+    project, _, claim = build_verified_claim(editor_client)
+    unreferenced = create_claim(editor_client, project["id"], "参照されない主張は 777 MW である。")
+    report = create_report_with_claim(editor_client, project, claim)
+    body = editor_client.get(f"/api/reports/{report['id']}/export").text
+    assert "1,240 MW" in body
+    assert "777 MW" not in body
+    assert unreferenced["text"] not in body
+
+
+def test_readyz_reports_migration_mismatch(client: TestClient, users: dict[str, str]) -> None:
+    with engine.begin() as connection:
+        original = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("UPDATE alembic_version SET version_num = 'deadbeef'"))
+        response = client.get("/readyz")
+        assert response.status_code == 503
+        assert response.json()["reason"] == "migration_pending"
+    finally:
+        with engine.begin() as connection:
+            connection.execute(
+                text("UPDATE alembic_version SET version_num = :version"),
+                {"version": original},
+            )
+
+
+def test_audit_records_request_id_and_header(
+    editor_client: TestClient, users: dict[str, str]
+) -> None:
+    response = editor_client.post("/api/projects", json={"title": "相関ID", "summary": ""})
+    assert response.status_code == 201
+    request_id = response.headers.get("X-Request-Id")
+    assert request_id and len(request_id) == 32
+
+    with engine.begin() as connection:
+        stored = connection.execute(
+            text(
+                "SELECT request_id FROM audit_events "
+                "WHERE action = 'project.created' "
+                "ORDER BY created_at DESC LIMIT 1"
+            )
+        ).scalar_one()
+    assert stored == request_id
