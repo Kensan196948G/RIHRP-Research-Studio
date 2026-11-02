@@ -31,8 +31,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const result = await api.me();
         if (!cancelled) setUser(result.user);
-      } catch {
+      } catch (meError) {
         if (cancelled) return;
+        // セッション確認が 401（未ログイン）のときだけ Access 自動サインインを試す。
+        // 500/503/ネットワーク障害では自動サインインせず、エラーとして扱う。
+        if (!(meError instanceof ApiError && meError.status === 401)) {
+          setAccessEnabled(null);
+          setAccessError(
+            meError instanceof Error ? meError.message : "セッションの確認に失敗しました。",
+          );
+          return;
+        }
         if (window.sessionStorage.getItem(ACCESS_LOGOUT_KEY) === "1") {
           setAccessEnabled(true);
           return;

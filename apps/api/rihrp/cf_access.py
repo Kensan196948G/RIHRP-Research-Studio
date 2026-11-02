@@ -70,6 +70,15 @@ def load_jwks(settings: Settings, *, force: bool = False) -> PyJWKSet:
             "access_verification_unavailable",
             "Cloudflare Access の公開鍵を取得できません。",
         ) from exc
+    if not jwks.keys:
+        # 200 でも鍵が空なら検証不能として扱う（利用可能なキャッシュがあれば猶予内で使う）。
+        if cached and now - cached[0] <= JWKS_STALE_MAX_SECONDS:
+            return cached[1]
+        raise ApiError(
+            503,
+            "access_verification_unavailable",
+            "Cloudflare Access の公開鍵が空です。",
+        )
     _jwks_cache[domain] = (now, jwks)
     return jwks
 

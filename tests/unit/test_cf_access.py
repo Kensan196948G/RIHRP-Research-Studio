@@ -234,3 +234,50 @@ def test_load_jwks_rejects_cache_older_than_limit(monkeypatch):
     with pytest.raises(ApiError) as excinfo:
         cf_access.load_jwks(make_settings())
     assert excinfo.value.status_code == 503
+
+
+def test_unknown_kid_forces_jwks_refetch(monkeypatch):
+    private_key, jwks = make_key()
+    calls = {"count": 0}
+
+    def fetch(_settings):
+        calls["count"] += 1
+        return jwks
+
+    monkeypatch.setattr(cf_access, "_fetch_jwks", fetch)
+
+    with pytest.raises(ApiError):
+        cf_access.verify_assertion(make_token(private_key, kid="unknown"), make_settings())
+    assert calls["count"] == 2
+
+
+def test_load_jwks_returns_503_on_http_error(monkeypatch):
+    def fail(_settings):
+        raise urllib.error.HTTPError("https://example.invalid", 404, "not found", {}, None)
+
+    monkeypatch.setattr(cf_access, "_fetch_jwks", fail)
+
+    with pytest.raises(ApiError) as excinfo:
+        cf_access.load_jwks(make_settings())
+    assert excinfo.value.status_code == 503
+
+
+def test_load_jwks_returns_503_on_timeout(monkeypatch):
+    def fail(_settings):
+        raise TimeoutError("timeout")
+
+    monkeypatch.setattr(cf_access, "_fetch_jwks", fail)
+
+    with pytest.raises(ApiError) as excinfo:
+        cf_access.load_jwks(make_settings())
+    assert excinfo.value.status_code == 503
+
+
+def test_load_jwks_returns_503_on_empty_keys(monkeypatch):
+    monkeypatch.setattr(
+        cf_access, "_fetch_jwks", lambda _settings: PyJWKSet.from_dict({"keys": []})
+    )
+
+    with pytest.raises(ApiError) as excinfo:
+        cf_access.load_jwks(make_settings())
+    assert excinfo.value.status_code == 503

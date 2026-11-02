@@ -118,6 +118,12 @@ def test_access_login_creates_session(
     )
     assert response.status_code == 200, response.text
     assert response.headers["Cache-Control"] == "no-store"
+    cookies = response.headers.get_list("set-cookie")
+    session_cookie = next(item for item in cookies if item.startswith("rihrp_session="))
+    csrf_cookie = next(item for item in cookies if item.startswith("rihrp_csrf="))
+    assert "HttpOnly" in session_cookie
+    assert "SameSite=lax" in session_cookie.replace("samesite", "SameSite")
+    assert "HttpOnly" not in csrf_cookie
     body = response.json()
     assert body["user"]["email"] == "editor@test.local"
     assert body["user"]["role"] == "editor"

@@ -22,10 +22,10 @@
 
 | 項目 | 結果 |
 |---|---|
-| `pytest -q` | **85 passed / 1 skipped**（Access 関連 26 件を追加: unit 16 / integration 10） |
+| `pytest -q` | **89 passed / 1 skipped**（Access 関連 30 件を追加: unit 20 / integration 10） |
 | `ruff check` / `ruff format --check` | pass |
 | `python infra/db/export_openapi.py --check` | pass（`/api/auth/access` を反映） |
-| `vitest run` | **8 passed**（`auth.test.tsx` 3 件: 自動サインイン / 無効時のフォールバック / ログアウト直後の抑止） |
+| `vitest run` | **9 passed**（`auth.test.tsx` 4 件: 自動サインイン / 無効時のフォールバック / ログアウト直後の抑止 / 500 時に自動サインインしない） |
 | `tsc -b` / `vite build` | pass |
 
 integration テストで確認した境界:

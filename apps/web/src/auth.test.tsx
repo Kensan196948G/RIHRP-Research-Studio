@@ -106,3 +106,30 @@ describe("AuthProvider", () => {
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/auth/access"))).toBe(false);
   });
 });
+
+describe("AuthProvider error handling", () => {
+  it("does not fall back to Access login when the session check fails with 500", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/auth/me")) {
+        return json({ error: { code: "internal", message: "サーバーエラー" } }, 500);
+      }
+      if (url.endsWith("/api/auth/access")) {
+        return json({ user: USER, csrf_token: "csrf" });
+      }
+      return json({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+
+    expect(await screen.findByText("none|null|サーバーエラー")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/auth/access"))).toBe(
+      false,
+    );
+  });
+});
