@@ -122,7 +122,10 @@ def delete_source(
     db: OrmSession = Depends(get_db),
 ) -> dict:
     source = db.execute(
-        select(Source).where(Source.id == source_id).with_for_update()
+        select(Source)
+        .where(Source.id == source_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     ).scalar_one_or_none()
     if source is None:
         raise ApiError(404, "not_found", "出典が見つかりません。")

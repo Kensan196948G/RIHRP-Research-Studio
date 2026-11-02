@@ -137,7 +137,10 @@ def delete_claim(
     claim = get_claim_or_404(db, claim_id)
     lock_project(db, claim.project_id)
     claim = db.execute(
-        select(Claim).where(Claim.id == claim_id).with_for_update()
+        select(Claim)
+        .where(Claim.id == claim_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     ).scalar_one_or_none()
     if claim is None:
         raise ApiError(404, "not_found", "主張が見つかりません。")
@@ -172,6 +175,14 @@ def add_evidence(
 ) -> dict:
     claim = get_claim_or_404(db, claim_id)
     lock_project(db, claim.project_id)
+    claim = db.execute(
+        select(Claim)
+        .where(Claim.id == claim_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).scalar_one_or_none()
+    if claim is None:
+        raise ApiError(404, "not_found", "主張が見つかりません。")
     source = get_source_or_404(db, payload.source_id)
     if source.project_id != claim.project_id:
         raise ApiError(422, "validation_error", "出典と主張のテーマが一致しません。")
@@ -229,7 +240,12 @@ def delete_evidence(
 ) -> dict:
     claim = get_claim_or_404(db, claim_id)
     lock_project(db, claim.project_id)
-    evidence = db.get(ClaimEvidence, evidence_id)
+    evidence = db.execute(
+        select(ClaimEvidence)
+        .where(ClaimEvidence.id == evidence_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).scalar_one_or_none()
     if evidence is None or evidence.claim_id != claim_id:
         raise ApiError(404, "not_found", "根拠が見つかりません。")
     db.delete(evidence)

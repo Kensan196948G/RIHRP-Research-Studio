@@ -47,9 +47,13 @@ if [[ "$DB_NAME" != *_test && "$DB_NAME" != "rihrp_test" ]]; then
 fi
 
 if [[ "$DB_OWNER" != "$DB_ROLE" ]]; then
-  for db in "$DB_NAME" "${DB_NAME}_test"; do
-    [[ "$DB_NAME" == *_test || "$db" == "rihrp_test" ]] && continue
-    psql -d "$db" -v ON_ERROR_STOP=1 -v owner="$DB_OWNER" -v app="$DB_ROLE" <<'SQL'
+  dbs=("$DB_NAME")
+  if [[ "$DB_NAME" != *_test && "$DB_NAME" != "rihrp_test" ]]; then
+    dbs+=("${DB_NAME}_test")
+  fi
+  for db in "${dbs[@]}"; do
+    if database_exists "$db"; then
+      psql -d "$db" -v ON_ERROR_STOP=1 -v owner="$DB_OWNER" -v app="$DB_ROLE" <<'SQL'
 GRANT USAGE ON SCHEMA public TO :"app";
 ALTER DEFAULT PRIVILEGES FOR ROLE :"owner" IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"app";
@@ -57,6 +61,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE :"owner" IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO :"app";
 REVOKE CREATE ON SCHEMA public FROM :"app";
 SQL
+    fi
   done
 fi
 echo "bootstrap ok: db=${DB_NAME} owner=${DB_OWNER} app=${DB_ROLE}"

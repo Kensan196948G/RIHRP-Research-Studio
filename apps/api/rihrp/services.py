@@ -66,7 +66,10 @@ def get_project_or_404(db: Session, project_id: str) -> Project:
 def lock_project(db: Session, project_id: str) -> Project:
     """テーマ配下の参照整合性を直列化するための行ロック。"""
     project = db.execute(
-        select(Project).where(Project.id == project_id).with_for_update()
+        select(Project)
+        .where(Project.id == project_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     ).scalar_one_or_none()
     if project is None:
         raise ApiError(404, "not_found", "テーマが見つかりません。")
@@ -97,7 +100,10 @@ def get_report_or_404(db: Session, report_id: str) -> Report:
 def get_report_for_update(db: Session, report_id: str) -> Report:
     """同時更新・同時承認を直列化するため行ロックを取る。"""
     report = db.execute(
-        select(Report).where(Report.id == report_id).with_for_update()
+        select(Report)
+        .where(Report.id == report_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     ).scalar_one_or_none()
     if report is None:
         raise ApiError(404, "not_found", "レポートが見つかりません。")
