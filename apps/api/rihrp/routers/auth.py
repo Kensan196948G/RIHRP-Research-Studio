@@ -17,6 +17,7 @@ from ..auth import (
     get_principal,
     utcnow,
 )
+from ..cf_access import allowed_emails, verify_assertion
 from ..config import get_settings
 from ..db import get_db
 from ..errors import ApiError
@@ -99,6 +100,107 @@ def login(
         entity_type="session",
         entity_id=session_row.id,
         details={"role": user.role},
+    )
+    db.commit()
+    _set_cookies(response, raw_token, csrf_token, settings.session_ttl_minutes)
+    return {"user": user_to_dict(user), "csrf_token": csrf_token}
+
+
+@router.get("/access")
+def access_login(
+    request: Request,
+    response: Response,
+    db: OrmSession = Depends(get_db),
+) -> dict:
+    """Cloudflare Access の ID でアプリのセッションを発行する（パスワード入力なし）。
+
+    Access が付与する ``Cf-Access-Jwt-Assertion`` を署名・iss・aud・期限まで検証し、
+    allowlist に載る email の利用者にだけセッションを渡す。失敗時は自動ログインせず、
+    パスワードログイン（/api/auth/login）は別経路として残す。
+    """
+    settings = get_settings()
+    if not settings.trust_cf_access:
+        raise ApiError(404, "access_login_disabled", "Cloudflare Access ログインは無効です。")
+
+    host = request.client.host if request.client else ""
+    if settings.cf_access_loopback_only and host not in {"127.0.0.1", "::1"}:
+        raise ApiError(
+            403, "access_origin_rejected", "Cloudflare Access 経由の接続ではありません。"
+        )
+
+    token = request.headers.get("Cf-Access-Jwt-Assertion", "").strip()
+    if not token:
+        raise ApiError(
+            401, "access_assertion_missing", "Cloudflare Access の認証情報がありません。"
+        )
+
+    claims = verify_assertion(token, settings)
+    email = str(claims.get("email") or "").strip().lower()
+    if not email:
+        raise ApiError(
+            401, "access_assertion_invalid", "Cloudflare Access のトークンに email がありません。"
+        )
+
+    if email not in allowed_emails(settings):
+        write_audit(
+            db,
+            actor_id=None,
+            action="auth.access_denied",
+            entity_type="user",
+            details={"email": email, "reason": "email_not_allowed"},
+        )
+        db.commit()
+        raise ApiError(403, "access_email_not_allowed", "このアカウントには利用権限がありません。")
+
+    user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+    if user is None and settings.cf_access_provision:
+        user = User(
+            email=email,
+            name=str(claims.get("name") or email.split("@")[0])[:120],
+            role=settings.cf_access_default_role,
+            password_hash=hash_password(new_opaque_token()),
+        )
+        db.add(user)
+        db.flush()
+    if user is None:
+        write_audit(
+            db,
+            actor_id=None,
+            action="auth.access_denied",
+            entity_type="user",
+            details={"email": email, "reason": "user_not_found"},
+        )
+        db.commit()
+        raise ApiError(403, "access_user_not_found", "このアカウントは登録されていません。")
+    if not user.is_active:
+        write_audit(
+            db,
+            actor_id=user.id,
+            action="auth.access_denied",
+            entity_type="user",
+            entity_id=user.id,
+            details={"email": email, "reason": "user_inactive"},
+        )
+        db.commit()
+        raise ApiError(403, "access_user_inactive", "このアカウントは無効化されています。")
+
+    raw_token = new_opaque_token()
+    csrf_token = new_csrf_token()
+    session_row = SessionRow(
+        user_id=user.id,
+        token_hash=hash_token(raw_token),
+        csrf_token=csrf_token,
+        expires_at=utcnow() + timedelta(minutes=settings.session_ttl_minutes),
+    )
+    db.add(session_row)
+    db.flush()
+    write_audit(
+        db,
+        actor_id=user.id,
+        action="auth.login",
+        entity_type="session",
+        entity_id=session_row.id,
+        details={"role": user.role, "via": "cloudflare_access"},
     )
     db.commit()
     _set_cookies(response, raw_token, csrf_token, settings.session_ttl_minutes)

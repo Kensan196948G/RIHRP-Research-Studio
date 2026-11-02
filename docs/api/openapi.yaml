@@ -385,6 +385,29 @@ paths:
       summary: List Audit
       tags:
       - admin
+  /api/auth/access:
+    get:
+      description: 'Cloudflare Access の ID でアプリのセッションを発行する（パスワード入力なし）。
+
+
+        Access が付与する ``Cf-Access-Jwt-Assertion`` を署名・iss・aud・期限まで検証し、
+
+        allowlist に載る email の利用者にだけセッションを渡す。失敗時は自動ログインせず、
+
+        パスワードログイン（/api/auth/login）は別経路として残す。'
+      operationId: access_login_api_auth_access_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Access Login Api Auth Access Get
+                type: object
+          description: Successful Response
+      summary: Access Login
+      tags:
+      - auth
   /api/auth/change-password:
     post:
       operationId: change_password_api_auth_change_password_post

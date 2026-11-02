@@ -158,6 +158,9 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 - 秘密情報は環境変数（リポジトリ外の設定ファイル）。`.env*` はコミットしない。
 - 監査ログは append-only（更新・削除 API なし）。
 - 本番は Cloudflare Access を前段に置く（`research.mirai-dx-platform.com` で稼働中）。
+- **Cloudflare Access の自動ログイン**: `RIHRP_TRUST_CF_ACCESS=true` のとき、`/api/auth/access` が
+  `Cf-Access-Jwt-Assertion` を RS256 署名・iss・aud・有効期限まで検証し、許可 email の利用者にアプリのセッションを発行する。
+  平文の `Cf-Access-Authenticated-User-Email` は信頼しない。ループバック限定（既定）・email allowlist・fail closed。
 
 ## 07. 配備
 
@@ -202,6 +205,7 @@ RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
 | systemd 配備 / health check | 実装済み | 実測（第 10 章） |
 | GitHub Actions CI | 実装済み | run `41513750337` success（API / Web / Secret scan） |
 | Cloudflare Tunnel / Access | 実装済み | `research.mirai-dx-platform.com`（未認証 302）。`docs/verification/2026-11-03.md` |
+| Cloudflare Access 自動ログイン（JWT 検証） | 実装済み | `tests/unit/test_cf_access.py`、`tests/integration/test_access_login.py`、`docs/verification/2026-11-03-cf-access-autologin.md` |
 | Dependabot アラート（脆弱性検知） | 有効 | open の critical / high = 0（dev 依存の 4 件は PR #3 で修正、再スキャン後に実測） |
 | PDF / Office 取り込み、外部 URL 自動取得 | 未実装 | 将来（要件 §5 の対象外） |
 

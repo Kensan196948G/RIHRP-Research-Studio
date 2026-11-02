@@ -10,7 +10,7 @@ const DEMO_ACCOUNTS = [
 ];
 
 export function LoginPage() {
-  const { user, loading, login } = useAuth();
+  const { user, loading, login, accessEnabled, accessError, accessLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState("editor@rihrp.local");
@@ -24,6 +24,20 @@ export function LoginPage() {
     const target = (location.state as { from?: string } | null)?.from ?? "/";
     return <Navigate to={target} replace />;
   }
+
+  const onAccessLogin = async () => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      await accessLogin();
+      const target = (location.state as { from?: string } | null)?.from ?? "/";
+      navigate(target, { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cloudflare Access でのサインインに失敗しました。");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -68,6 +82,26 @@ export function LoginPage() {
         <div className="login-card">
           <h2>ログイン</h2>
           <span className="hint">組織のアカウントでサインインしてください。</span>
+          {loading ? (
+            <div className="hint" role="status">Cloudflare Access で認証しています…</div>
+          ) : null}
+          {accessEnabled ? (
+            <div className="access-box">
+              <div className="muted">
+                Cloudflare Access で認証済みの場合は、そのままサインインできます。
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ width: "100%", marginTop: 8 }}
+                onClick={onAccessLogin}
+                disabled={submitting || loading}
+              >
+                Cloudflare Access でサインイン
+              </button>
+              {accessError ? <div className="error-banner" role="alert">{accessError}</div> : null}
+            </div>
+          ) : null}
           {error ? <div className="error-banner" role="alert">{error}</div> : null}
           <form onSubmit={onSubmit} noValidate>
             <div className="field">
