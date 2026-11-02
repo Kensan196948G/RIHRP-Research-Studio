@@ -22,7 +22,7 @@ from ..db import get_db
 from ..errors import ApiError
 from ..models import Session as SessionRow
 from ..models import User
-from ..schemas import LoginIn
+from ..schemas import LoginIn, PasswordChangeIn
 from ..security import hash_password, hash_token, new_csrf_token, new_opaque_token, verify_password
 from ..services import user_to_dict
 
@@ -129,18 +129,14 @@ def me(
 
 @router.post("/change-password")
 def change_password(
-    payload: dict,
+    payload: PasswordChangeIn,
     principal: Principal = Depends(get_principal),
     db: OrmSession = Depends(get_db),
 ) -> dict:
-    current = str(payload.get("current_password", ""))
-    new = str(payload.get("new_password", ""))
-    if len(new) < 12:
-        raise ApiError(422, "validation_error", "新しいパスワードは 12 文字以上にしてください。")
     user = db.get(User, principal.user_id)
-    if user is None or not verify_password(current, user.password_hash):
+    if user is None or not verify_password(payload.current_password, user.password_hash):
         raise ApiError(401, "invalid_credentials", "現在のパスワードが一致しません。")
-    user.password_hash = hash_password(new)
+    user.password_hash = hash_password(payload.new_password)
     write_audit(
         db,
         actor_id=principal.user_id,

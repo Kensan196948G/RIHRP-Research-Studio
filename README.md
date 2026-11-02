@@ -123,10 +123,16 @@ RIHRP_DATABASE_URL=postgresql+psycopg://rihrp_app:<パスワード>@127.0.0.1:54
 # テスト DB を用意（初回のみ）
 createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指定可
 
-.venv/bin/pytest -q            # 30 passed
+.venv/bin/pytest -q            # 33 passed
 (cd apps/web && npx vitest run) # 4 passed
 .venv/bin/ruff check apps/api tests
 .venv/bin/ruff format --check apps/api tests
+tools/ci.sh --no-install       # CI 相当を一括実行
+
+# 配備済み環境のスモーク（秘密は環境変数）
+RIHRP_BASE_URL=http://127.0.0.1:18110 \
+RIHRP_SMOKE_EMAIL=... RIHRP_SMOKE_PASSWORD=... \
+.venv/bin/python tests/e2e/preview_smoke.py
 ```
 
 主なテスト観点:
@@ -165,7 +171,7 @@ createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指
 | OpenDesign 設計参照との比較 | 実施済み | `docs/design/01-webui-design.md` 第 8 章 |
 | Markdown エクスポート | 実装済み | pytest、API 実測 |
 | 監査ログ（append-only） | 実装済み | pytest |
-| ダッシュボード / 監査 / 利用者管理 | 実装済み | UI 実測（スクリーンショット） |
+| ダッシュボード / 検証結果 / 監査 / 利用者管理 | 実装済み | UI 実測（スクリーンショット） |
 | systemd 配備 / health check | 実装済み | 実測（第 10 章） |
 | GitHub Actions CI | **未設定** | ポリシーゲートで拒否（第 9 章） |
 | Cloudflare Tunnel / Access | **未実装** | 高リスク変更として承認待ち |
@@ -189,11 +195,14 @@ createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指
 - `alembic upgrade head`: 適用済み（`2dee6c390541`）
 - Health Check: `/healthz` 200、`/readyz` 200（migration 一致）
 - 主要フロー実測: editor ログイン → 検証（2 verified / 1 unverified）→ 提出 → reviewer 承認 → Markdown エクスポート
+- セキュリティ: セキュリティヘッダー、Cookie 属性（HttpOnly / SameSite）、2 MiB 超の本文 413 を自動テスト
 - 改竄試験: 出典本文を変更 → `contradicted`（`evidence_tampered`）→ 承認 API が **409 approval_blocked**
 - 監査: 上記操作が `audit_events` に記録されていることを確認
 - OpenDesign: design direction（`tech-utility`）取得、Studio で 8 画面のプロトタイプ生成（run は failed 表示）、実装との差異を文書化
 - systemd 配備: `rihrp.service` 起動、`/healthz` 200 / `/readyz` 200（migration `2dee6c390541`）
-- UI: ダッシュボード要対応レール、エディタのセクション一覧レール、モバイル 390px（横スクロール 0、カード表示）、モーダル Esc、フォーカスリング 2px を実測
+- UI: ダッシュボード要対応レール、エディタのセクション一覧レール、独立した検証結果画面、モバイル 390px（横スクロール 0、カード表示）、モーダル Esc、フォーカスリング 2px を実測
+- 性能（ローカル、n=100）: `/api/projects` p95 17.6ms / claims p95 24.8ms / sources p95 14.9ms（NFR-2 の 300ms 以内）
+- プレビュースモーク: `tests/e2e/preview_smoke.py` が PASS（health / ready / login / CSRF / 主要データ / export）
 - Backup / Restore: `infra/db/backup.sh` で dump 作成、`infra/db/restore_check.sh` で別 DB に復元（users=4 / projects=1 / claims=4 / reports=1）
 - Migration rollback: `rihrp_test` で `alembic downgrade base` → `upgrade head` を実測（最終 `2dee6c390541 (head)`）
 

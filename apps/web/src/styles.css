@@ -478,3 +478,11 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .section-block, .section-head, .section-body, .paragraph-block { min-width: 0; }
 .section-head input { min-width: 0; }
 .editor-toolbar .input { min-width: 0; }
+
+/* verification results */
+.verification-list { display: flex; flex-direction: column; gap: 10px; }
+.verification-item {
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+  padding: 14px;
+}
+.verification-text { font-size: 14px; font-weight: 600; margin: 8px 0 4px; line-height: 1.6; }

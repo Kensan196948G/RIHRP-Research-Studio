@@ -81,3 +81,35 @@ def test_login_rate_limit(client: TestClient, users: dict[str, str], monkeypatch
     )
     assert response.status_code == 429
     assert response.json()["error"]["code"] == "rate_limited"
+
+
+def test_security_headers(client: TestClient, users: dict[str, str]) -> None:
+    response = client.get("/healthz")
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert "default-src 'self'" in response.headers["Content-Security-Policy"]
+
+
+def test_session_cookie_flags(client: TestClient, users: dict[str, str]) -> None:
+    response = client.post(
+        "/api/auth/login",
+        json={"email": ROLES["editor"], "password": TEST_PASSWORD},
+    )
+    assert response.status_code == 200
+    cookies = response.headers.get_list("set-cookie")
+    session_cookie = next(item for item in cookies if item.startswith("rihrp_session="))
+    csrf_cookie = next(item for item in cookies if item.startswith("rihrp_csrf="))
+    assert "HttpOnly" in session_cookie
+    assert "SameSite=lax" in session_cookie
+    assert "HttpOnly" not in csrf_cookie
+
+
+def test_oversized_body_rejected(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "editor")
+    response = client.post(
+        "/api/projects",
+        content=b"x" * (2 * 1024 * 1024 + 1),
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "payload_too_large"

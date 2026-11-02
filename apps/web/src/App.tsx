@@ -10,6 +10,7 @@ import { LoginPage } from "./pages/Login";
 import { ProjectPage } from "./pages/Project";
 import { ReportEditorPage } from "./pages/ReportEditor";
 import { UsersPage } from "./pages/Users";
+import { VerificationPage } from "./pages/Verification";
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -70,6 +71,7 @@ export function App() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="/projects/:projectId" element={<ProjectPage />} />
+        <Route path="/projects/:projectId/verification" element={<VerificationPage />} />
         <Route path="/reports/:reportId" element={<ReportEditorPage />} />
         <Route
           path="/audit"

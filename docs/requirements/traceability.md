@@ -46,9 +46,11 @@
 | 要件 | 実装 | テスト / 実測 | 状態 |
 |---|---|---|---|
 | NFR-1 ローカル PostgreSQL | `config.py` / `db.py` | `pytest`（`rihrp_test`） | ✅ |
-| NFR-2 応答 300ms | インデックス、集計クエリ | 実測（ローカルで数百 ms 未満） | ⚠️ 定量的な p95 は未計測 |
+| NFR-2 応答 300ms | インデックス、集計クエリ | 実測 n=100: p95 14.9〜24.8ms | ✅ |
 | NFR-3 統一エラー形式 | `errors.py` | 各テストで `error.code` を確認 | ✅ |
 | NFR-4 秘密をログに出さない | `security.py`、監査 details | コードレビュー | ✅ |
+| NFR-9 本文サイズ上限 | `main.py`（2 MiB、413） | `test_oversized_body_rejected` | ✅ |
+| NFR-10 Cookie 属性 | `auth.py::_set_cookies` | `test_session_cookie_flags` | ✅ |
 | NFR-5 監査 append-only | `audit.py`、API なし | `test_audit_is_not_mutable` | ✅ |
 | NFR-6 Node 22 / Python 3.12 / Docker なし | systemd unit | 実測 | ✅ |
 | NFR-7 migration 未適用で 503 | `routers/health.py` | `test_health_and_ready` | ✅ |

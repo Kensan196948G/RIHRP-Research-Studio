@@ -384,12 +384,15 @@ export function ProjectPage() {
           />
         ) : (
           <>
-            {editable ? (
-              <div className="row" style={{ marginBottom: 10 }}>
+            <div className="row" style={{ marginBottom: 10 }}>
+              {editable ? (
                 <button type="button" className="btn btn-sm" onClick={() => void verifyAll()} disabled={busy}>すべて検証</button>
-                <span className="muted small">検証は決定論的です（引用の実在と数値の一致）。</span>
-              </div>
-            ) : null}
+              ) : null}
+              <button type="button" className="btn btn-sm" onClick={() => navigate(`/projects/${projectId}/verification`)}>
+                検証結果を開く
+              </button>
+              <span className="muted small">検証は決定論的です（引用の実在と数値の一致）。</span>
+            </div>
             <div className="table-wrap claims-table">
               <table className="table">
                 <thead>

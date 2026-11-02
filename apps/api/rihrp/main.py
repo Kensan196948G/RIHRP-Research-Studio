@@ -20,6 +20,9 @@ from .seed import seed_all
 logger = logging.getLogger("rihrp")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
+# JSON 本文の上限。出典本文 1 MiB + メタデータを許容し、それ以上は 413 にする。
+MAX_BODY_BYTES = 2 * 1024 * 1024
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -54,6 +57,18 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
+        # 本文サイズの上限（出典 1 MiB + JSON 余裕）。巨大な本文での DoS を避ける。
+        content_length = request.headers.get("content-length")
+        if content_length is not None:
+            try:
+                too_large = int(content_length) > MAX_BODY_BYTES
+            except ValueError:
+                too_large = True
+            if too_large:
+                return JSONResponse(
+                    status_code=413,
+                    content=error_body("payload_too_large", "リクエスト本文が大きすぎます。"),
+                )
         response = await call_next(request)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
