@@ -17,7 +17,7 @@
 | 8 | Access 認証後の実ブラウザ確認 | OTP/SSO → ログイン → 6 ステップ操作 | ⚠️ **人間が実施** |
 | 9 | 利用対象者の確定 | Access ポリシーとアプリ allowlist | ⚠️ **人間が判断**（現状は単一 email） |
 | 10 | 監視の通知先 | `RIHRP_ALERT_WEBHOOK` の設定 | ⚠️ **未設定**（記録のみ） |
-| 11 | リリースタグ | `git tag -l` / GitHub Releases | ✅ `v0.1.0`（本リリースで作成） |
+| 11 | リリースタグ | `git tag -l` / GitHub Releases | ⏳ 本 PR マージ後に `v0.1.0` を作成（手順は §2） |
 | 12 | 監査ログ保持方針 | `python -m rihrp.maintenance audit-stats` | ⚠️ **方針決定待ち**（削除ジョブ未実装） |
 
 ## 2. リリース手順

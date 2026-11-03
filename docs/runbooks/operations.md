@@ -92,8 +92,16 @@ infra/native/rihrp-restore-check.sh
 ```
 
 - バックアップの保存先: `~/.local/state/rihrp/backups/`（`RIHRP_BACKUP_DIR` で変更可）。
+- 1 回のバックアップは `.dump`・`.sha256`・`.manifest.json`（バックアップ時点の件数と migration）を 1 組で保存する。
+  途中で失敗した場合は `.part` のまま残り、完成した `.dump` だけが公開される。
+- 復元訓練は **manifest の件数**と比較する。現在の本番件数と比較すると、バックアップ後の通常更新で
+  誤検知するため（以前の方式の欠陥）。SHA-256 と migration も検証する。
+- **前提**: 実行する OS ユーザーが対象 DB にローカル接続できること（本番は peer 認証）。接続できない場合は
+  バックアップが fail closed で停止する。`pg_dump` に接続情報は引き継がない（URL は DB 名の導出にのみ使う）。
 - 復元訓練のログ: `~/.local/state/rihrp/last-restore-check.log`。
 - 復元 DB を調査用に残す: `RIHRP_RESTORE_KEEP_DB=1 infra/native/rihrp-restore-check.sh`。
+- 旧形式（manifest なし）の dump は `infra/db/restore_check.sh <dump> [restore_db]` で手動検証できる
+  （現在の本番件数との比較になる点に注意）。
 
 **禁止（承認が必要）**: `DROP DATABASE` / `DROP TABLE` / `TRUNCATE` / 大量 DELETE / 不可逆 migration / 本番データへの重大変更。
 
@@ -103,9 +111,9 @@ infra/native/rihrp-restore-check.sh
 
 | timer | 実行 | 内容 | 手動実行 |
 |---|---|---|---|
-| `rihrp-backup.timer` | 毎日 03:30（JST） | 本番 DB のバックアップ（14 世代保持） | `systemctl --user start rihrp-backup.service` |
+| `rihrp-backup.timer` | 毎日 03:30（JST） | 本番 DB のバックアップ（dump + sha256 + manifest、14 世代保持） | `systemctl --user start rihrp-backup.service` |
 | `rihrp-maintenance.timer` | 毎日 04:00 | 期限切れ 7 日超のセッション削除 | `systemctl --user start rihrp-maintenance.service` |
-| `rihrp-restore-check.timer` | 毎週日曜 04:30 | 最新バックアップからの復元訓練（件数比較） | `systemctl --user start rihrp-restore-check.service` |
+| `rihrp-restore-check.timer` | 毎週日曜 04:30 | 最新の `<db>-*.dump` を復元し、SHA-256・migration・manifest の件数を検証 | `systemctl --user start rihrp-restore-check.service` |
 | `rihrp-healthcheck.timer` | 起動 2 分後、以降 5 分間隔 | `/healthz` と `/readyz` のチェック。失敗で非 0 | `systemctl --user start rihrp-healthcheck.service` |
 
 ```bash

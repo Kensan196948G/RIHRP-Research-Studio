@@ -4,6 +4,7 @@ Documentation=file:///home/kensan/Projects/Business-Project/RIHRP-Research-Studi
 
 [Service]
 Type=oneshot
+UMask=0077
 EnvironmentFile=-%h/.config/rihrp/rihrp.conf
 ExecStart=%h/Projects/Business-Project/RIHRP-Research-Studio/infra/native/rihrp-restore-check.sh
 Nice=10

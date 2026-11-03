@@ -7,7 +7,7 @@
 | 項目 | 実装 | 実測 |
 |---|---|---|
 | 日次バックアップ | `infra/native/rihrp-backup.sh` + `rihrp-backup.timer`（03:30） | `systemctl --user start rihrp-backup.service` → `Result=success`、`rihrp_production-<stamp>.dump` を生成 |
-| 週次復元訓練 | `infra/native/rihrp-restore-check.sh` + `rihrp-restore-check.timer`（日曜 04:30） | 最新 dump を `rihrp_restore_check` へ復元し、users 1/1・projects 4/4・audit_events 18/18 で `restore check: OK`。成功後に復元 DB を削除 |
+| 週次復元訓練 | `infra/native/rihrp-restore-check.sh` + `rihrp-restore-check.timer`（日曜 04:30） | 対象 DB の最新 `<db>-*.dump` を選び、SHA-256・migration・**バックアップ時点の manifest 件数**を検証。users 1/1・projects 4/4・audit_events 18/18 で `restore check: OK`。成功後に復元 DB を削除 |
 | セッション定期削除 | `rihrp-maintenance.service/.timer`（04:00） | `purged sessions: 0`（成功） |
 | 外形チェック | `infra/native/rihrp-healthcheck.sh` + `rihrp-healthcheck.timer`（5 分間隔） | `/healthz` 200・`/readyz` 200、失敗時は `alert.sh` が journal と `~/.local/state/rihrp/alerts.log` に記録 |
 | 通知経路 | `infra/native/alert.sh`（`RIHRP_ALERT_WEBHOOK` 対応、未設定でも記録） | 自己テストで `alerts.log` への記録を確認。**通知先の設定は人間** |
@@ -15,7 +15,7 @@
 | 運用手順 | `docs/runbooks/operations.md` 全面更新 | Access policy の実測値を反映（単一 email） |
 | リリース手順 | `docs/runbooks/release.md` | Go/No-Go 12 項目と手順 |
 | 変更履歴 | `CHANGELOG.md` / 本リリースノート | v0.1.0 |
-| NFR-16 並行更新 | `tests/integration/test_locking.py::test_concurrent_approval_is_serialized` | 2 本同時承認で `[200, 409]`、`reviews=1`、`audit report.reviewed=1` |
+| NFR-16 並行更新 | `tests/integration/test_locking.py::test_concurrent_approval_is_serialized` / `test_report_row_lock_is_exclusive` | 2 本同時承認で `[200, 409 invalid_state]`、`reviews=1`、`audit report.reviewed=1`。別セッションの `FOR UPDATE NOWAIT` が `OperationalError` になることで行ロックの取得自体を拘束 |
 | CI 依存監査 | 提案 `docs/ci/dependency-audit.md`（workflow 変更は人間） | YAML をパース検証 |
 
 ユニット定義は `systemd-analyze --user verify` が exit 0、`infra/native/install_ops_units.sh` で導入。
@@ -25,11 +25,12 @@
 
 | 項目 | 結果 |
 |---|---|
-| pytest | 147 collected / **146 passed / 1 skipped**（78.9s） |
-| 追加テスト | 同時承認の直列化（NFR-16）、監査統計の保持超過件数 |
+| pytest | 148 collected / **147 passed / 1 skipped**（78.9s） |
+| 追加テスト | 同時承認の直列化（NFR-16）、行ロックの排他性、監査統計の保持超過件数 |
 | vitest | 10 passed |
 | Playwright E2E | 26 passed |
 | ruff check / format | pass |
+| shellcheck | 警告なし（SC1090 / SC2012 も解消） |
 
 ## 3. 本番の実測（2026-11-03）
 

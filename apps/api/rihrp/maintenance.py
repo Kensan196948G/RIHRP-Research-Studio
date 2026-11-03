@@ -7,6 +7,8 @@ RIHRP_DATABASE_URL=... .venv/bin/python -m rihrp.maintenance audit-stats
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 from datetime import timedelta
 
 from sqlalchemy import delete, func, select
@@ -65,6 +67,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "purge-sessions":
+        # 破壊的なため、接続先が明示されていない場合は既定 DB へ推測で接続しない。
+        if not os.environ.get("RIHRP_DATABASE_URL"):
+            print("BLOCKED: RIHRP_DATABASE_URL が未設定のため purge を中止します", file=sys.stderr)
+            return 2
         count = purge_sessions(args.days)
         print(f"purged sessions: {count}")
     elif args.command == "audit-stats":

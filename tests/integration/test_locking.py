@@ -5,8 +5,10 @@ from __future__ import annotations
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
+from sqlalchemy.exc import OperationalError
 
 from rihrp.db import SessionLocal
 from rihrp.main import app
@@ -79,7 +81,7 @@ def test_concurrent_approval_is_serialized(
 
     barrier = threading.Barrier(2)
 
-    def approve(_: int) -> int:
+    def approve(_: int) -> tuple[int, str]:
         with TestClient(app) as reviewer:
             login(reviewer, "reviewer")
             barrier.wait(timeout=10)
@@ -87,13 +89,15 @@ def test_concurrent_approval_is_serialized(
                 f"/api/reports/{report['id']}/review",
                 json={"decision": "approved", "comment": "同時承認の直列化テスト。"},
             )
-            return response.status_code
+            body = response.json()
+            return response.status_code, (body.get("error") or {}).get("code", "")
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        statuses = sorted(pool.map(approve, range(2)))
+        results = sorted(pool.map(approve, range(2)))
 
-    # 1 本目が approved にした後、2 本目は最新行を見て 409 になる。
-    assert statuses == [200, 409]
+    # 1 本目が approved にした後、2 本目は最新行を見て 409 invalid_state になる。
+    assert [status for status, _ in results] == [200, 409]
+    assert [code for status, code in results if status == 409] == ["invalid_state"]
 
     with SessionLocal() as db:
         stored = db.get(Report, report["id"])
@@ -107,3 +111,16 @@ def test_concurrent_approval_is_serialized(
             )
             == 1
         )
+
+
+def test_report_row_lock_is_exclusive(editor_client: TestClient, users: dict[str, str]) -> None:
+    """get_report_for_update が実際に行ロックを取る（他セッションは NOWAIT で失敗する）。"""
+    project, _, claim = build_verified_claim(editor_client)
+    report = create_report_with_claim(editor_client, project, claim)
+
+    with SessionLocal() as holder:
+        assert get_report_for_update(holder, report["id"]) is not None
+        with SessionLocal() as other, pytest.raises(OperationalError):
+            other.execute(
+                select(Report).where(Report.id == report["id"]).with_for_update(nowait=True)
+            ).scalar_one()

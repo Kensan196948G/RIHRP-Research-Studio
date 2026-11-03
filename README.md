@@ -17,7 +17,7 @@
 > **CI（GitHub Actions）有効**: API (ruff / pytest) / Web (tsc / vitest / build) / Secret scan (gitleaks) の 3 ジョブ。
 > **本番公開済み**: [research.mirai-dx-platform.com](https://research.mirai-dx-platform.com)（Cloudflare Tunnel + Access。未認証は 302）。
 > **WebUI:** ルート直下の `RIHRP_Offline_Research_Studio.html`（6 ステップの研究ワークフロー）に整合させ、研究状態はサーバー（`research_documents`）へ保存。
-> **最終検証（2026-11-03）:** pytest **146 passed / 1 skipped** / vitest **10** / E2E **26 passed** / CI success 3/3 / `npm audit`（開発依存含む）0 / `pip-audit` 0 / Dependabot open critical・high 0 / スケール（1,000 主張）p95 claims 180ms・export 42ms / 通し E2E 成功。詳細は [`docs/verification/2026-11-03.md`](docs/verification/2026-11-03.md) と [`2026-11-03-cf-access-autologin.md`](docs/verification/2026-11-03-cf-access-autologin.md)。
+> **最終検証（2026-11-03）:** pytest **147 passed / 1 skipped** / vitest **10** / E2E **26 passed** / CI success 3/3 / `npm audit`（開発依存含む）0 / `pip-audit` 0 / Dependabot open critical・high 0 / スケール（1,000 主張）p95 claims 180ms・export 42ms / 通し E2E 成功。詳細は [`docs/verification/2026-11-03.md`](docs/verification/2026-11-03.md) と [`2026-11-03-cf-access-autologin.md`](docs/verification/2026-11-03-cf-access-autologin.md)。
 
 ## 01. これは何か
 
@@ -125,7 +125,7 @@ RIHRP_DATABASE_URL=postgresql+psycopg://rihrp_app:<パスワード>@127.0.0.1:54
 # テスト DB を用意（初回のみ）
 createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指定可
 
-.venv/bin/pytest -q            # 146 passed / 1 skipped
+.venv/bin/pytest -q            # 147 passed / 1 skipped
 (cd apps/web && npx vitest run) # 10 passed
 .venv/bin/ruff check apps/api tests
 .venv/bin/ruff format --check apps/api tests
@@ -185,7 +185,7 @@ npx playwright test          # 26 passed（Chromium）
 
 | 機能 | 状態 | 根拠 |
 |---|---|---|
-| 認証・セッション・CSRF・RBAC | 実装済み | pytest（147 件中 146 passed / 1 skipped）、UI 実測 |
+| 認証・セッション・CSRF・RBAC | 実装済み | pytest（148 件中 147 passed / 1 skipped）、UI 実測 |
 | テーマ / 出典（SHA-256）/ 主張 / 根拠 / 検証 | 実装済み | pytest、API 実測、UI 実測 |
 | レポート / 版 / 検証 / 提出 / 承認 / 差し戻し | 実装済み | pytest、UI 実測（提出→承認） |
 | 承認後の整合性警告（根拠変更で矛盾になった場合） | 実装済み | pytest（`test_approved_report_flags_post_approval_tamper`）、画面確認 |
@@ -241,13 +241,13 @@ npx playwright test          # 26 passed（Chromium）
 
 - 独立レビュー（pr-verifier）: **6 巡で合格**（critical 0 / high 0 / medium 0 / low 0）。各巡の件数は [`2026-11-03-reviews.json`](docs/verification/2026-11-03-reviews.json)。主な対応は、監査ログの TRUNCATE 保護と DB ロール分離、承認と主張変更の直列化（`SELECT … FOR UPDATE`）、ロック後の identity map 更新、project 削除と子作成の直列化、数値境界判定。
 - CI（GitHub Actions）: run `41513750337`（head `6446935`）と main push の run `41533037024`（`5e3f410`）がいずれも **success 3/3**（API (ruff / pytest) / Web (tsc / vitest / build) / Secret scan (gitleaks)）。
-- `pytest`: **146 passed / 1 skipped**（skip は所有者ロールのため対象外、`test_audit_immutable.py:40`）、`vitest`: 10 passed、E2E: 26 passed。
+- `pytest`: **147 passed / 1 skipped**（skip は所有者ロールのため対象外、`test_audit_immutable.py:40`）、`vitest`: 10 passed、E2E: 26 passed。
 - main マージ: PR #1 → merge commit **`5e3f410`**（2026-11-03 06:57 JST）。マージゲートは 18/20（高リスク 2 件はユーザーの明示 Y のうえ GitHub UI で人間がマージ）。
 - 配備（2026-11-03 07:00 JST 時点）: `infra/native/deploy.sh` → 稼働 commit **`5e3f410`**、`/healthz` 200・`/readyz` 200（`0003_audit_truncate`）。
 - 本番公開: `research.mirai-dx-platform.com`（Cloudflare Tunnel `35974e49…` + Access アプリ／policy `rihrp-allow`）。未認証は 302。
 - Dependabot アラート: 有効化。開発依存の critical 3 / high 1（vite / tinypool / vitest）は PR #3 で修正し、open の critical / high = **0 件**（再スキャン後に実測）。
 - Cloudflare Access 自動ログイン（PR #4）: `pytest` **96 passed / 1 skipped**、`vitest` **10 passed**（Access 関連 37 件 + UI 5 件を追加）。
-- リリース準備（2026-11-03）: 日次バックアップ・週次復元訓練・日次セッション削除・5 分間隔の外形チェックを systemd timer で導入し、各ジョブの実走と復元の件数一致を確認。NFR-16 の同時承認テストを追加（`pytest` **146 passed / 1 skipped**）。詳細: [docs/verification/2026-11-03-release-readiness.md](docs/verification/2026-11-03-release-readiness.md)。
+- リリース準備（2026-11-03）: 日次バックアップ・週次復元訓練・日次セッション削除・5 分間隔の外形チェックを systemd timer で導入し、各ジョブの実走と復元の件数一致を確認。NFR-16 の同時承認テストと行ロックの排他性テストを追加（`pytest` **147 passed / 1 skipped**）。詳細: [docs/verification/2026-11-03-release-readiness.md](docs/verification/2026-11-03-release-readiness.md)。
 - 詳細: [docs/verification/2026-11-03.md](docs/verification/2026-11-03.md)
 
 ### 2026-11-02
