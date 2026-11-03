@@ -311,4 +311,9 @@
  .studio-root .cands{grid-template-columns:minmax(0,1fr)}
  .studio-root .ev .bars{max-width:100%}
  .studio-root .offbadge{flex:0 1 auto;min-width:0}
+ .studio-root .mth{flex-wrap:wrap;gap:4px 10px}
+ .studio-root .mth > span{min-width:0;overflow-wrap:anywhere}
+ .studio-root .report table{table-layout:fixed}
+ .studio-root .report th{white-space:normal}
+ .studio-root .report th,.studio-root .report td{padding:4px;font-size:11px;word-break:break-word;overflow-wrap:anywhere}
 }

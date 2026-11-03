@@ -280,6 +280,25 @@ ol.fals li{margin-bottom:4px}
 /* toast */
 #toast{position:fixed;right:18px;bottom:18px;z-index:99;display:flex;flex-direction:column;gap:8px;max-width:min(380px,calc(100vw - 36px))}
 .toast{background:var(--top);color:#eef6f5;padding:10px 14px;border-radius:10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:pop .25s ease}
+/* 320px 幅: ヘッダーの折返しと grid の最小幅を明示して横スクロールを防ぐ（apps/web と同一） */
+@media (max-width:700px){
+ .topbar{gap:8px;padding:8px 10px}
+ .brand{flex-wrap:wrap;gap:6px;min-width:0;max-width:100%}
+ .brand-t{white-space:normal;font-size:13px}
+ .brand-s{overflow-wrap:anywhere;word-break:break-word}
+ .topr{flex:1 1 100%;margin-left:0;min-width:0;max-width:100%}
+ .topbar select{max-width:100%;min-width:0;width:100%;flex:1 1 140px}
+ .topbar .btn,.topbar .tbtn{flex:0 0 auto}
+ .layout{grid-template-columns:minmax(0,1fr);min-width:0}
+ nav#nav{min-width:0;max-width:100%;width:100%}
+ main{min-width:0}
+ .grid2,.grid3,.chartrow,.debate{grid-template-columns:minmax(0,1fr)}
+ .cands{grid-template-columns:minmax(0,1fr)}
+ .ev .bars{max-width:100%}
+ .offbadge{flex:0 1 auto;min-width:0}
+ .mth{flex-wrap:wrap;gap:4px 10px}
+ .mth > span{min-width:0;overflow-wrap:anywhere}
+}
 /* print */
 @media print{
  .topbar,.notice,nav#nav,.page-head,.no-print,#toast{display:none!important}
@@ -1400,7 +1419,7 @@ const REPORT_CSS=`.report{background:#fff;color:#111827;max-width:900px;margin:0
 .report blockquote{margin:8px 0;padding:10px 14px;border-left:4px solid #0f766e;background:#f0faf8}.report .rp-kicker{font:700 11.5px Consolas,monospace;letter-spacing:.12em;color:#0f766e}
 .report .rp-warn{font-size:12px;background:#fff7e6;border:1px solid #f3d7a0;padding:8px 12px;border-radius:4px}.report .na{color:#6b7280}.report small{color:#4b5563}
 .report .rp-meta th{width:16%}.report .rp-name{font-size:11.5px;color:#4b5563;margin-top:2px}.report .rp-foot{margin-top:30px;font-size:11px;color:#6b7280;text-align:right}.report .pre{white-space:pre-wrap}
-@media (max-width:700px){.report{padding:22px 16px}}@media print{.report{box-shadow:none;padding:0;max-width:none}}`;
+@media (max-width:700px){.report{padding:22px 16px}.report table{table-layout:fixed}.report th{white-space:normal}.report th,.report td{padding:4px;font-size:11px;word-break:break-word;overflow-wrap:anywhere}}@media print{.report{box-shadow:none;padding:0;max-width:none}}`;
 function viewReport(){
  const head=pageHead('06','研究報告書','研究過程（仮説・根拠・批判・討論・比較・研究者の判断）を報告書として統合します。HTML・テキスト・JSONで保存、またはブラウザの印刷機能でPDF化できます。',
   `<button class="btn pri" data-act="dlHtml">HTMLで保存</button><button class="btn" data-act="dlTxt">テキストで保存</button><button class="btn" data-act="dlJson">JSONで保存</button><button class="btn" data-act="print">印刷 / PDF</button>`);

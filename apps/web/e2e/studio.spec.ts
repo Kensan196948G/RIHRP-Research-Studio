@@ -576,29 +576,45 @@ test("作成応答の保留中に画面遷移しても孤児プロジェクト�
 
 test("A-04b 320px で横スクロールしない（長いタイトルでも）", async ({ page }) => {
   await openStudio(page);
-  const csrf = (await page.context().cookies()).find((cookie) => cookie.name === "rihrp_csrf")?.value;
-  const headers = { "X-CSRF-Token": csrf ?? "" };
   const currentId = await page.locator("#projSel").inputValue();
+  const projects = (await (await page.request.get("/api/projects")).json()) as {
+    projects: { id: string; title: string }[];
+  };
+  const originalTitle = projects.projects.find((item) => item.id === currentId)?.title ?? TITLE;
   const longTitle = "河道湾曲部における護岸基礎の洗掘対策（長い研究テーマ名の表示確認用）";
-  const patched = await page.request.patch(`/api/projects/${currentId}`, {
-    headers,
-    data: { title: longTitle },
-  });
-  expect(patched.ok()).toBeTruthy();
+  try {
+    // 改名は UI から行う（payload.title とサーバー一覧の両方を更新する経路）。
+    // PATCH /api/projects は一覧の title だけを更新し、描画に使う payload.title は変わらない。
+    await page.locator('input[data-bind="title"]').fill(longTitle);
+    await expect(page.locator("#saveState")).toHaveText(/サーバーに自動保存済み/, { timeout: 20_000 });
 
-  await page.setViewportSize({ width: 320, height: 640 });
-  await page.reload();
-  await expect(page.locator("#nav .navitem")).toHaveCount(6);
-  // 改名が実データに反映され、現在の研究として表示されていること（偽陽性の防止）
-  const matching = await page.locator("#projSel option", { hasText: "河道湾曲部における護岸基礎" }).count();
-  expect(matching).toBeGreaterThanOrEqual(1);
-  await expect(page.locator("#projSel")).toHaveValue(currentId);
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.reload();
+    await expect(page.locator("#nav .navitem")).toHaveCount(6);
+    await expect(page.locator("#projSel")).toHaveValue(currentId);
+    // 長いタイトルが payload 由来で実際に描画されていること（旧タイトルでは通らない語で拘束）
+    await expect(page.locator("#projSel option", { hasText: "長い研究テーマ名" })).toHaveCount(1);
+    await expect(page.locator('input[data-bind="title"]')).toHaveValue(longTitle);
 
-  const overflow = await page.evaluate(() => {
-    const doc = document.documentElement;
-    return doc.scrollWidth - window.innerWidth;
-  });
-  expect(overflow).toBeLessThanOrEqual(1);
+    // 全 6 ビューで文書の横スクロールがないこと（報告書の 9 列表も含む）
+    const views = ["register", "tasks", "debate", "evidence", "compare", "report"];
+    for (const view of views) {
+      await page.locator(`#nav .navitem[data-v="${view}"]`).click();
+      await expect(page.locator(`#nav .navitem[data-v="${view}"]`)).toHaveClass(/active/);
+      const overflow = await page.evaluate(() => {
+        const doc = document.documentElement;
+        return doc.scrollWidth - doc.clientWidth;
+      });
+      expect(overflow, `view=${view}`).toBeLessThanOrEqual(1);
+    }
+  } finally {
+    // 後続テストへ改名を持ち越さない（payload.title とサーバー一覧の両方を戻す）
+    await page.locator('#nav .navitem[data-v="register"]').click().catch(() => {});
+    await page.locator('input[data-bind="title"]').fill(originalTitle).catch(() => {});
+    await expect(page.locator("#saveState"))
+      .toHaveText(/サーバーに自動保存済み/, { timeout: 20_000 })
+      .catch(() => {});
+  }
 });
 
 test("キーボードでナビを操作できる（Tab・フォーカス可視・Enter）", async ({ page }) => {
@@ -640,29 +656,66 @@ test("候補が空配列のとき比較ナビは「未生成」表示", async ({
   await openStudio(page);
   const csrf = (await page.context().cookies()).find((cookie) => cookie.name === "rihrp_csrf")?.value;
   const headers = { "X-CSRF-Token": csrf ?? "" };
-  const body = (await (await page.request.get("/api/projects")).json()) as {
-    projects: { id: string }[];
+  // 表示中（＝再読込後も選択される）プロジェクトに固定する
+  const id = await page.locator("#projSel").inputValue();
+  const readDoc = async () =>
+    (await (await page.request.get(`/api/projects/${id}/research`)).json()) as {
+      version: number;
+      payload: Record<string, unknown>;
+    };
+  const doc = await readDoc();
+  const originalCandidates = (doc.payload ?? {}).candidates ?? null;
+  const candidate = {
+    id: "ca_e2e",
+    label: "H0",
+    type: "代替案",
+    origin: "研究者",
+    status: "候補",
+    text: "E2E 用の候補",
+    vars: [],
+    scores: { evidence: 50, testability: 50, burden: 50, importance: 50, novelty: 50 },
+    total: 50,
   };
-  const id = body.projects[0].id;
-  const doc = (await (await page.request.get(`/api/projects/${id}/research`)).json()) as {
-    version: number;
-    payload: Record<string, unknown>;
-  };
-  const payload = { ...(doc.payload ?? {}), candidates: [] };
-  await page.request.put(`/api/projects/${id}/research`, {
-    headers,
-    data: { expected_version: doc.version, payload },
-  });
+  try {
+    // 前提: 候補 1 件が「候補 1件」と表示されること（空配列テストの偽陽性を防ぐ）
+    const seeded = await page.request.put(`/api/projects/${id}/research`, {
+      headers,
+      data: { expected_version: doc.version, payload: { ...(doc.payload ?? {}), candidates: [candidate] } },
+    });
+    expect(seeded.ok()).toBeTruthy();
+    await page.reload();
+    const compare = page.locator('#nav .navitem[data-v="compare"]');
+    await expect(compare.locator(".st")).toHaveText("候補 1件");
 
-  await page.reload();
-  await expect(page.locator("#nav .navitem")).toHaveCount(6);
-  const compare = page.locator('#nav .navitem[data-v="compare"]');
-  await expect(compare).toContainText("未生成");
-  await expect(compare).not.toHaveClass(/active/);
+    // 空配列へ更新 → 未生成
+    const latest = await readDoc();
+    const emptied = await page.request.put(`/api/projects/${id}/research`, {
+      headers,
+      data: { expected_version: latest.version, payload: { ...(latest.payload ?? {}), candidates: [] } },
+    });
+    expect(emptied.ok()).toBeTruthy();
+
+    await page.reload();
+    await expect(page.locator("#nav .navitem")).toHaveCount(6);
+    await expect(page.locator("#projSel")).toHaveValue(id);
+    await expect(compare.locator(".st")).toHaveText("未生成");
+    await expect(compare.locator(".st")).not.toHaveClass(/\bon\b/);
+  } finally {
+    const latest = await readDoc();
+    await page.request.put(`/api/projects/${id}/research`, {
+      headers,
+      data: { expected_version: latest.version, payload: { ...(latest.payload ?? {}), candidates: originalCandidates } },
+    });
+  }
 });
 
 test("ネットワーク遮断時は保存失敗を表示し、復帰後に再保存できる", async ({ page, context }) => {
   await openStudio(page);
+  const id = await page.locator("#projSel").inputValue();
+  const doc = (await (await page.request.get(`/api/projects/${id}/research`)).json()) as {
+    payload: Record<string, unknown>;
+  };
+  const originalHypothesis = String((doc.payload ?? {}).hypothesis ?? HYPOTHESIS);
   const value = `${HYPOTHESIS} オフライン確認。`;
 
   await context.setOffline(true);
@@ -671,5 +724,9 @@ test("ネットワーク遮断時は保存失敗を表示し、復帰後に再�
 
   await context.setOffline(false);
   await page.locator('textarea[data-bind="hypothesis"]').fill(`${value} 復帰。`);
+  await expect(page.locator("#saveState")).toHaveText(/サーバーに自動保存済み/, { timeout: 20_000 });
+
+  // 後続テストへ編集内容を持ち越さない（復帰後の自動保存完了後に戻す）
+  await page.locator('textarea[data-bind="hypothesis"]').fill(originalHypothesis);
   await expect(page.locator("#saveState")).toHaveText(/サーバーに自動保存済み/, { timeout: 20_000 });
 });
