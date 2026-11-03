@@ -1058,7 +1058,21 @@ function renderHeader(){
  updateGlobal();
 }
 function updateGlobal(){const g=overall(P);$('#gbar').style.width=g+'%';$('#gpct').textContent=g+'%'}
-function render(){renderNav();renderHeader();const f={register:viewRegister,tasks:viewTasks,debate:viewDebate,evidence:viewEvidence,compare:viewCompare,report:viewReport}[RT.view];$('#main').innerHTML=f();afterRender()}
+function sanitizeP(p){
+ const n=(v,d)=>{const x=typeof v==='number'?v:Number(v);return Number.isFinite(x)?x:d};
+ const pick=(v,set,d)=>set.includes(v)?v:d;
+ p.field=['auto','river','geo','concrete','construction','general'].includes(p.field)?p.field:'auto';
+ p.revision=Math.min(100000,Math.max(0,Math.floor(n(p.revision,0))));
+ (p.revisions||[]).forEach(r=>{r.rev=Math.max(1,Math.floor(n(r.rev,1)))});
+ (p.tasks||[]).forEach(t=>{t.status=pick(t.status,['blocked','ready','running','approval','done'],'blocked');t.progress=Math.min(100,Math.max(0,n(t.progress,0)));t.runs=Math.min(100000,Math.max(0,Math.floor(n(t.runs,0))))});
+ (p.evidence||[]).forEach(e=>{e.stance=pick(e.stance,['support','contradict','neutral'],'neutral');e.reliability=e.reliability==null?null:Math.min(100,Math.max(0,n(e.reliability,0)));e.relevance=Math.min(100,Math.max(0,n(e.relevance,0)))});
+ (p.critiques||[]).forEach(c=>{c.sev=pick(c.sev,['高','中','低'],'低');c.status=pick(c.status,['未対応','対応済','却下'],'未対応')});
+ (p.candidates||[]).forEach(c=>{c.status=pick(c.status,['候補','採択','保留','却下','主仮説'],'候補');const q=c.scores||{};c.scores={evidence:Math.min(100,Math.max(0,n(q.evidence,0))),testability:Math.min(100,Math.max(0,n(q.testability,0))),burden:Math.min(100,Math.max(0,n(q.burden,0))),importance:Math.min(100,Math.max(0,n(q.importance,0))),novelty:Math.min(100,Math.max(0,n(q.novelty,0)))};c.total=Math.min(100,Math.max(0,n(c.total,0)))});
+ if(p.plan){(p.plan.methods||[]).forEach(m=>{m.cost=Math.min(5,Math.max(1,n(m.cost,3)));m.time=Math.min(5,Math.max(1,n(m.time,3)));m.val=Math.min(5,Math.max(1,n(m.val,3)))});(p.plan.measures||[]).forEach(m=>{m.role=pick(m.role,['独立変数','従属変数','関連変数','統制変数'],'関連変数')})}
+ (p.ethics||[]).forEach(i=>{i.level=pick(i.level,['要確認','問題なし'],'問題なし')});
+ (p.debate||[]).forEach(m=>{m.agent=AGENTS[m.agent]?m.agent:'fac'});
+}
+function render(){sanitizeP(P);renderNav();renderHeader();const f={register:viewRegister,tasks:viewTasks,debate:viewDebate,evidence:viewEvidence,compare:viewCompare,report:viewReport}[RT.view];$('#main').innerHTML=f();afterRender()}
 function afterRender(){if(RT.view==='debate'){const c=$('#chat');if(c)c.scrollTop=c.scrollHeight}}
 function updateLive(){
  updateGlobal();
@@ -1123,7 +1137,7 @@ function viewRegister(){
   <section class="card"><h2>架空の研究事例を追加</h2><p class="hint" style="margin:0 0 10px">内蔵の模擬研究事例を新しい研究として追加します。</p>
    <div class="samples">${SAMPLES.map(s=>`<button class="sample" data-act="addSample" data-k="${s.key}"><span class="chip acc">${FIELDS[s.field].name}</span><b>${esc(s.title)}</b></button>`).join('')}</div></section>
   <section class="card"><h2>改訂履歴 <span class="cnt">${P.revisions.length}件</span></h2>
-   ${P.revisions.length?`<ul class="revs">${P.revisions.slice().reverse().map(r=>`<li><span class="rv">r${r.rev}</span><span class="txt"><b>${esc(r.note)}</b>　<span class="muted">${esc(r.at)}</span><br>${esc(short(r.hypothesis,90))}</span><button class="btn sm ghost" data-act="restoreRev" data-i="${r.rev}">復元</button></li>`).join('')}</ul>`:'<p class="muted" style="margin:0">まだ記録はありません。</p>'}
+   ${P.revisions.length?`<ul class="revs">${P.revisions.slice().reverse().map(r=>`<li><span class="rv">r${esc(r.rev)}</span><span class="txt"><b>${esc(r.note)}</b>　<span class="muted">${esc(r.at)}</span><br>${esc(short(r.hypothesis,90))}</span><button class="btn sm ghost" data-act="restoreRev" data-i="${r.rev}">復元</button></li>`).join('')}</ul>`:'<p class="muted" style="margin:0">まだ記録はありません。</p>'}
   </section>
  </div></div>`;
 }
@@ -1172,8 +1186,8 @@ function viewTasks(){
   <td><span class="agentcell">${avatar(d.agent,'dot')}${AGENTS[d.agent].name}</span></td>
   <td class="muted" style="font-size:12px">${d.deps.map(k=>pad(TASK_DEFS.findIndex(z=>z.key===k)+1)).join(', ')||'—'}</td>
   <td><span class="st-badge st-${stc}">${stl}</span></td>
-  <td><div class="pbar ${x.status}"><i data-pbar="${d.key}" style="width:${Math.round(x.progress)}%"></i></div><span class="muted" style="font-size:11px" data-ptext="${d.key}">${Math.round(x.progress)}%</span></td>
-  <td class="muted">${x.runs||0}</td>
+  <td><div class="pbar ${esc(x.status)}"><i data-pbar="${d.key}" style="width:${Math.round(x.progress)}%"></i></div><span class="muted" style="font-size:11px" data-ptext="${d.key}">${Math.round(x.progress)}%</span></td>
+  <td class="muted">${esc(x.runs||0)}</td>
   <td style="white-space:nowrap">${x.status==='approval'?`<button class="btn sm pri" data-act="approve" data-k="${d.key}">承認</button> <button class="btn sm" data-act="reject" data-k="${d.key}">差戻し</button>`:x.status==='done'?`<button class="btn sm" data-act="rerun" data-k="${d.key}">再実行</button>`:`<span class="muted" style="font-size:12px">—</span>`}</td></tr>`}).join('')}
  </tbody></table></div></section>
  <section class="card"><h2>実行ログ <span class="cnt">${P.logs.length}件</span></h2><div class="logbox">${P.logs.length?P.logs.slice(0,120).map(l=>`<span class="lt">${esc(l.t)}</span>  ${esc(l.msg)}`).join('\n'):'まだログはありません。「▶ 実行開始」を押してください。'}</div></section>`;
@@ -1256,7 +1270,7 @@ function viewEvidence(){
   <section class="card"><h2>検証計画（方法論AI）</h2>${plan?`<h3 style="margin-top:0">検証手法</h3>${plan.methods.map((m,i)=>`<div class="mth"><span>${i===0?'<span class="chip acc">主</span> ':i===1?'<span class="chip">補</span> ':'<span class="chip">代替</span> '}${esc(m.n)}</span><span style="display:flex;gap:10px;font-size:11px" class="muted">費用${lvl(m.cost,1)} 期間${lvl(m.time,1)} 妥当性${lvl(m.val)}</span></div>`).join('')}
    <h3>測定項目</h3><div class="tblwrap"><table class="tbl"><tbody>${plan.measures.map(m=>`<tr><td><span class="chip ${m.role==='独立変数'?'info':m.role==='従属変数'?'acc':''}">${esc(m.role)}</span></td><td><b>${esc(m.n)}</b></td><td class="muted">${esc(m.u)}</td><td style="font-size:12.5px">${esc(m.m)}</td></tr>`).join('')}${plan.controls.map(m=>`<tr><td><span class="chip warn">統制変数</span></td><td><b>${esc(m.n)}</b></td><td class="muted">${esc(m.u)}</td><td style="font-size:12.5px">${esc(m.m)}</td></tr>`).join('')}</tbody></table></div>
    <h3>研究デザイン</h3><p style="margin:0;font-size:13px">${esc(plan.design)}。${esc(plan.levels)}。</p>`:'<p class="muted">変数定義・測定計画は未実行です。</p>'}</section>
-  <section class="card"><h2>研究倫理・安全チェック</h2>${eth?eth.map(i=>`<div class="ethi"><span class="chip ${i.level==='要確認'?'warn':'good'}">${i.level}</span><div><b>${esc(i.text)}</b><div class="a">${esc(i.action)}</div></div></div>`).join(''):'<p class="muted">研究倫理・安全性確認は未実行です。</p>'}</section>
+  <section class="card"><h2>研究倫理・安全チェック</h2>${eth?eth.map(i=>`<div class="ethi"><span class="chip ${i.level==='要確認'?'warn':'good'}">${esc(i.level)}</span><div><b>${esc(i.text)}</b><div class="a">${esc(i.action)}</div></div></div>`).join(''):'<p class="muted">研究倫理・安全性確認は未実行です。</p>'}</section>
  </div></div>`;
 }
 
@@ -1278,10 +1292,10 @@ function viewCompare(){
  const cs=P.candidates;const w=P.weights;
  if(!RT.cmpSel||!RT.cmpSel.every(id=>cs.some(c=>c.id===id)))RT.cmpSel=cs.slice(0,4).map(c=>c.id);
  const sorted=cs.slice().sort((x,y)=>y.total-x.total);const best=sorted[0];
- const sc=(l,v,inv)=>`<span>${l}</span><span class="minibar"><i style="width:${v}%;${inv?'background:var(--warn)':''}"></i></span><b>${v}</b>`;
+ const sc=(l,v,inv)=>`<span>${l}</span><span class="minibar"><i style="width:${esc(v)}%;${inv?'background:var(--warn)':''}"></i></span><b>${esc(v)}</b>`;
  const stChip=s=>s==='採択'?'good':s==='却下'?'bad':s==='保留'?'warn':s==='主仮説'?'acc':'';
  const cards=cs.map(c=>{const ed=RT.editing===c.id;return`<div class="cand${c.origin==='主仮説'?' main':''}${c.status==='却下'?' rej':''}">
-  <div class="hd"><span class="lb">${esc(c.label)}</span><span class="chip">${esc(c.type)}</span><span class="chip ${stChip(c.status)}">${esc(c.status)}</span>${c.edited?'<span class="chip info">研究者修正</span>':''}<span class="tot">${c.total}<small> 点</small></span></div>
+  <div class="hd"><span class="lb">${esc(c.label)}</span><span class="chip">${esc(c.type)}</span><span class="chip ${stChip(c.status)}">${esc(c.status)}</span>${c.edited?'<span class="chip info">研究者修正</span>':''}<span class="tot">${esc(c.total)}<small> 点</small></span></div>
   ${ed?`<textarea id="candEdit" rows="4">${esc(c.text)}</textarea>`:`<p class="tx">${esc(c.text)}</p>`}
   <div class="muted" style="font-size:11.5px">提案：${esc(c.origin)}　変数：${c.vars.map(esc).join('・')}</div>
   <div class="sc">${sc('根拠の充足度',c.scores.evidence)}${sc('検証可能性',c.scores.testability)}${sc('実験負担',c.scores.burden,1)}${sc('研究上の重要性',c.scores.importance)}${sc('新規性（例示）',c.scores.novelty)}</div>
@@ -1297,10 +1311,10 @@ function viewCompare(){
  <div class="chartrow"><section class="card"><h2>指標別比較（レーダー）</h2><div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;margin-bottom:6px">${cs.map(c=>`<label class="chk" style="margin:0"><input type="checkbox" data-cmp="${esc(c.id)}"${RT.cmpSel.includes(c.id)?' checked':''}> ${esc(c.label)}</label>`).join('')}</div>
   <div style="display:flex;justify-content:center">${radarSVG(selC)}</div><div class="legend">${selC.map(c=>`<span style="--c:${PALETTE[P.candidates.indexOf(c)%PALETTE.length]}">${esc(c.label)} ${esc(c.type)}</span>`).join('')}</div></section>
  <section class="card"><h2>総合点ランキング</h2><div id="rank">${rankHTML()}</div>
-  <div class="tblwrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>仮説</th><th>根拠</th><th>検証</th><th>負担</th><th>重要</th><th>新規</th><th>総合</th></tr></thead><tbody>${sorted.map(c=>`<tr><td><b>${esc(c.label)}</b> <span class="muted" style="font-size:11.5px">${esc(c.type)}</span></td><td>${c.scores.evidence}</td><td>${c.scores.testability}</td><td>${c.scores.burden}</td><td>${c.scores.importance}</td><td>${c.scores.novelty}</td><td><b>${c.total}</b></td></tr>`).join('')}</tbody></table></div>
+  <div class="tblwrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>仮説</th><th>根拠</th><th>検証</th><th>負担</th><th>重要</th><th>新規</th><th>総合</th></tr></thead><tbody>${sorted.map(c=>`<tr><td><b>${esc(c.label)}</b> <span class="muted" style="font-size:11.5px">${esc(c.type)}</span></td><td>${esc(c.scores.evidence)}</td><td>${esc(c.scores.testability)}</td><td>${esc(c.scores.burden)}</td><td>${esc(c.scores.importance)}</td><td>${esc(c.scores.novelty)}</td><td><b>${esc(c.total)}</b></td></tr>`).join('')}</tbody></table></div>
   <div class="disc">指標の算出：根拠＝関連資料の立場×信頼性、検証可能性＝測定可能な変数・数値基準・条件の明示、実験負担＝検証手法の費用・期間と変数の数、重要性＝分野の重要度と成果変数の有無、新規性＝仮説類型と既存資料の少なさ（いずれも例示）。</div></section></div>`;
 }
-function rankHTML(){const s=P.candidates.slice().sort((x,y)=>y.total-x.total);return s.map((c,i)=>`<div class="hbar"><b>${esc(c.label)}</b><span class="b"><i style="width:${c.total}%;background:${PALETTE[P.candidates.indexOf(c)%PALETTE.length]}"></i></span><span style="font-family:var(--mono);font-weight:700">${c.total}</span></div>`).join('')}
+function rankHTML(){const s=P.candidates.slice().sort((x,y)=>y.total-x.total);return s.map((c,i)=>`<div class="hbar"><b>${esc(c.label)}</b><span class="b"><i style="width:${esc(c.total)}%;background:${PALETTE[P.candidates.indexOf(c)%PALETTE.length]}"></i></span><span style="font-family:var(--mono);font-weight:700">${esc(c.total)}</span></div>`).join('')}
 
 // ----- 06 report -----
 function buildReport(p){
@@ -1325,15 +1339,15 @@ function buildReport(p){
  ${a?`<table><tr><th>独立変数</th><td>${esc(a.iv)}</td><th>従属変数</th><td>${esc(a.dv)}</td></tr><tr><th>変化の方向</th><td>${esc(a.dir||'—')}</td><th>数値基準</th><td>${esc(a.nums.join('、')||'なし')}</td></tr><tr><th>因果メカニズム</th><td>${a.hasMech?'記述あり':'記述なし'}</td><th>適用条件／対照</th><td>${a.hasCond?'あり':'なし'}／${a.hasComp?'あり':'なし'}</td></tr></table><p>構造スコア：${a.quality} / 5</p>`:na}
  <h2>3. 研究作業の実行状況</h2><table><tr><th>タスク</th><th>担当</th><th>状態</th><th>完了日時</th></tr>${TASK_DEFS.map(d=>{const t=task(p,d.key);return`<tr><td>${esc(d.name)}</td><td>${AGENTS[d.agent].name}</td><td>${ST_LABEL[t.status]}</td><td>${esc(t.endedAt||'—')}</td></tr>`}).join('')}</table>
  <h2>4. 根拠の整理</h2>${ev.length?`<p>関連資料${ev.length}件（支持${ev.filter(e=>e.stance==='support').length}件・反証${ev.filter(e=>e.stance==='contradict').length}件・中立${ev.filter(e=>e.stance==='neutral').length}件）、平均信頼性${avgRel(ev)!=null?avgRel(ev):'—'}点。</p>
- <table><tr><th>資料</th><th>種別</th><th>年</th><th>立場</th><th>信頼性</th><th>関連度</th></tr>${ev.slice(0,12).map(e=>`<tr><td>${esc(e.title)}${e.source==='builtin'?'〔架空〕':'〔取込〕'}${e.note?`<br><small>${esc(e.note)}</small>`:''}</td><td>${esc(e.type)}</td><td>${esc(e.year)}</td><td>${STANCE[e.stance]}</td><td>${e.reliability!=null?e.reliability:'—'}</td><td>${e.relevance}</td></tr>`).join('')}</table>`:na}
- <h2>5. 批判・反証レビュー</h2>${p.critiques?`<table><tr><th>重要度</th><th>観点</th><th>指摘</th><th>状態</th></tr>${p.critiques.map(c=>`<tr><td>${c.sev}</td><td>${esc(c.cat)}</td><td>${esc(c.text)}<br><small>改善案：${esc(c.sug)}</small></td><td>${c.status}</td></tr>`).join('')}</table>`:na}
+ <table><tr><th>資料</th><th>種別</th><th>年</th><th>立場</th><th>信頼性</th><th>関連度</th></tr>${ev.slice(0,12).map(e=>`<tr><td>${esc(e.title)}${e.source==='builtin'?'〔架空〕':'〔取込〕'}${e.note?`<br><small>${esc(e.note)}</small>`:''}</td><td>${esc(e.type)}</td><td>${esc(e.year)}</td><td>${STANCE[e.stance]}</td><td>${esc(e.reliability!=null?e.reliability:'—')}</td><td>${esc(e.relevance)}</td></tr>`).join('')}</table>`:na}
+ <h2>5. 批判・反証レビュー</h2>${p.critiques?`<table><tr><th>重要度</th><th>観点</th><th>指摘</th><th>状態</th></tr>${p.critiques.map(c=>`<tr><td>${esc(c.sev)}</td><td>${esc(c.cat)}</td><td>${esc(c.text)}<br><small>改善案：${esc(c.sug)}</small></td><td>${esc(c.status)}</td></tr>`).join('')}</table>`:na}
  ${p.falsification?`<h3>棄却条件</h3><ol>${p.falsification.map(f=>`<li>${esc(f)}</li>`).join('')}</ol>`:''}
  <h2>6. 検証計画</h2>${p.plan?`<p><b>研究デザイン：</b>${esc(p.plan.design)}。${esc(p.plan.levels)}。</p><ul>${p.plan.methods.map((m,i)=>`<li>${i===0?'主':i===1?'補':'代替'}：${esc(m.n)}（費用${m.cost}/5・期間${m.time}/5・妥当性${m.val}/5）</li>`).join('')}</ul>
- <table><tr><th>区分</th><th>変数</th><th>単位</th><th>測定方法</th></tr>${p.plan.measures.map(m=>`<tr><td>${m.role}</td><td>${esc(m.n)}</td><td>${esc(m.u)}</td><td>${esc(m.m)}</td></tr>`).join('')}${p.plan.controls.map(m=>`<tr><td>統制変数</td><td>${esc(m.n)}</td><td>${esc(m.u)}</td><td>${esc(m.m)}</td></tr>`).join('')}</table>`:na}
- <h2>7. 研究倫理・安全</h2>${p.ethics?`<table><tr><th>区分</th><th>項目</th><th>対応方針</th></tr>${p.ethics.map(i=>`<tr><td>${i.level}</td><td>${esc(i.text)}</td><td>${esc(i.action)}</td></tr>`).join('')}</table>`:na}
+ <table><tr><th>区分</th><th>変数</th><th>単位</th><th>測定方法</th></tr>${p.plan.measures.map(m=>`<tr><td>${esc(m.role)}</td><td>${esc(m.n)}</td><td>${esc(m.u)}</td><td>${esc(m.m)}</td></tr>`).join('')}${p.plan.controls.map(m=>`<tr><td>統制変数</td><td>${esc(m.n)}</td><td>${esc(m.u)}</td><td>${esc(m.m)}</td></tr>`).join('')}</table>`:na}
+ <h2>7. 研究倫理・安全</h2>${p.ethics?`<table><tr><th>区分</th><th>項目</th><th>対応方針</th></tr>${p.ethics.map(i=>`<tr><td>${esc(i.level)}</td><td>${esc(i.text)}</td><td>${esc(i.action)}</td></tr>`).join('')}</table>`:na}
  <h2>8. 複数AI討論の記録</h2>${p.debate.length?`<table><tr><th>ラウンド</th><th>発言者</th><th>内容</th></tr>${p.debate.map(m=>`<tr><td>${esc((ROUND_T[m.round]||'').split('　')[0])}</td><td>${esc(AGENTS[m.agent].name)}</td><td>${esc(m.text)}</td></tr>`).join('')}</table>`:na}
  <h2>9. 新仮説の比較</h2>${sorted.length?`<p>重み：根拠${p.weights.evidence}・検証可能性${p.weights.testability}・実験負担の低さ${p.weights.burden}・重要性${p.weights.importance}・新規性${p.weights.novelty}</p>
- <table><tr><th>仮説</th><th>内容</th><th>根拠</th><th>検証</th><th>負担</th><th>重要</th><th>新規</th><th>総合</th><th>判断</th></tr>${sorted.map(c=>`<tr><td>${esc(c.label)}<br><small>${esc(c.type)}</small></td><td>${esc(c.text)}</td><td>${c.scores.evidence}</td><td>${c.scores.testability}</td><td>${c.scores.burden}</td><td>${c.scores.importance}</td><td>${c.scores.novelty}</td><td><b>${c.total}</b></td><td>${esc(c.status)}</td></tr>`).join('')}</table>`:na}
+ <table><tr><th>仮説</th><th>内容</th><th>根拠</th><th>検証</th><th>負担</th><th>重要</th><th>新規</th><th>総合</th><th>判断</th></tr>${sorted.map(c=>`<tr><td>${esc(c.label)}<br><small>${esc(c.type)}</small></td><td>${esc(c.text)}</td><td>${esc(c.scores.evidence)}</td><td>${esc(c.scores.testability)}</td><td>${esc(c.scores.burden)}</td><td>${esc(c.scores.importance)}</td><td>${esc(c.scores.novelty)}</td><td><b>${esc(c.total)}</b></td><td>${esc(c.status)}</td></tr>`).join('')}</table>`:na}
  <h2>10. 研究者の判断記録と所見</h2>${p.decisions.length?`<ul>${p.decisions.slice(-30).map(d=>`<li><small>${esc(d.at)}</small>　${esc(d.text)}</li>`).join('')}</ul>`:'<p>判断記録はありません。</p>'}
  ${p.reportNote?`<h3>研究者所見</h3><p class="pre">${esc(p.reportNote)}</p>`:''}
  <h2>11. 次のステップ（提案）</h2><ol>${nexts.map(n=>`<li>${esc(n)}</li>`).join('')}</ol>
