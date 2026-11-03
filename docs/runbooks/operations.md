@@ -24,10 +24,11 @@ journalctl --user -u rihrp.service --since "30 min ago"
 | Tunnel unit | `rihrp-cloudflared.service`（systemd --user、`~/.cloudflared/rihrp-config.yml`） |
 | Tunnel ID | `35974e49-9cad-423b-86cd-ab77ff0a2021` |
 | DNS | `research.mirai-dx-platform.com` CNAME → `<tunnel-id>.cfargotunnel.com`（proxied） |
-| Access | アプリ「RIHRP Research Studio」（self_hosted）、policy `rihrp-allow`（allow: **`kensan1969@gmail.com` のみ**） |
+| Access | アプリ「RIHRP Research Studio」（self_hosted）、policy `rihrp-allow`（allow: **個別email 2件**、domain/everyone許可なし） |
 
-> Access ポリシーは 2026-11-03 に Cloudflare API で実測した。アプリ側の
-> `RIHRP_CF_ACCESS_ALLOWED_EMAILS` も同じ単一 email で、両者は一致している。
+> 2026-11-03 20:12 JSTにCloudflare APIでemailルール2件、実プロセスの
+> `RIHRP_CF_ACCESS_ALLOWED_EMAILS` も2件であることを再確認。ユーザーはadmin/editor各1名。
+> ここでは件数・方式の確認であり、値を文書に載せない。
 > 利用者を増やす場合は Access ポリシーとアプリ設定の**両方**を更新する（高リスク変更）。
 
 ```bash
@@ -67,12 +68,21 @@ RIHRP_CF_ACCESS_PROVISION=false
 
 ## 2. 配備
 
+現行 `infra/native/deploy.sh` は同じ稼働ツリーで `pip install -e ".[dev]"` → migration →
+Webビルド → unit再起動を行う旧方式。`set -e`で停止しても、変更済み依存・DB・distを元に戻さない。
+ビルド途中で旧プロセスと新成果物が混在し得るため、**次回コード配備には使用しない**。
+SHA固定・clean/CIゲート・排他・コミット別成果物・切戻しを整備し、隔離検証後に移行する。
+
+事前の読み取り専用検査（CI承認やruntime SHAの証明ではない）:
+
 ```bash
-infra/native/deploy.sh
+python3 tools/release_preflight.py --expect-sha <対象の40桁SHA> \
+  --backup-dir "$HOME/.local/state/rihrp/backups"
 ```
 
-内部で `pip install -e .` → `alembic upgrade head` → `npm ci && npm run build` → unit 再起動 → health check を行う。
-失敗時はユニットが起動しない / health check が非 0 で止まる。
+HEADとorigin/mainの完全一致、cleanな作業ツリー、新鮮で完全な本番バックアップを検査する。
+origin/mainと異なるコミットや編集中のツリーでは意図どおり失敗する。ブランチ名だけは検査しない。
+正常な結果だけで配備許可にはならない。
 
 ## 3. データベース
 
@@ -115,7 +125,7 @@ infra/native/rihrp-restore-check.sh
 
 ## 4. 定期ジョブ（systemd timer）
 
-`infra/native/install_ops_units.sh` で導入する（`--dry-run` あり）。導入済みのユニットは次の 4 組。
+`infra/native/install_ops_units.sh` で導入する（`--dry-run` あり）。導入済みのユニットは次の5組（audit-purgeを含む）。
 
 | timer | 実行 | 内容 | 手動実行 |
 |---|---|---|---|
@@ -124,8 +134,9 @@ infra/native/rihrp-restore-check.sh
 | `rihrp-restore-check.timer` | 毎週日曜 04:30 | 最新の `<db>-*.dump` を復元し、SHA-256・migration・manifest の件数を検証 | `systemctl --user start rihrp-restore-check.service` |
 | `rihrp-healthcheck.timer` | 起動 2 分後、以降 5 分間隔 | `/healthz` と `/readyz` のチェック。失敗で非 0 | `systemctl --user start rihrp-healthcheck.service` |
 
-`rihrp-audit-purge.timer`（毎日 05:00・監査ログ削除）はインストールされるが**既定で無効**
-（§8 の承認後に有効化する）。
+`rihrp-audit-purge.timer`（毎日05:00・監査ログ削除）は**インストーラでは既定で無効**。
+この本番では所有者の既存承認により有効化済みで、2026-11-03 20:10 JSTにもenabled/activeを確認した。
+再導入時の無条件有効化はしない。
 
 ```bash
 systemctl --user list-timers 'rihrp-*' --all
@@ -152,7 +163,7 @@ journalctl --user -u rihrp-restore-check.service -n 50 --no-pager
 
 ## 6. ロールバック
 
-- アプリ: 直前のコミットを checkout して `infra/native/deploy.sh`。
+- アプリ: 現行のcheckout＋再ビルド方式は即時切戻しを保証しない。次回配備の前に保持した現行/直前リリースへ切り替える方式を検証する（[リリース判定](release.md)）。
 - DB: additive migration のみを原則とする。破壊的 migration は Approval PR で扱う。
 - データ: `infra/native/rihrp-restore-check.sh` で検証したバックアップからの復元（別 DB で確認後、切替）。
 
