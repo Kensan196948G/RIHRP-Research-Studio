@@ -24,7 +24,7 @@
 | 修正7 | `0808c42`（正本の全フィールド正規化・配列型不正の耐性） |
 | レビュー9巡目 | **pass**（High 0 / Medium 1 / Low 1）→ head `0808c42` |
 | 修正8 | 本コミット（型不正データの起動保護・空候補 / vars 欠落） |
-| 自動テスト | pytest **144 passed / 1 skipped**、vitest **10 passed**、Playwright **22 passed**（46.0s） |
+| 自動テスト | pytest **144 passed / 1 skipped**、vitest **10 passed**、Playwright **26 passed**（51.3s、PR #5 時点は 22 passed） |
 | 静的検査 | `tsc -b` / `vite build` / `ruff check apps/api tests` / `ruff format --check apps/api tests` / `openapi --check` すべて pass |
 | CI | run `41560328053`（head `a7ad639`）**success** |
 
@@ -107,7 +107,7 @@
 ```bash
 .venv/bin/python -m pytest -p no:warnings        # 144 passed, 1 skipped
 cd apps/web && npx vitest run                    # 10 passed
-cd apps/web && npm run build && npx playwright test  # 22 passed (46.0s)
+cd apps/web && npm run build && npx playwright test  # 26 passed (51.3s)
 .venv/bin/ruff check apps/api tests
 .venv/bin/ruff format --check apps/api tests
 .venv/bin/python infra/db/export_openapi.py --check
@@ -117,7 +117,60 @@ cd apps/web && npm run build && npx playwright test  # 22 passed (46.0s)
 
 ## 11. 未検証・残課題
 
-- CI に E2E ジョブは未追加（workflow 変更は要人間承認）。
-- スクリーンリーダー / キーボード全画面 / 320px / 実機 / ネットワーク遮断時の保存失敗 UI は未検証。
+- CI に E2E ジョブは未追加（workflow 変更は要人間承認。提案は §12 / PR #7）。
+- スクリーンリーダーによる読み上げと実機は未検証。キーボード操作・320px・ネットワーク遮断時の保存失敗 UI は §12 で E2E 化済み。
 - 書き込み中に画面遷移する競合（3巡目 High #1）の専用 E2E は未追加。孤児プロジェクト（4巡目 #2）とログアウト経路の「PUT 1 回」は E2E で拘束済み。
-- レビュー10巡目（最終確認）の結果はマージ後に追記する。
+- PR #6 のレビュー結果は §12.1〜§12.3 に記録（初回 pass、2巡目 fail→修正、3巡目 pass）。
+
+## 12. マージ後の追加対応（本 PR）
+
+PR #5 マージ後の最終レビューで残った low と、未検証 UI 項目の自動化。
+
+| 項目 | 対応 | 実測 |
+|---|---|---|
+| レビュー10巡目の low | 正本と同じ「空配列は null に正規化」を apps/web の `sanitizeProject` に追加（`navStatus` は正本と同一の truthy 判定）。空配列は「候補 0件」ではなく「未生成」 | 回帰テスト追加（`candidates: []` を保存 → 再読込 → 比較ナビが「未生成」・非 active） |
+| 320px | **初回実装はデータ依存で失敗**（長い研究テーマ名で `.topbar` が 53px はみ出した）。`max-width:700px` で brand の折返し・`minmax(0,1fr)`・select の最大幅を修正。**さらに報告書の 9 列表が 320px で 100px はみ出す**ことを正本の実ブラウザ実測で発見し、`table-layout:fixed`・`th` の折返し・`overflow-wrap:anywhere` を追加 | 長いタイトルに改名したうえで 320px の**全 6 ビュー**（登録/タスク/討論/根拠/比較/報告書）を実測し、文書の横スクロール 0。正本 HTML も同じ 320px ルールで全 6 ビュー横スクロール 0 |
+| キーボード操作 | プログラム的 `focus()` ではなく **Tab で到達 → フォーカス可視（outline）→ Enter で遷移**を検証 | passed |
+| ネットワーク遮断時の保存失敗 UI | オフラインで「保存に失敗しました」→ 復帰後に再保存で「サーバーに自動保存済み」を検証 | passed |
+
+### 12.1 独立レビュー（PR #6・1巡目）の指摘と対応
+
+PR #6 の独立レビューは **pass（critical 0 / high 0 / medium 2 / low 1）**。medium/low も実害があるため修正した（修正後の head で再レビューする）。
+
+| # | 重要度 | 指摘 | 対応 |
+|---|---|---|---|
+| 1 | Medium | 320px 対応が `apps/web` にだけ入り、**正本 HTML** は折返し・`.cands` の 300px 最小トラックのままで、320px で横スクロールし得る。空配列の扱いも正本（`sanitizeP()` が null 化）と apps/web で異なる | 正本 `RIHRP_Offline_Research_Studio.html` に同じ `@media (max-width:700px)` を追加。apps/web にも正本と同じ空配列→null の正規化を入れ、`navStatus` は正本と同じ truthy 判定に統一（**CSS・正規化とも一致**） |
+| 2 | Medium | 空候補テストが PUT の成否と対象プロジェクトを拘束せず、初期状態（`candidates: null`）でも旧実装で通る偽陽性になり得る。`not.toHaveClass(/active/)` はナビの選択状態を見ており、`navStatus` の `on`（`.st.on`）を拘束していない | 前提として候補 1 件を保存し `.st` が「候補 1件」になることを確認。対象は `#projSel` の選択中 ID に固定し、PUT の ok を検証。空配列後に `.st` が「未生成」かつ `on` クラスなしを検証 |
+| 3 | Low | 追加 E2E が共有プロジェクトのタイトル・候補・仮説を変更したまま終了し、テスト間の状態分離がない | A-04b はタイトルを、空候補テストは候補を、オフライン試験は仮説を **finally で復元**。再実行・並べ替えに対して順序依存を解消 |
+
+レビュー対応後の再検証で、**報告書ビューの 9 列表が 320px で 100px はみ出す**不具合を正本 HTML の実ブラウザ実測で追加発見した（候補ありの状態でのみ再現）。`@media (max-width:700px)` に `table-layout:fixed`・`th` の折返し・`overflow-wrap:anywhere` を追加して解消し、A-04b を**全 6 ビューの横スクロール検証**へ拡張した（報告書の表も拘束対象）。同様に、根拠ビューの検証手法行（`.mth`）が **9px はみ出す**ことを full E2E の失敗（`view=evidence`）で特定し、`flex-wrap` と子要素の `min-width:0` で解消した（修正前 fail → 修正後 pass の負の対照を実測）。
+
+### 12.2 独立レビュー（PR #6・2巡目）の指摘と対応
+
+2巡目は **fail（critical 0 / high 1 / medium 2 / low 2）**。High は実測で再現し、修正した。
+
+| # | 重要度 | 指摘 | 対応 |
+|---|---|---|---|
+| 1 | High | A-04b の「長いタイトル」検証が実質無効。`PATCH /api/projects/{id}` は一覧の title だけを更新し、描画に使う `payload.title` は変わらない。assert 文字列「河道湾曲部における護岸基礎」は旧 TITLE の接頭辞のため、改名が UI に届かなくても一致する。320px 計測は旧短タイトルで行われていた | 改名を **UI（title 入力）** から行い、payload.title とサーバー一覧を同時更新。再読込後に `#projSel option` の「長い研究テーマ名」と title 入力の longTitle 一致を検証。finally で元のタイトルへ復元 |
+| 2 | Medium | 空配列を null 化する根本原因が未修正。`stances()` は `[]` で「代替案あり」、`makeH0` は `[]` を truthy と見て主仮説を生成せず、ナビの「未生成」と矛盾する（正本 1084 行との乖離） | `sanitizeProject` に正本と同じ `if(Array.isArray(p.candidates)&&!p.candidates.length)p.candidates=null;` を追加。`navStatus` は正本と同一の truthy 判定へ戻し、全経路を整合 |
+| 3 | Medium | 空候補 E2E が seed の PUT 応答を検証せず、PUT が失敗しても「未生成」で green になり得る（回帰テストの空振り） | `expect(seeded.ok()).toBeTruthy()` を追加（対象は `#projSel` の選択中 ID に固定済み） |
+| 4 | Low | 横スクロール判定が `window.innerWidth` 基準で、縦スクロールバー幅（約15px）ぶん鈍感 | `document.documentElement.clientWidth` 基準へ変更 |
+| 5 | Low | 新規 E2E が共有 DB の状態を復元せず、テスト順序に依存する | A-04b はタイトル、空候補テストは candidates、オフライン試験は仮説を finally で復元 |
+
+あわせて README の実測値を現行へ更新した（pytest 115→144、E2E 21→26）。
+
+### 12.3 独立レビュー（PR #6・3巡目）の指摘と対応
+
+3巡目は **pass（critical 0 / high 0 / medium 0 / low 2）**。low も修正した。
+
+| # | 重要度 | 指摘 | 対応 |
+|---|---|---|---|
+| 1 | Low | 後始末が fail-safe でない。オフライン試験の復元が `finally` の外にあり、A-04b は後始末の失敗を握りつぶし、空候補の最終 PUT は応答を検証していない（§12 の「全て finally で復元」と矛盾） | 復元を API ベースの `putDocument()`（409 は最大 3 回再試行）へ統一。A-04b は payload.title と一覧 title の両方を応答検証付きで復元。オフライン試験は `try/finally` で**オンライン復帰→仮説復元**。空候補も同ヘルパーで応答を検証 |
+| 2 | Low | 検証記録に矛盾が残る（冒頭は Playwright 22 passed、§11 はキーボード・320px・オフラインを未検証と記載） | 冒頭を **26 passed** に更新（PR #5 時点の 22 は注記）。§11 は「キーボード・320px・オフラインは §12 で E2E 化済み、スクリーンリーダーと実機のみ未検証」に修正 |
+
+**E2E 合計 26 passed**（pytest 144 passed / 1 skipped、vitest 10 passed、build pass）。
+
+残る未検証（自動化不可・人手）:
+- Cloudflare Access 認証後の実ブラウザ操作（OTP/SSO）。
+- スクリーンリーダーによる読み上げ（ARIA 名の自動検査は未導入）、実機。
+- CI への E2E ジョブ追加（workflow 変更は AI 不可。提案は `docs/ci/e2e-workflow.md`、PR #7）。
