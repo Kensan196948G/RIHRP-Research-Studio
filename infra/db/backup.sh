@@ -10,10 +10,18 @@ PG_BIN="${RIHRP_PG_BIN:-/usr/lib/postgresql/16/bin}"
 PG_DUMP="$PG_BIN/pg_dump"
 [[ -x "$PG_DUMP" ]] || PG_DUMP="pg_dump"
 
-STAMP="$(date +%Y%m%dT%H%M%S)"
+STAMP="$(date +%Y%m%dT%H%M%S%N)"
 mkdir -p "$OUT_DIR"
 chmod 700 "$OUT_DIR"
-FILE="$OUT_DIR/${DB_NAME}-${STAMP}.dump"
+# 同時実行を直列化する（timer と手動実行の衝突を防ぐ）。
+exec 9>"$OUT_DIR/.rihrp-backup.lock"
+if command -v flock >/dev/null 2>&1; then
+  flock -n 9 || {
+    printf "BLOCKED: 別のバックアップが実行中です\n" >&2
+    exit 3
+  }
+fi
+FILE="$OUT_DIR/${DB_NAME}-${STAMP}-$$.dump"
 PART="${FILE}.part"
 
 "$PG_DUMP" -Fc --dbname="$DB_NAME" --file="$PART"

@@ -28,6 +28,12 @@ fi
 if [[ -n "$MANIFEST" ]]; then
   printf '== verify checksum %s\n' "$(basename "$DUMP")"
   (cd "$(dirname "$DUMP")" && sha256sum -c "$(basename "$DUMP").sha256")
+  expected_db="${RIHRP_EXPECT_DB:-$SOURCE_DB}"
+  manifest_db="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["db"])' "$MANIFEST")"
+  if [[ "$manifest_db" != "$expected_db" ]]; then
+    printf 'NG: manifest の DB が一致しません（manifest=%s / expected=%s）\n' "$manifest_db" "$expected_db" >&2
+    exit 1
+  fi
   actual_sha="$(sha256sum "$DUMP" | cut -d' ' -f1)"
   manifest_dump="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["dump"])' "$MANIFEST")"
   manifest_sha="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["sha256"])' "$MANIFEST")"

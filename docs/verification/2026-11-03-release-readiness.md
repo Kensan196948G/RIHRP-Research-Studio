@@ -30,13 +30,14 @@
 | vitest | 10 passed |
 | Playwright E2E | 26 passed |
 | ruff check / format | pass |
-| shellcheck | 警告なし（SC1090 / SC2012 も解消） |
+| shellcheck / ruff | シェルは警告なし（SC1090/SC2012 も解消）。`backup_manifest.py` は `ruff check` / `format` pass |
 
 ## 2.1 負の対照（実測）
 
 - manifest から 1 テーブルを欠落させた場合: `NG: manifest の件数を読み取れません` で exit 1（「0 件検査で成功」にしない）。
 - manifest が無いバックアップだけを置いた場合: `NG: ... manifest 付きの ... バックアップがありません` で exit 1。
-- 他 DB の dump（`rihrp-*.dump`）を混ぜた状態で `prune_backups.sh rihrp_production 1` を実行: 他 DB の dump は残り、対象 DB の古い世代だけが削除された。
+- 前方一致が衝突する DB 名（`rihrp` と `rihrp-other`）を混在させた `prune_backups.sh rihrp 1`: `rihrp-other` の dump は残り、`rihrp` の古い世代だけが削除された（manifest の `db` も検証）。
+- 同時実行: `backup_manifest.py` を 2 本同時に起動し、片方は成功・片方は `BACKUP FAILED: 別のバックアップが実行中です`（exit 3）でロックが機能した。
 - `systemd-analyze --user verify` exit 0、shellcheck は対象スクリプトで警告なし。
 
 ## 3. 本番の実測（2026-11-03）

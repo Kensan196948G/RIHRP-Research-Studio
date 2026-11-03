@@ -25,14 +25,18 @@ db="${url##*/}"
 }
 
 BACKUP_DIR="${RIHRP_BACKUP_DIR:-$HOME/.local/state/rihrp/backups}"
+NAME_RE="^${db}-[0-9]{8}T[0-9]+(-[0-9]+)?\\.dump$"
 DUMP="$(
-  find "$BACKUP_DIR" -maxdepth 1 -type f -name "${db}-*.dump" -printf '%T@ %p\n' 2>/dev/null |
+  find "$BACKUP_DIR" -maxdepth 1 -type f -name '*.dump' -printf '%T@ %p\n' 2>/dev/null |
     sort -rn | cut -d' ' -f2- |
     while IFS= read -r candidate; do
-      if [[ -f "${candidate}.manifest.json" ]]; then
-        printf '%s\n' "$candidate"
-        break
-      fi
+      base="$(basename "$candidate")"
+      [[ "$base" =~ $NAME_RE ]] || continue
+      [[ -f "${candidate}.sha256" && -f "${candidate}.manifest.json" ]] || continue
+      manifest_db="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("db",""))' "${candidate}.manifest.json")"
+      [[ "$manifest_db" == "$db" ]] || continue
+      printf '%s\n' "$candidate"
+      break
     done
 )"
 [[ -n "$DUMP" ]] || {
@@ -47,7 +51,7 @@ chmod 700 "$STATE_DIR"
 LOG="$STATE_DIR/last-restore-check.log"
 
 printf '%s restore check start dump=%s source=%s\n' "$(date -Is)" "$(basename "$DUMP")" "$db"
-if RIHRP_SOURCE_DB="$db" "$ROOT/infra/db/restore_check.sh" "$DUMP" rihrp_restore_check "$MANIFEST" >"$LOG" 2>&1; then
+if RIHRP_SOURCE_DB="$db" RIHRP_EXPECT_DB="$db" "$ROOT/infra/db/restore_check.sh" "$DUMP" rihrp_restore_check "$MANIFEST" >"$LOG" 2>&1; then
   cat "$LOG"
   if [[ "${RIHRP_RESTORE_KEEP_DB:-0}" != "1" ]]; then
     dropdb --if-exists rihrp_restore_check

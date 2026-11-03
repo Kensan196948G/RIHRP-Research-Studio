@@ -93,7 +93,9 @@ infra/native/rihrp-restore-check.sh
 
 - バックアップの保存先: `~/.local/state/rihrp/backups/`（`RIHRP_BACKUP_DIR` で変更可）。
 - 1 回のバックアップは `.dump`・`.sha256`・`.manifest.json`（バックアップ時点の件数と migration）を 1 組で保存する。
-  途中で失敗した場合は `.part` のまま残り、完成した `.dump` だけが公開される。
+  公開順序は checksum → dump → **manifest（最後＝完成の目印）**。途中で失敗した場合は `.part`/`.tmp` のまま残り、
+  manifest が無い組は復元訓練の対象にならない。
+- バックアップはロックファイルで直列化し、ファイル名は `<db>-<UTC日時>-<PID>.dump`（同名衝突を避ける）。
 - 復元訓練は **manifest の件数**と比較する。現在の本番件数と比較すると、バックアップ後の通常更新で
   誤検知するため（以前の方式の欠陥）。SHA-256 と migration も検証する。
 - **前提**: 実行する OS ユーザーが対象 DB にローカル接続できること（本番は peer 認証）。接続できない場合は
@@ -103,8 +105,9 @@ infra/native/rihrp-restore-check.sh
 - 旧形式（manifest なし）の dump は
   `RIHRP_SOURCE_DB=rihrp_production infra/db/restore_check.sh <dump> [restore_db]` で手動検証できる
   （現在の本番件数との比較になる点に注意）。
-- `infra/db/backup.sh` は dump と checksum だけを作る（世代管理なし）。世代管理は
-  `infra/db/prune_backups.sh <db> [keep]`（対象 DB の dump だけを削る）。
+- `infra/db/backup.sh` は dump と checksum だけを作る（世代管理なし、ロックと一意名あり）。世代管理は
+  `infra/db/prune_backups.sh <db> [keep]`。保持対象は **dump + sha256 + manifest（db 一致）の完全な組**だけで、
+  対象 DB 以外（例: rihrp と rihrp-other）には触れない。孤児の sidecar・1 日超の不完全な組・残骸は掃除する。
 - 日次バックアップは **REPEATABLE READ のスナップショット**（`pg_export_snapshot`）で
   dump と manifest を取得するため、バックアップ中の書き込みで件数がずれない。
 
