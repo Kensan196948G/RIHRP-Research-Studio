@@ -10,6 +10,7 @@
 - 所有者ロール（`RIHRP_MIGRATION_DATABASE_URL`）で 1 トランザクション内に
   `ALTER TABLE audit_events DISABLE TRIGGER trg_audit_immutable` → バッチ削除 →
   `ENABLE TRIGGER` を実行。失敗時はロールバックでトリガーが戻る。
+  ロック待ち 5 秒・statement 120 秒の上限、対象 0 件時の早期終了を含む。
 - systemd: `rihrp-audit-purge.service/.timer` を追加。インストーラは配置するが
   **timer を有効化しない**（承認後に手動で `enable --now`）。
 
@@ -19,8 +20,9 @@
 
 - 400 日前と現在の監査イベントを用意。
 - dry-run: `eligible=1` / `deleted=0`、行数は 2 のまま。
-- commit: `deleted=1` / `remaining=1`、残るのは新しいイベントのみ。
-- 削除後に `DELETE FROM audit_events` を試すと **append-only トリガーで失敗**する
+- 承認フラグ無しの `purge_audit(commit=True)` は `RuntimeError`（関数内で強制）。
+- 承認フラグありの commit: `deleted=1` / `remaining=1`、残るのは新しいイベントのみ。
+- 削除後に `DELETE FROM audit_events` を試すと **append-only トリガー（DBAPIError）で失敗**する
   （トリガーが再有効化されていることの確認）。
 
 実測: 上記テストが pass（`pytest -k purge_audit`）。全体は 149 collected / 148 passed / 1 skipped。

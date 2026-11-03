@@ -4,6 +4,7 @@ Documentation=file:///home/kensan/Projects/Business-Project/RIHRP-Research-Studi
 
 [Service]
 Type=oneshot
+TimeoutStartSec=300
 UMask=0077
 WorkingDirectory=%h/Projects/Business-Project/RIHRP-Research-Studio
 EnvironmentFile=%h/.config/rihrp/rihrp.conf

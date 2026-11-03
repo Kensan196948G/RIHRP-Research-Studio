@@ -94,15 +94,39 @@ def purge_audit(
             "deleted": 0,
         }
 
+    # 関数レベルでも承認を要求する（CLI 以外の呼び出しで迂回させない）。
+    if os.environ.get("RIHRP_ALLOW_AUDIT_PURGE") != "1":
+        raise RuntimeError("監査ログの削除には RIHRP_ALLOW_AUDIT_PURGE=1 が必要です")
     owner_url = os.environ.get("RIHRP_MIGRATION_DATABASE_URL") or os.environ.get(
         "RIHRP_DATABASE_URL"
     )
     if not owner_url:
         raise RuntimeError("削除には RIHRP_MIGRATION_DATABASE_URL（所有者）が必要です")
+    # ロックを取る前に削除対象が無ければ、早期に何もしない（書き込みを止めない）。
+    with SessionLocal() as db:
+        total_pre = int(db.scalar(select(func.count()).select_from(AuditEvent)) or 0)
+        eligible_pre = int(
+            db.scalar(
+                select(func.count()).select_from(AuditEvent).where(AuditEvent.created_at < cutoff)
+            )
+            or 0
+        )
+    if eligible_pre == 0:
+        return {
+            "retention_days": days,
+            "total": total_pre,
+            "eligible": 0,
+            "deleted": 0,
+            "remaining": total_pre,
+        }
+
     engine = create_engine(owner_url, pool_pre_ping=True)
     deleted = 0
     try:
         with engine.begin() as conn:
+            # ロック待ちと長時間実行に上限を設ける（失敗時はロールバック）。
+            conn.execute(text("SET LOCAL lock_timeout = '5s'"))
+            conn.execute(text("SET LOCAL statement_timeout = '120s'"))
             total = int(conn.scalar(text("SELECT count(*) FROM audit_events")) or 0)
             eligible = int(
                 conn.scalar(

@@ -183,8 +183,10 @@ set -a; source "$HOME/.config/rihrp/rihrp.conf"; set +a
 .venv/bin/python -m rihrp.maintenance purge-audit --days 365
 ```
 
-- **実際の削除（承認時のみ）**: `RIHRP_ALLOW_AUDIT_PURGE=1` と `--commit` の両方が必要。
-  所有者ロールで 1 トランザクション内にトリガーを一時無効化し、削除後に再有効化する。
+- **実際の削除（承認時のみ）**: `RIHRP_ALLOW_AUDIT_PURGE=1` と `--commit` の両方が必要
+  （関数内でも強制）。所有者ロールで 1 トランザクション内にトリガーを一時無効化し、
+  削除後に再有効化する。ロック待ち 5 秒・statement 120 秒で打ち切り、対象 0 件なら
+  ロックを取らずに終了する。
 
 ```bash
 RIHRP_ALLOW_AUDIT_PURGE=1 .venv/bin/python -m rihrp.maintenance purge-audit --days 365 --commit
