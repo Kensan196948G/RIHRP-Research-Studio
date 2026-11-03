@@ -15,10 +15,13 @@ import functools
 import hashlib
 import json
 import os
+import shutil
+import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Final
 
 import pytest
@@ -309,7 +312,7 @@ def test_activate_switches_current_previous_unit_and_persists_state(tmp_path: Pa
     assert os.readlink(world.release_root / "previous") == f"releases/{SHA_A}"
     unit_text = world.unit.read_text(encoding="utf-8")
     assert f'Environment="RIHRP_RELEASE_SHA={SHA_B}"' in unit_text
-    assert f'WorkingDirectory="{release}"' in unit_text
+    assert f"WorkingDirectory={release}" in unit_text
     assert (world.unit.stat().st_mode & 0o777) == 0o644
 
     state_path = world.release_root / "rollback-state.json"
@@ -830,6 +833,55 @@ def test_service_unit_must_be_regular_owned_and_not_group_writable(tmp_path: Pat
         "service unit has unsafe ownership or permissions",
         label="mode",
     )
+
+
+@pytest.mark.skipif(shutil.which("systemd-analyze") is None, reason="systemd-analyze unavailable")
+def test_generated_unit_syntax_with_real_systemd_parser(tmp_path):
+    world = _world(tmp_path)
+    path = _make_release(world, SHA_B)
+    unit = tmp_path / "verify" / "rihrp.service"
+    unit.parent.mkdir()
+    release = release_activate._load_release(world.config(SHA_B))
+    unit.write_text(release_activate._unit_text(release, world.env_file))
+    assert path.is_dir()
+    result = subprocess.run(  # noqa: S603 - local systemd parser, no unit installation
+        ["systemd-analyze", "--user", "verify", str(unit)],  # noqa: S607
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_ci_query_is_pinned_and_routing_environment_removed(tmp_path, monkeypatch):
+    monkeypatch.setenv("GIT_DIR", "/other/.git")
+    monkeypatch.setenv("GH_REPO", "other/repo")
+    monkeypatch.setenv("GH_HOST", "other.invalid")
+    captured = {}
+
+    def fake(args, **kwargs):
+        captured.update(args=args, env=kwargs["env"])
+        return SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps(
+                [
+                    {
+                        "headSha": SHA_A,
+                        "status": "completed",
+                        "conclusion": "success",
+                        "workflowName": "CI",
+                    }
+                ]
+            ),
+        )
+
+    monkeypatch.setattr(release_activate.subprocess, "run", fake)
+    assert release_activate._ci_success(tmp_path, SHA_A)
+    args = captured["args"]
+    assert args[args.index("--repo") + 1] == "Kensan196948G/RIHRP-Research-Studio"
+    assert args[args.index("--branch") + 1] == "main"
+    assert args[args.index("--event") + 1] == "push"
+    assert not {"GIT_DIR", "GH_REPO", "GH_HOST"} & set(captured["env"])
 
 
 def test_completion_journal_failure_does_not_trigger_second_transition(tmp_path, monkeypatch):

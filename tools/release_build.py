@@ -144,6 +144,8 @@ def api_command(release: Path) -> tuple[str, ...]:
 
 def _git_env() -> dict[str, str]:
     env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    env.pop("GH_REPO", None)
+    env.pop("GH_HOST", None)
     env.update(
         GIT_OPTIONAL_LOCKS="0",
         GIT_CONFIG_NOSYSTEM="1",
@@ -217,6 +219,12 @@ def _verify_ci(config: BuildConfig, repo: Path, runner: Runner) -> None:
             "gh",
             "run",
             "list",
+            "--repo",
+            "Kensan196948G/RIHRP-Research-Studio",
+            "--branch",
+            "main",
+            "--event",
+            "push",
             "--commit",
             config.expect_sha,
             "--workflow",
@@ -292,6 +300,7 @@ def _canonical_paths(config: BuildConfig) -> tuple[Path, Path]:
         raise BuildError("release root must be a directory")
     try:
         root.mkdir(parents=True, exist_ok=True)
+        os.chmod(root, 0o700)
     except OSError:
         raise BuildError("release root cannot be created") from None
     if root.is_symlink() or not root.is_dir():
@@ -304,14 +313,15 @@ def _reserve_target(root: Path, sha: str) -> Path:
     if _lexists(releases) and (releases.is_symlink() or not releases.is_dir()):
         raise BuildError("releases path must be a real directory")
     try:
-        releases.mkdir(mode=0o755, exist_ok=True)
+        releases.mkdir(mode=0o700, exist_ok=True)
+        os.chmod(releases, 0o700)
     except OSError:
         raise BuildError("releases path cannot be created") from None
     target = releases / sha
     if _lexists(target):
         raise BuildError("release target already exists")
     try:
-        target.mkdir()
+        target.mkdir(mode=0o700)
     except FileExistsError:
         raise BuildError("release target already exists") from None
     except OSError:

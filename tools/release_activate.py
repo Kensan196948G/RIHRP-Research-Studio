@@ -177,7 +177,7 @@ def _git_ready(repo: Path, sha: str) -> bool:
 
 
 def _ci_success(repo: Path, sha: str) -> bool:
-    env = os.environ.copy()
+    env = _clean_git_environment()
     env.pop("GH_REPO", None)
     env.pop("GH_HOST", None)
     try:
@@ -186,6 +186,14 @@ def _ci_success(repo: Path, sha: str) -> bool:
                 "gh",
                 "run",
                 "list",
+                "--repo",
+                "Kensan196948G/RIHRP-Research-Studio",
+                "--branch",
+                "main",
+                "--event",
+                "push",
+                "--workflow",
+                "ci.yml",
                 "--commit",
                 sha,
                 "--limit",
@@ -841,6 +849,14 @@ def _systemd_quote(value: str) -> str:
     return f'"{escaped}"'
 
 
+def _systemd_path(value: str) -> str:
+    if not value.startswith("/") or any(c in value for c in ("\n", "\r", "\x00", '"')):
+        raise ActivationError("systemd path must be an absolute supported path")
+    return (
+        value.replace("\\", "\\\\").replace("%", "%%").replace(" ", "\\x20").replace("\t", "\\x09")
+    )
+
+
 def _unit_text(release: Release, env_file: Path) -> str:
     release_dir = str(release.path)
     web_dist = str(release.path / "apps/web/dist")
@@ -854,8 +870,8 @@ def _unit_text(release: Release, env_file: Path) -> str:
         "\n"
         "[Service]\n"
         "Type=simple\n"
-        f"WorkingDirectory={_systemd_quote(release_dir)}\n"
-        f"EnvironmentFile={_systemd_quote(str(env_file))}\n"
+        f"WorkingDirectory={_systemd_path(release_dir)}\n"
+        f"EnvironmentFile={_systemd_path(str(env_file))}\n"
         f"Environment={_systemd_quote(f'RIHRP_WEB_DIST={web_dist}')}\n"
         f"Environment={_systemd_quote(f'RIHRP_RELEASE_SHA={release.sha}')}\n"
         f"Environment={_systemd_quote(f'RIHRP_RELEASE_DIR={release_dir}')}\n"

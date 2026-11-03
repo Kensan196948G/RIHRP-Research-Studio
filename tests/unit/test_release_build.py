@@ -483,6 +483,13 @@ def test_build_release_publishes_manifest_after_all_artifacts(
     git_calls = [call for call in runner.calls if call.argv[0] == "git"]
     assert {call.cwd for call in git_calls} == {repo}
     assert all("GIT_DIR" not in call.env for call in git_calls)
+    ci_call = next(call for call in runner.calls if call.argv[0] == "gh")
+    assert ci_call.argv[ci_call.argv.index("--repo") + 1] == "Kensan196948G/RIHRP-Research-Studio"
+    assert ci_call.argv[ci_call.argv.index("--branch") + 1] == "main"
+    assert ci_call.argv[ci_call.argv.index("--event") + 1] == "push"
+    assert "GH_REPO" not in ci_call.env and "GIT_DIR" not in ci_call.env
+    assert (root.stat().st_mode & 0o777) == 0o700
+    assert (target.stat().st_mode & 0o777) == 0o700
 
     build_calls = [
         call
