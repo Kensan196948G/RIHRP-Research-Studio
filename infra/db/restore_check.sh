@@ -28,6 +28,13 @@ fi
 if [[ -n "$MANIFEST" ]]; then
   printf '== verify checksum %s\n' "$(basename "$DUMP")"
   (cd "$(dirname "$DUMP")" && sha256sum -c "$(basename "$DUMP").sha256")
+  actual_sha="$(sha256sum "$DUMP" | cut -d' ' -f1)"
+  manifest_dump="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["dump"])' "$MANIFEST")"
+  manifest_sha="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["sha256"])' "$MANIFEST")"
+  if [[ "$manifest_dump" != "$(basename "$DUMP")" || "$manifest_sha" != "$actual_sha" ]]; then
+    printf 'NG: manifest と dump が一致しません（manifest=%s / actual=%s）\n' "$manifest_dump" "$(basename "$DUMP")" >&2
+    exit 1
+  fi
 fi
 
 printf '== restore %s -> %s\n' "$DUMP" "$RESTORE_DB"
