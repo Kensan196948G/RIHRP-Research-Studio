@@ -15,7 +15,9 @@
 | レビュー4巡目 | fail（High 1 / Medium 1）→ head `5a328d3` |
 | 修正3 | `938a72e`（書き込みは abort せず完了・後始末する方針へ統一） |
 | レビュー5巡目 | fail（High 1 / Medium 1 / Low 1）→ head `938a72e` |
-| 修正4 | 本コミット（取込保存の flush 追跡・所有者による削除・cleanup 条件） |
+| 修正4 | `bd32a8e`（取込保存の flush 追跡・所有者による削除・cleanup 条件） |
+| レビュー6巡目 | fail（High 2）→ head `bd32a8e` |
+| 修正5 | 本コミット（正本 HTML のエスケープ・複数件取込の flush 追跡） |
 | 自動テスト | pytest **144 passed / 1 skipped**、vitest **10 passed**、Playwright **22 passed**（46.0s） |
 | 静的検査 | `tsc -b` / `vite build` / `ruff check apps/api tests` / `ruff format --check apps/api tests` / `openapi --check` すべて pass |
 | CI | run `41560328053`（head `a7ad639`）**success** |
@@ -53,7 +55,7 @@
 
 方針: 読み取り（`listProjects` / `getDocument`）だけ AbortSignal で中断する。書き込み（create / save / rename / delete）は中断せず完了させ、画面破棄後は ID が確定してから後始末する。abort で打ち切るとサーバーだけコミットされ ID 不明の孤児・未保存が残るため。
 
-## 5. レビュー5巡目の指摘と対応（本コミット）
+## 5. レビュー5巡目の指摘と対応（`bd32a8e`）
 
 | # | 重要度 | 指摘 | 対応 |
 |---|---|---|---|
@@ -63,7 +65,16 @@
 
 **権限変更の注意**: editor に「自分が作成したプロジェクトの削除」を許可した。他人のプロジェクトの削除は admin のみで、監査イベント `project.deleted` は従来どおり記録する。viewer は引き続き削除不可。
 
-## 6. 実測コマンド
+## 6. レビュー6巡目の指摘と対応（本コミット）
+
+| # | 重要度 | 指摘 | 対応 |
+|---|---|---|---|
+| 1 | High | **正本** `RIHRP_Offline_Research_Studio.html` の比較画面に保存型 XSS が残存（`candidate.label` 等を未エスケープで innerHTML へ補間。JSON 読込で実体の `img` が生成される） | 正本にも `apps/web` と同じエスケープを適用（`candidate.label`、`candidate` / `evidence` / `critique` の id、評論文言、plan measure role、報告書の仮説名）。実ブラウザで hostile な label / id / cat を注入し、`img[src=x]`・`[data-injected]`・`window.__p` がすべて 0/未定義であることを確認 |
+| 2 | High | 複数件 JSON 取込中にログアウトすると、flush が呼出時点の `saveChain` しか待たず、後続の作成・保存が追跡されない。2 件目が version 0・payload 空で残り、cleanup DELETE も 401 | 取込全体を `trackOp()` で登録し、`flush()` が pending operation の完了まで待つよう変更。取込ループは各件を `saveProject()` 経由で保存するため、ログアウトは全件保存の完了後に実行される |
+
+**正本の扱い**: 正本は UI/文言/CSS のオラクルだが、セキュリティ上の欠陥（HTML インジェクション）は正本側にも存在したため、表示結果が変わらない範囲で正本にも同じ `esc()` を適用した。仕様書 §5.1 の「逸脱」ではなく、正本と実装の双方に対する修正として扱う。
+
+## 7. 実測コマンド
 
 ```bash
 .venv/bin/python -m pytest -p no:warnings        # 144 passed, 1 skipped
@@ -76,9 +87,9 @@ cd apps/web && npm run build && npx playwright test  # 22 passed (46.0s)
 
 注意: `pytest` と Playwright を**同時に実行しない**。同じ `rihrp_test*` DB を奪い合い、無関係なテストが落ちる（実際に `test_admin_cannot_demote_self` が偽陽性で落ちた）。単独実行では pass。
 
-## 7. 未検証・残課題
+## 8. 未検証・残課題
 
 - CI に E2E ジョブは未追加（workflow 変更は要人間承認）。
 - スクリーンリーダー / キーボード全画面 / 320px / 実機 / ネットワーク遮断時の保存失敗 UI は未検証。
 - 書き込み中に画面遷移する競合（3巡目 High #1）の専用 E2E は未追加。孤児プロジェクト（4巡目 #2）とログアウト経路の「PUT 1 回」は E2E で拘束済み。
-- レビュー6巡目の結果はマージ後に追記する。
+- レビュー7巡目の結果はマージ後に追記する。

@@ -272,6 +272,8 @@ function newProject(src){
 let saveChain=Promise.resolve();
 const saveTimers={};   // project id -> {timer, project}
 const queued={};        // project id -> 保存待ち/保存中の件数（二重送信の抑止）
+const pendingOps=new Set(); // 取込など複数保存を伴う非同期処理（flush が完了を待つ）
+function trackOp(promise){pendingOps.add(promise);const done=()=>pendingOps.delete(promise);promise.then(done,done);return promise}
 function saveProject(project,detached){
  if(!project||!project.id)return saveChain;
  const id=project.id;
@@ -344,6 +346,7 @@ function touch(){
 function flush(detached){
  // 送信待ちの保存も必ず完了させてから解決する（取込直後の保存を取りこぼさない）
  const tail=saveChain;
+ const ops=[...pendingOps];
  const ids=new Set(Object.keys(saveTimers));
  Object.keys(dirty).forEach(id=>{if(dirty[id]&&!queued[id])ids.add(id)});
  const jobs=[];
@@ -352,7 +355,7 @@ function flush(detached){
   const project=pending||(P&&P.id===id?P:DB.projects.find(x=>x.id===id));
   if(project)jobs.push(saveProject(project,detached));
  });
- return Promise.all(jobs).then(()=>tail);
+ return Promise.all(jobs).then(()=>tail).then(()=>Promise.all(ops));
 }
 function setSave(t){const el=$('#saveState');if(el)el.textContent=t}
 async function load(){
@@ -902,7 +905,7 @@ function importEvidenceFiles(files){
  Promise.all(jobs).then(()=>{if(count){log(`[取込] ローカル資料 ${count}件を追加`);decide(`ローカル資料${count}件を根拠として取込`);refreshCritiques(P);scoreAll(P);touch();render();toast(count+'件の資料を取り込みました')}});
 }
 function importAll(file){
- const r=new FileReader();r.onload=async()=>{try{
+ const r=new FileReader();r.onload=()=>{trackOp((async()=>{try{
   const d=JSON.parse(String(r.result));let list=[];
   if(d&&Array.isArray(d.projects))list=d.projects;else if(d&&d.hypothesis!==undefined)list=[d];else throw new Error('RIHRPのデータ形式ではありません');
   if(!confirm(`${list.length}件の研究データを読み込み、現在の一覧に追加します。よろしいですか？`))return;
@@ -915,7 +918,7 @@ function importAll(file){
    await saveProject(p);
   }
   stopOrch();stopPlay();if(first){P=first;DB.currentId=P.id}render();toast(list.length+'件の研究データを読み込みました');
- }catch(e){if(!aborted())toast('読込に失敗しました：'+e.message)}};r.readAsText(file);
+ }catch(e){if(!aborted())toast('読込に失敗しました：'+e.message)}})())};r.readAsText(file);
 }
 
 // ---------- rendering ----------
