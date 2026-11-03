@@ -1163,7 +1163,7 @@ function radarSVG(cands){
 function viewCompare(){
  const acts=`<button class="btn" data-act="regenCand">↻ 新しい仮説を再生成</button>`;
  const head=pageHead('05','新仮説比較','仮説創出AIが組合せルールで提示した研究方向と主仮説を、5つの例示指標で比較します。研究者は候補を採択・保留・却下・修正でき、採択した仮説を主仮説として研究フローを再実行できます。',acts);
- if(!P.candidates)return head+staleBanner()+emptyBox('◈','まだ新しい仮説が生成されていません。','evaluate','前工程を含めて即時実行');
+ if(!P.candidates||!P.candidates.length)return head+staleBanner()+emptyBox('◈','まだ新しい仮説が生成されていません。','evaluate','前工程を含めて即時実行');
  const cs=P.candidates;const w=P.weights;
  if(!RT.cmpSel||!RT.cmpSel.every(id=>cs.some(c=>c.id===id)))RT.cmpSel=cs.slice(0,4).map(c=>c.id);
  const sorted=cs.slice().sort((x,y)=>y.total-x.total);const best=sorted[0];

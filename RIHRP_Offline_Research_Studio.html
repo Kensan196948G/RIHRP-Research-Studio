@@ -555,7 +555,9 @@ function setSave(t){const el=$('#saveState');if(el)el.textContent=t}
 function load(){
  try{const s=localStorage.getItem(STORE_KEY);if(s){const d=JSON.parse(s);if(d&&Array.isArray(d.projects))DB=Object.assign(DB,d)}}catch(e){}
  if(!DB.projects.length){DB.projects=SAMPLES.map(s=>newProject(s));DB.currentId=DB.projects[0].id}
- DB.projects.forEach(normalize);
+ DB.projects=DB.projects.filter(p=>p&&typeof p==='object'&&!Array.isArray(p));
+ DB.projects.forEach(p=>{sanitizeP(p);normalize(p)});
+ if(!DB.projects.length){DB.projects=[newProject()]}
  P=DB.projects.find(p=>p.id===DB.currentId)||DB.projects[0];DB.currentId=P.id;
 }
 function normalize(p){
@@ -1070,14 +1072,16 @@ function sanitizeP(p){
  p.field=pick(p.field,['auto','river','geo','concrete','construction','general'],'auto');
  p.revision=cl(p.revision,0,100000,0);
  p.revisions=list(p.revisions).filter(x=>x&&typeof x==='object').map(r=>({rev:cl(r.rev,1,100000,1),hypothesis:s(r.hypothesis,''),conditions:s(r.conditions,''),at:s(r.at,''),note:s(r.note,'')}));
- p.tasks=list(p.tasks).filter(x=>x&&typeof x==='object');
+ p.tasks=list(p.tasks).filter(x=>x&&typeof x==='object'&&TASK_DEFS.some(d=>d.key===x.key));
+ if(p.tasks.length!==TASK_DEFS.length||new Set(p.tasks.map(t=>t.key)).size!==TASK_DEFS.length)p.tasks=JSON.parse(JSON.stringify(newProject().tasks));
  p.tasks.forEach(t=>{t.status=pick(t.status,['blocked','ready','running','approval','done'],'blocked');t.progress=cl(t.progress,0,100,0);t.runs=cl(Math.floor(n(t.runs,0)),0,100000,0)});
  p.evidence=list(p.evidence).filter(x=>x&&typeof x==='object');
  p.evidence.forEach(e=>{e.stance=pick(e.stance,['support','contradict','neutral'],'neutral');e.reliability=e.reliability==null?null:cl(e.reliability,0,100,0);e.relevance=cl(e.relevance,0,100,0);e.tags=list(e.tags)});
  p.critiques=Array.isArray(p.critiques)?p.critiques.filter(x=>x&&typeof x==='object'):null;
  (p.critiques||[]).forEach(c=>{c.sev=pick(c.sev,['高','中','低'],'低');c.status=pick(c.status,['未対応','対応済','却下'],'未対応')});
  p.candidates=Array.isArray(p.candidates)?p.candidates.filter(x=>x&&typeof x==='object'):null;
- (p.candidates||[]).forEach(c=>{c.status=pick(c.status,['候補','採択','保留','却下','主仮説'],'候補');const q=obj(c.scores)||{};c.scores={evidence:cl(q.evidence,0,100,0),testability:cl(q.testability,0,100,0),burden:cl(q.burden,0,100,0),importance:cl(q.importance,0,100,0),novelty:cl(q.novelty,0,100,0)};c.total=cl(c.total,0,100,0)});
+ (p.candidates||[]).forEach(c=>{c.label=s(c.label,'候補');c.type=s(c.type,'');c.origin=s(c.origin,'');c.text=s(c.text,'');c.vars=list(c.vars).map(x=>s(x,''));c.status=pick(c.status,['候補','採択','保留','却下','主仮説'],'候補');const q=obj(c.scores)||{};c.scores={evidence:cl(q.evidence,0,100,0),testability:cl(q.testability,0,100,0),burden:cl(q.burden,0,100,0),importance:cl(q.importance,0,100,0),novelty:cl(q.novelty,0,100,0)};c.total=cl(c.total,0,100,0)});
+ if(Array.isArray(p.candidates)&&!p.candidates.length)p.candidates=null;
  const pl=obj(p.plan);
  if(pl){pl.methods=list(pl.methods).filter(x=>x&&typeof x==='object');pl.measures=list(pl.measures).filter(x=>x&&typeof x==='object');pl.controls=list(pl.controls).filter(x=>x&&typeof x==='object');
   pl.methods.forEach(m=>{m.cost=cl(m.cost,1,5,3);m.time=cl(m.time,1,5,3);m.val=cl(m.val,1,5,3)});
@@ -1324,7 +1328,7 @@ function radarSVG(cands){
 function viewCompare(){
  const acts=`<button class="btn" data-act="regenCand">↻ 新しい仮説を再生成</button>`;
  const head=pageHead('05','新仮説比較','仮説創出AIが組合せルールで提示した研究方向と主仮説を、5つの例示指標で比較します。研究者は候補を採択・保留・却下・修正でき、採択した仮説を主仮説として研究フローを再実行できます。',acts);
- if(!P.candidates)return head+staleBanner()+emptyBox('◈','まだ新しい仮説が生成されていません。','evaluate','前工程を含めて即時実行');
+ if(!P.candidates||!P.candidates.length)return head+staleBanner()+emptyBox('◈','まだ新しい仮説が生成されていません。','evaluate','前工程を含めて即時実行');
  const cs=P.candidates;const w=P.weights;
  if(!RT.cmpSel||!RT.cmpSel.every(id=>cs.some(c=>c.id===id)))RT.cmpSel=cs.slice(0,4).map(c=>c.id);
  const sorted=cs.slice().sort((x,y)=>y.total-x.total);const best=sorted[0];
