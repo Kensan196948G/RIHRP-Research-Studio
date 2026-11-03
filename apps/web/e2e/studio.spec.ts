@@ -533,3 +533,43 @@ test("S-05/S-06 JSON 保存と読込", async ({ page }) => {
   await page.locator("#fileJson").setInputFiles(filePath);
   await expect(page.locator("#projSel option")).toHaveCount(before * 2, { timeout: 30_000 });
 });
+
+test("作成応答の保留中に画面遷移しても孤児プロジェクトが残らない", async ({ page }) => {
+  await openStudio(page);
+  const before = (await (await page.request.get("/api/projects")).json()) as {
+    projects: unknown[];
+  };
+
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let heldOnce = false;
+  await page.route("**/api/projects", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    const response = await route.fetch(); // サーバーでは 201 コミット済み
+    if (!heldOnce) {
+      heldOnce = true;
+      await held; // 応答を保留したまま画面遷移させる
+    }
+    await route.fulfill({ response });
+  });
+
+  await page.locator('[data-act="newProject"]').click();
+  await expect.poll(() => heldOnce).toBe(true);
+  await page.locator('[data-act="admin"]').click();
+  release();
+
+  // 作成は中断せず完了させ、破棄済みなら作成済みを削除する（孤児を残さない）
+  await expect
+    .poll(
+      async () => {
+        const body = (await (await page.request.get("/api/projects")).json()) as {
+          projects: unknown[];
+        };
+        return body.projects.length;
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(before.projects.length);
+});

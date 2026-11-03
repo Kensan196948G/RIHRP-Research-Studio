@@ -11,8 +11,10 @@
 | レビュー2巡目 | fail（High 1 / Medium 3 / Low 4）→ head `674e58e` |
 | 修正1 | `a7ad639`（2巡目の全 8 件を修正） |
 | レビュー3巡目 | fail（High 1 / Medium 2 / Low 1）→ head `a7ad639` |
-| 修正2 | 本コミット（3巡目の全 4 件を修正） |
-| 自動テスト | pytest **142 passed / 1 skipped**、vitest **10 passed**、Playwright **21 passed**（44.4s） |
+| 修正2 | `5a328d3`（3巡目の全 4 件を修正） |
+| レビュー4巡目 | fail（High 1 / Medium 1）→ head `5a328d3` |
+| 修正3 | 本コミット（書き込みは abort せず完了・後始末する方針へ統一） |
+| 自動テスト | pytest **142 passed / 1 skipped**、vitest **10 passed**、Playwright **22 passed**（44.8s） |
 | 静的検査 | `tsc -b` / `vite build` / `ruff check apps/api tests` / `ruff format --check apps/api tests` / `openapi --check` すべて pass |
 | CI | run `41560328053`（head `a7ad639`）**success** |
 
@@ -38,12 +40,23 @@
 | 3 | Medium | 列挙値に配列等を送ると型検査前に集合所属判定で未処理 TypeError → **HTTP 500**。クライアントも境界値をクランプしない | `_enum_ok()`（`isinstance(str)` を先に判定）へ全列挙判定を置換（field/analysis.field/constraints/tasks.key・status/evidence.stance/critiques.sev・status/candidates.status/plan role）。クライアントは weights 0〜50・reliability/relevance/candidate scores/total 0〜100・method cost/time/val 1〜5・tasks runs 0〜100000・revision 0〜100000 に正規化。500→422 の回帰テストを追加 |
 | 4 | Low | `flush` が未変更でも現在プロジェクトを保存し、ログアウト時に同一内容の PUT が2回（2回目は 401） | `dirty` マップで未保存変更を管理し、`flush` は dirty なプロジェクトだけ保存。ログアウト E2E で **PUT が1回だけ**であることを拘束 |
 
-## 4. 実測コマンド
+## 4. レビュー4巡目の指摘と対応（本コミット）
+
+同じ根因（**書き込みの abort**）に対する2件。
+
+| # | 重要度 | 指摘 | 対応 |
+|---|---|---|---|
+| 1 | High | JSON 取込の初回保存だけ `saveDocument(..., signal)` が残っており、遷移時に取込スナップショットが失われる（プロジェクトは作成済み・payload 空・削除もされない） | 取込の初回保存から signal を除去。書き込みは完了させ、破棄済みなら作成済みプロジェクトを削除する |
+| 2 | Medium | `createProject` の応答保留中に遷移すると、abort で `created` の代入前に fetch が拒否され、後続の `deleteProject(created.id)` に到達せず孤児が残る | **作成も abort しない**（完了させてから `aborted()` なら削除）。load・新規研究・サンプル追加・削除後の代替作成・JSON 取込の全てに適用。削除も abort しない |
+
+方針: 読み取り（`listProjects` / `getDocument`）だけ AbortSignal で中断する。書き込み（create / save / rename / delete）は中断せず完了させ、画面破棄後は ID が確定してから後始末する。abort で打ち切るとサーバーだけコミットされ ID 不明の孤児・未保存が残るため。
+
+## 5. 実測コマンド
 
 ```bash
 .venv/bin/python -m pytest -p no:warnings        # 142 passed, 1 skipped
 cd apps/web && npx vitest run                    # 10 passed
-cd apps/web && npm run build && npx playwright test  # 21 passed (44.4s)
+cd apps/web && npm run build && npx playwright test  # 22 passed (44.8s)
 .venv/bin/ruff check apps/api tests
 .venv/bin/ruff format --check apps/api tests
 .venv/bin/python infra/db/export_openapi.py --check
@@ -51,9 +64,9 @@ cd apps/web && npm run build && npx playwright test  # 21 passed (44.4s)
 
 注意: `pytest` と Playwright を**同時に実行しない**。同じ `rihrp_test*` DB を奪い合い、無関係なテストが落ちる（実際に `test_admin_cannot_demote_self` が偽陽性で落ちた）。単独実行では pass。
 
-## 5. 未検証・残課題
+## 6. 未検証・残課題
 
 - CI に E2E ジョブは未追加（workflow 変更は要人間承認）。
 - スクリーンリーダー / キーボード全画面 / 320px / 実機 / ネットワーク遮断時の保存失敗 UI は未検証。
-- 書き込み中に画面遷移する競合（High #1）の専用 E2E は未追加。ログアウト経路の「PUT 1 回」は E2E で拘束済み。
-- レビュー4巡目の結果はマージ後に追記する。
+- 書き込み中に画面遷移する競合（3巡目 High #1）の専用 E2E は未追加。孤児プロジェクト（4巡目 #2）とログアウト経路の「PUT 1 回」は E2E で拘束済み。
+- レビュー5巡目の結果はマージ後に追記する。

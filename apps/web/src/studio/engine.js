@@ -365,7 +365,9 @@ async function load(){
  }
  if(aborted())return false;
  if(!DB.projects.length){
-  const created=await host.createProject('新しい研究テーマ',signal);
+  // 作成は中断しない。abort するとサーバー側だけコミットされ、ID が分からない孤児が残る。
+  // 完了させてから、画面が破棄されていれば作成済みを削除する。
+  const created=await host.createProject('新しい研究テーマ');
   if(aborted()){try{await host.deleteProject(created.id)}catch(e){}return false}
   const p=newProject();p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);
  }
@@ -898,10 +900,10 @@ function importAll(file){
   let first=null;
   for(const raw of list){
    const p=JSON.parse(JSON.stringify(raw));
-   const created=await host.createProject(p.title||'新しい研究テーマ',signal);
+   const created=await host.createProject(p.title||'新しい研究テーマ');
    if(aborted()){try{await host.deleteProject(created.id)}catch(e){}return}
    p.id=created.id;normalize(p);VERSIONS[p.id]=0;DB.projects.push(p);if(!first)first=p;
-   try{const res=await host.saveDocument(p.id,0,JSON.parse(JSON.stringify(p)),signal);VERSIONS[p.id]=res.version}catch(e){}
+   try{const res=await host.saveDocument(p.id,0,JSON.parse(JSON.stringify(p)));VERSIONS[p.id]=res.version}catch(e){}
   }
   stopOrch();stopPlay();if(first){P=first;DB.currentId=P.id}render();toast(list.length+'件の研究データを読み込みました');
  }catch(e){if(!aborted())toast('読込に失敗しました：'+e.message)}};r.readAsText(file);
@@ -1249,9 +1251,9 @@ root.addEventListener('click',async e=>{
   case'go':go(el.dataset.v);break;
   case'admin':if(host.onAdmin)host.onAdmin();break;
   case'logout':if(host.onLogout)host.onLogout();break;
-  case'newProject':{stopOrch();stopPlay();const created=await host.createProject('新しい研究テーマ',signal);if(aborted()){try{await host.deleteProject(created.id)}catch(e){}break}const p=newProject();p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);P=p;DB.currentId=p.id;touch();go('register');toast('新しい研究を作成しました');break}
-  case'addSample':{stopOrch();stopPlay();const s=SAMPLES.find(x=>x.key===k);const created=await host.createProject(s.title,signal);if(aborted()){try{await host.deleteProject(created.id)}catch(e){}break}const p=newProject(s);p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);P=p;DB.currentId=p.id;touch();go('register');toast('架空の研究事例を追加しました');break}
-  case'deleteProject':{if(!confirm(`「${P.title}」を削除します。元に戻せません。よろしいですか？`))return;stopOrch();stopPlay();const delId=P.id;try{await host.deleteProject(delId,signal)}catch(err){toast('削除できません：'+((err&&err.message)||'権限がありません'));break}delete VERSIONS[delId];DB.projects=DB.projects.filter(p=>p.id!==delId);if(!DB.projects.length){const created=await host.createProject('新しい研究テーマ',signal);if(aborted()){try{await host.deleteProject(created.id)}catch(e){}break}const np=newProject();np.id=created.id;VERSIONS[np.id]=0;DB.projects.push(np)}P=DB.projects[0];DB.currentId=P.id;go('register');toast('研究を削除しました');break}
+  case'newProject':{stopOrch();stopPlay();const created=await host.createProject('新しい研究テーマ');if(aborted()){try{await host.deleteProject(created.id)}catch(e){}break}const p=newProject();p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);P=p;DB.currentId=p.id;touch();go('register');toast('新しい研究を作成しました');break}
+  case'addSample':{stopOrch();stopPlay();const s=SAMPLES.find(x=>x.key===k);const created=await host.createProject(s.title);if(aborted()){try{await host.deleteProject(created.id)}catch(e){}break}const p=newProject(s);p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);P=p;DB.currentId=p.id;touch();go('register');toast('架空の研究事例を追加しました');break}
+  case'deleteProject':{if(!confirm(`「${P.title}」を削除します。元に戻せません。よろしいですか？`))return;stopOrch();stopPlay();const delId=P.id;try{await host.deleteProject(delId)}catch(err){toast('削除できません：'+((err&&err.message)||'権限がありません'));break}if(aborted())break;delete VERSIONS[delId];DB.projects=DB.projects.filter(p=>p.id!==delId);if(!DB.projects.length){const created=await host.createProject('新しい研究テーマ');if(aborted()){try{await host.deleteProject(created.id)}catch(e){}break}const np=newProject();np.id=created.id;VERSIONS[np.id]=0;DB.projects.push(np)}P=DB.projects[0];DB.currentId=P.id;go('register');toast('研究を削除しました');break}
   case'exportAll':download(`rihrp_backup_${dateTag()}.json`,JSON.stringify(DB,null,1),'application/json');toast('全研究データをJSONで保存しました');break;
   case'exportOne':download(`rihrp_${fileSafe(P.title)}_${dateTag()}.json`,JSON.stringify({version:1,projects:[P]},null,1),'application/json');break;
   case'importAll':$('#fileJson').click();break;
