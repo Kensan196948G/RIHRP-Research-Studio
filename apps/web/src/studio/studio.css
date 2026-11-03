@@ -294,3 +294,17 @@
 @media print{.studio-root .report{box-shadow:none;padding:0;max-width:none}}
 /* ルートの高さ */
 .studio-root{min-height:100vh}
+
+/* 320px 幅: ヘッダーの折返しと grid の最小幅を明示して横スクロールを防ぐ */
+@media (max-width:700px){
+ .studio-root .topbar{gap:8px;padding:8px 10px}
+ .studio-root .brand{flex-wrap:wrap;gap:6px;min-width:0;max-width:100%}
+ .studio-root .brand-t{white-space:normal;font-size:13px}
+ .studio-root .brand-s{overflow-wrap:anywhere;word-break:break-word}
+ .studio-root .topbar select{max-width:100%;min-width:0}
+ .studio-root .layout{grid-template-columns:minmax(0,1fr)}
+ .studio-root .grid2,.studio-root .grid3,.studio-root .chartrow,.studio-root .debate{grid-template-columns:minmax(0,1fr)}
+ .studio-root .cands{grid-template-columns:minmax(0,1fr)}
+ .studio-root .ev .bars{max-width:100%}
+ .studio-root .offbadge{flex:0 1 auto;min-width:0}
+}

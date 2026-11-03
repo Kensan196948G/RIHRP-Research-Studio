@@ -124,14 +124,18 @@ cd apps/web && npm run build && npx playwright test  # 22 passed (46.0s)
 
 ## 12. マージ後の追加対応（本 PR）
 
+PR #5 マージ後の最終レビューで残った low と、未検証 UI 項目の自動化。
+
 | 項目 | 対応 | 実測 |
 |---|---|---|
-| レビュー10巡目の low | `navStatus()` を `P.candidates.length` 判定に変更（空候補は「候補 0件」ではなく「未生成」） | E2E 全体 25 passed |
-| 320px | E2E `A-04b` を追加（ドキュメントの横スクロール 0） | passed |
-| キーボード操作 | E2E を追加（ナビ項目にフォーカス → Enter で画面遷移・active 反映） | passed |
-| ネットワーク遮断時の保存失敗 UI | E2E を追加（オフラインで「保存に失敗しました」→ 復帰後に再保存で「サーバーに自動保存済み」） | passed |
+| レビュー10巡目の low | `navStatus()` を `P.candidates.length` 判定に変更（空配列は「候補 0件」ではなく「未生成」） | 回帰テスト追加（`candidates: []` を保存 → 再読込 → 比較ナビが「未生成」・非 active） |
+| 320px | **初回実装はデータ依存で失敗**（長い研究テーマ名で `.topbar` が 53px はみ出した）。`max-width:700px` で brand の折返し・`minmax(0,1fr)`・select の最大幅を修正 | 長いタイトルに改名したうえで 320px を実測し、文書の横スクロール 0 |
+| キーボード操作 | プログラム的 `focus()` ではなく **Tab で到達 → フォーカス可視（outline）→ Enter で遷移**を検証 | passed |
+| ネットワーク遮断時の保存失敗 UI | オフラインで「保存に失敗しました」→ 復帰後に再保存で「サーバーに自動保存済み」を検証 | passed |
+
+**E2E 合計 26 passed**（pytest 144 passed / 1 skipped、vitest 10 passed、build pass）。
 
 残る未検証（自動化不可・人手）:
 - Cloudflare Access 認証後の実ブラウザ操作（OTP/SSO）。
-- スクリーンリーダーによる読み上げ（ARIA 名の自動検査は未導入）、実機、320px 以外の端末固有挙動。
-- CI への E2E ジョブ追加（workflow 変更のため別 PR・人間承認）。
+- スクリーンリーダーによる読み上げ（ARIA 名の自動検査は未導入）、実機。
+- CI への E2E ジョブ追加（workflow 変更は AI 不可。提案は `docs/ci/e2e-workflow.md`、PR #7）。

@@ -574,9 +574,21 @@ test("作成応答の保留中に画面遷移しても孤児プロジェクト�
     .toBe(before.projects.length);
 });
 
-test("A-04b 320px で横スクロールしない", async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 640 });
+test("A-04b 320px で横スクロールしない（長いタイトルでも）", async ({ page }) => {
   await openStudio(page);
+  const csrf = (await page.context().cookies()).find((cookie) => cookie.name === "rihrp_csrf")?.value;
+  const headers = { "X-CSRF-Token": csrf ?? "" };
+  const body = (await (await page.request.get("/api/projects")).json()) as {
+    projects: { id: string }[];
+  };
+  await page.request.patch(`/api/projects/${body.projects[0].id}`, {
+    headers,
+    data: { title: "河道湾曲部における護岸基礎の洗掘対策（長い研究テーマ名の表示確認用）" },
+  });
+
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.reload();
+  await expect(page.locator("#nav .navitem")).toHaveCount(6);
   const overflow = await page.evaluate(() => {
     const doc = document.documentElement;
     return doc.scrollWidth - window.innerWidth;
@@ -584,13 +596,64 @@ test("A-04b 320px で横スクロールしない", async ({ page }) => {
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-test("キーボードでナビを操作できる", async ({ page }) => {
+test("キーボードでナビを操作できる（Tab・フォーカス可視・Enter）", async ({ page }) => {
   await openStudio(page);
-  const item = page.locator('#nav .navitem[data-v="tasks"]');
-  await item.focus();
+  const activeInShadow = () =>
+    page.evaluate(() => {
+      const host = document.activeElement as (HTMLElement & { shadowRoot?: ShadowRoot | null }) | null;
+      const inner = (host?.shadowRoot?.activeElement ?? host) as HTMLElement | null;
+      return inner?.getAttribute?.("data-v") ?? null;
+    });
+
+  // Tab だけでナビ項目に到達できること（プログラム的 focus では通さない）
+  let reached = false;
+  for (let i = 0; i < 30; i += 1) {
+    await page.keyboard.press("Tab");
+    if ((await activeInShadow()) === "tasks") {
+      reached = true;
+      break;
+    }
+  }
+  expect(reached).toBe(true);
+
+  // キーボード操作でフォーカスが見えること
+  const focusVisible = await page.evaluate(() => {
+    const host = document.activeElement as (HTMLElement & { shadowRoot?: ShadowRoot | null }) | null;
+    const inner = (host?.shadowRoot?.activeElement ?? host) as HTMLElement | null;
+    if (!inner) return false;
+    const style = getComputedStyle(inner);
+    return style.outlineStyle !== "none" && style.outlineWidth !== "0px";
+  });
+  expect(focusVisible).toBe(true);
+
   await page.keyboard.press("Enter");
   await expect(page.locator("#main")).toContainText("AIタスク管理");
   await expect(page.locator('#nav .navitem[data-v="tasks"]')).toHaveClass(/active/);
+});
+
+test("候補が空配列のとき比較ナビは「未生成」表示", async ({ page }) => {
+  await openStudio(page);
+  const csrf = (await page.context().cookies()).find((cookie) => cookie.name === "rihrp_csrf")?.value;
+  const headers = { "X-CSRF-Token": csrf ?? "" };
+  const body = (await (await page.request.get("/api/projects")).json()) as {
+    projects: { id: string }[];
+  };
+  const id = body.projects[0].id;
+  const doc = (await (await page.request.get(`/api/projects/${id}/research`)).json()) as {
+    version: number;
+    payload: Record<string, unknown>;
+  };
+  const payload = { ...(doc.payload ?? {}), candidates: [] };
+  await page.request.put(`/api/projects/${id}/research`, {
+    headers,
+    data: { expected_version: doc.version, payload },
+  });
+
+  await page.reload();
+  await expect(page.locator("#nav .navitem")).toHaveCount(6);
+  const compare = page.locator('#nav .navitem[data-v="compare"]');
+  await expect(compare).toContainText("未生成");
+  await expect(compare).not.toHaveClass(/active/);
 });
 
 test("ネットワーク遮断時は保存失敗を表示し、復帰後に再保存できる", async ({ page, context }) => {
