@@ -6,7 +6,7 @@ import logging
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session as OrmSession
@@ -28,13 +28,20 @@ def _expected_head() -> str | None:
         return None
 
 
+def _with_release(request: Request, body: dict[str, object]) -> dict[str, object]:
+    identity = getattr(request.app.state, "release_identity", None)
+    if identity is not None:
+        body["release"] = identity
+    return body
+
+
 @router.get("/healthz")
-def healthz() -> dict:
-    return {"status": "ok"}
+def healthz(request: Request) -> dict[str, object]:
+    return _with_release(request, {"status": "ok"})
 
 
 @router.get("/readyz")
-def readyz(db: OrmSession = Depends(get_db)) -> JSONResponse:
+def readyz(request: Request, db: OrmSession = Depends(get_db)) -> JSONResponse:
     try:
         db.execute(text("SELECT 1"))
         current = db.execute(text("SELECT version_num FROM alembic_version")).scalar_one_or_none()
@@ -42,23 +49,38 @@ def readyz(db: OrmSession = Depends(get_db)) -> JSONResponse:
         logger.warning("readiness check failed type=%s", type(exc).__name__)
         return JSONResponse(
             status_code=503,
-            content={"status": "unavailable", "reason": "database_unreachable"},
+            content=_with_release(
+                request,
+                {"status": "unavailable", "reason": "database_unreachable"},
+            ),
         )
 
     head = _expected_head()
     if head is None:
         return JSONResponse(
             status_code=503,
-            content={"status": "unavailable", "reason": "migration_metadata_unreadable"},
+            content=_with_release(
+                request,
+                {"status": "unavailable", "reason": "migration_metadata_unreadable"},
+            ),
         )
     if current != head:
         return JSONResponse(
             status_code=503,
-            content={
-                "status": "unavailable",
-                "reason": "migration_pending",
-                "current": current,
-                "head": head,
-            },
+            content=_with_release(
+                request,
+                {
+                    "status": "unavailable",
+                    "reason": "migration_pending",
+                    "current": current,
+                    "head": head,
+                },
+            ),
         )
-    return JSONResponse(status_code=200, content={"status": "ready", "migration": current})
+    return JSONResponse(
+        status_code=200,
+        content=_with_release(
+            request,
+            {"status": "ready", "migration": current},
+        ),
+    )

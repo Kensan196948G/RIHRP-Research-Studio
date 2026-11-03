@@ -82,7 +82,8 @@ python3 tools/release_preflight.py --expect-sha <対象の40桁SHA> \
 
 事前に `git fetch origin` を実行し、その観測時刻と対象SHAのリモートCI成功を別途確認する。
 このCLIはネットワークに接続せず、**ローカルremote-tracking ref**のorigin/mainとの完全一致、
-cleanな作業ツリー、新鮮で完全な本番バックアップを検査する。リモートrefの鮮度は保証しない。
+cleanな作業ツリー、バックアップの鮮度・manifest/sidecar/dumpのハッシュ整合を検査する。
+リモートrefの鮮度やdumpの意味的内容・復元可能性は保証しない。復元訓練は別途必須。
 origin/mainと異なるコミットや編集中のツリーでは意図どおり失敗する。ブランチ名だけは検査しない。
 正常な結果だけで配備許可にはならない。この版は既存本番のmigration `0004_research_documents` のみを対象にする。
 新しいmigration追加時は「配備前の本番head」と「配備先head」を分ける設計と回帰テストを先に追加する。

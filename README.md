@@ -17,7 +17,7 @@
 > **CI（GitHub Actions）有効**: API (ruff / pytest) / Web (tsc / vitest / build) / Secret scan (gitleaks) の 3 ジョブ。
 > **本番公開済み**: [research.mirai-dx-platform.com](https://research.mirai-dx-platform.com)（Cloudflare Tunnel + Access。未認証は 302）。
 > **WebUI:** ルート直下の `RIHRP_Offline_Research_Studio.html`（6 ステップの研究ワークフロー）に整合させ、研究状態はサーバー（`research_documents`）へ保存。
-> **最終検証（2026-11-03）:** pytest **148 passed / 1 skipped** / vitest **10** / E2E **26 passed** / CI success 3/3 / `npm audit`（開発依存含む）0 / `pip-audit` 0 / Dependabot open critical・high 0 / スケール（1,000 主張）p95 claims 180ms・export 42ms / 通し E2E 成功。詳細は [`docs/verification/2026-11-03.md`](docs/verification/2026-11-03.md) と [`2026-11-03-cf-access-autologin.md`](docs/verification/2026-11-03-cf-access-autologin.md)。
+> **最新の統合済み検証（本番準備 第1組）:** pytest **180 passed / 1 skipped**（最終preflight単体は追加1件を含め**33**）/ vitest **10** / E2E **29 passed** / main CI success 3/3。詳細は[本番準備記録](docs/verification/2026-11-03-production-batch1.md)。初期検証・性能実測は[過去の検証記録](docs/verification/2026-11-03.md)に保持。現在は安全な別リリース配備方式を整備中で、旧方式による次回コード配備はNO-GO。
 
 ## 01. これは何か
 
@@ -175,7 +175,9 @@ npx playwright test          # 26 passed（Chromium）
 
 ## 07. 配備
 
-`infra/native/deploy.sh` が systemd user unit `rihrp.service` を再起動し、`/healthz` と `/readyz` を確認する。
+旧 `infra/native/deploy.sh` は稼働checkoutを更新するため次回コード配備には使わない。
+コミット別build/起動整合性/切替・切戻しは[新配備手順](docs/runbooks/immutable-release.md)を参照。
+本番切替は同手順の隔離受入が完了してから実施する。
 本番公開は Cloudflare Tunnel（`rihrp-cloudflared.service`）と Cloudflare Access で構成済み。公開 URL は `https://research.mirai-dx-platform.com`。
 定期ジョブ（日次バックアップ・週次復元訓練・日次セッション削除・5 分間隔の外形チェック）は
 `infra/native/install_ops_units.sh` で導入する（systemd user timer）。

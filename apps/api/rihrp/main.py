@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+import os
 import uuid
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -15,6 +17,7 @@ from . import __version__
 from .config import get_settings
 from .db import SessionLocal
 from .errors import error_body, install_error_handlers
+from .release import ReleaseValidationError, validate_release
 from .request_context import request_id_var
 from .routers import admin, auth, claims, health, projects, reports, research, sources
 from .seed import seed_all
@@ -27,8 +30,19 @@ MAX_BODY_BYTES = 2 * 1024 * 1024
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    app.state.release_identity = None
     settings = get_settings()
+    if "RIHRP_RELEASE_SHA" in os.environ or "RIHRP_RELEASE_DIR" in os.environ:
+        root = Path(__file__).resolve().parents[3]
+        identity = validate_release(
+            release_dir=os.environ.get("RIHRP_RELEASE_DIR"),
+            release_sha=os.environ.get("RIHRP_RELEASE_SHA"),
+            root=root,
+        )
+        if settings.web_dist.resolve() != (root / "apps/web/dist").resolve():
+            raise ReleaseValidationError("web_dist_mismatch")
+        app.state.release_identity = identity
     if settings.seed_demo and not settings.is_production:
         try:
             with SessionLocal() as db:
