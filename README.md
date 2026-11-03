@@ -175,7 +175,9 @@ npx playwright test          # 26 passed（Chromium）
 
 ## 07. 配備
 
-`infra/native/deploy.sh` が systemd user unit `rihrp.service` を再起動し、`/healthz` と `/readyz` を確認する。
+旧 `infra/native/deploy.sh` は稼働checkoutを更新するため次回コード配備には使わない。
+コミット別build/起動整合性/切替・切戻しは[新配備手順](docs/runbooks/immutable-release.md)を参照。
+本番切替は同手順の隔離受入が完了してから実施する。
 本番公開は Cloudflare Tunnel（`rihrp-cloudflared.service`）と Cloudflare Access で構成済み。公開 URL は `https://research.mirai-dx-platform.com`。
 定期ジョブ（日次バックアップ・週次復元訓練・日次セッション削除・5 分間隔の外形チェック）は
 `infra/native/install_ops_units.sh` で導入する（systemd user timer）。

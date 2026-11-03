@@ -31,6 +31,8 @@
 - restore-evidenceは所有者0600、最新backup hash/0004/freshnessに対応することを確認。dumpの意味的復元可能性は別実復元の証跡であり、CLIだけでは証明しない。
 - directory fsync失敗を握りつぶさず切替前に停止。旧unitのspecial mode bitsをcapture前に拒否。evidence fixtureはumask依存をなくし0600を明示、umask0022でもactivator24件成功。
 - activatorがDB確認で使う資格情報は既存0600confから子プロセスだけへ読み込み、出力しない。public route/認証ロジックには変更なし。
+- PR再レビューhigh（障害時rollbackがbackup鮮度で止まる）を修正。rollbackは保持previous/manifest/現DB0004確認のみで、backup/CI/mainゲートを要求しない。通常activateの検査は維持。backup/evidence欠落回帰を追加。
+- 0004 migrationの実内容を基準mainの4ファイルhashへpinし、builderで変更/追加を拒否。旧README標準配備節も是正。
 - PR正式レビューfail（high2/medium2）後、CI照会を明示repo/main/push/ci.yml・Git/GH環境除去へ固定、release root/targetを0700へ固定。umask0002でbuild/activate109件成功。
 - 実systemd-analyzeでWorkingDirectory/EnvironmentFileの外側引用符が不正と判明。path用escapingへ修正し、実parserのregressionを追加。activate27件成功（unitをinstall/restartしない構文検査）。
 

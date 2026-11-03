@@ -1217,11 +1217,10 @@ def execute(
             if current is None or current == release.sha:
                 raise ActivationError("rollback previous release is not distinct from current")
 
-        if config.action == "activate" and not operations.preflight_ready(
-            config.repo, release.sha, config.backup_dir
-        ):
-            raise ActivationError("fresh production backup preflight failed")
-        _validate_backup(config, current_time)
+        if config.action == "activate":
+            if not operations.preflight_ready(config.repo, release.sha, config.backup_dir):
+                raise ActivationError("fresh production backup preflight failed")
+            _validate_backup(config, current_time)
         if not operations.schema_ready(release, config.env_file):
             raise ActivationError(
                 "production configuration or read-only migration 0004 inspection failed"
@@ -1261,13 +1260,17 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=home / ".local/state/rihrp/backups",
     )
-    parser.add_argument("--backup-manifest", type=Path, required=True)
-    parser.add_argument("--restore-evidence", type=Path, required=True)
+    parser.add_argument("--backup-manifest", type=Path)
+    parser.add_argument("--restore-evidence", type=Path)
     return parser
 
 
 def _config_from_args(args: argparse.Namespace) -> ActivationConfig:
     home = _home_directory()
+    if args.action == "activate" and (
+        args.backup_manifest is None or args.restore_evidence is None
+    ):
+        raise ActivationError("activation requires backup manifest and restore evidence")
     return ActivationConfig(
         action=args.action,
         expect_sha=args.expect_sha,
@@ -1275,8 +1278,8 @@ def _config_from_args(args: argparse.Namespace) -> ActivationConfig:
         repo=args.repo,
         env_file=args.env_file,
         backup_dir=args.backup_dir,
-        backup_manifest=args.backup_manifest,
-        restore_evidence=args.restore_evidence,
+        backup_manifest=args.backup_manifest or args.backup_dir / "unused-rollback-manifest",
+        restore_evidence=args.restore_evidence or args.backup_dir / "unused-rollback-evidence",
         unit_path=home / ".config/systemd/user" / SERVICE_NAME,
     )
 

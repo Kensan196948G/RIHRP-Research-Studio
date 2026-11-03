@@ -503,6 +503,19 @@ def _build_command(
     _checked(Command(arguments, cwd, _build_env()), runner, failure)
 
 
+def verify_migration_contract(release: Path) -> None:
+    """Refuse schema additions or edits in this intentionally 0004-only deployer."""
+    try:
+        contract = json.loads(Path(__file__).with_name("migration-0004-contract.json").read_text())[
+            "files"
+        ]
+    except (OSError, ValueError, KeyError):
+        raise BuildError("known migration contract is unavailable") from None
+    actual = _tree_hashes(release, "infra/migrations/versions", True)
+    if actual != contract:
+        raise BuildError("migration contents differ from the approved 0004 contract")
+
+
 def build_release(
     config: BuildConfig,
     runner: Runner = external_runner,
@@ -534,6 +547,7 @@ def build_release(
         extract_source_archive(archive, target)
         for relative in SOURCE_REQUIRED:
             _require_regular(target, relative)
+        verify_migration_contract(target)
 
         venv = target / ".venv"
         venv_python = venv / "bin/python"

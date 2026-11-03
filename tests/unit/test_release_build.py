@@ -26,6 +26,7 @@ OTHER_SHA = "b" * 40
 MIGRATION = "0004_research_documents"
 BUILT_AT = datetime(2026, 11, 3, 12, 0, 0, tzinfo=UTC)
 BUILT_AT_TEXT = "2026-11-03T12:00:00.000000Z"
+VERIFY_MIGRATION_CONTRACT = release_build.verify_migration_contract
 
 
 def _write(path: Path, payload: bytes = b"fixture\n") -> Path:
@@ -78,6 +79,12 @@ def _valid_entries() -> list[Entry]:
     ]
 
 
+@pytest.fixture(autouse=True)
+def isolate_schema_contract_for_fake_archives(monkeypatch):
+    # Command-runner fixtures use synthetic migration contents; real pin is tested separately.
+    monkeypatch.setattr(release_build, "verify_migration_contract", lambda _release: None)
+
+
 @pytest.fixture
 def release_tree(tmp_path: Path) -> Path:
     release = tmp_path / "release"
@@ -96,6 +103,21 @@ def release_tree(tmp_path: Path) -> Path:
     _write(release / "apps/web/dist/index.html", b"<html>release</html>\n")
     _write(release / "apps/web/dist/assets/app.js", b"console.log('release');\n")
     return release
+
+
+def test_known_migration_contract_accepts_current_and_rejects_edit(tmp_path):
+    repo = Path(__file__).resolve().parents[2]
+    versions = tmp_path / "infra/migrations/versions"
+    shutil.copytree(
+        repo / "infra/migrations/versions",
+        versions,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+    )
+    VERIFY_MIGRATION_CONTRACT(tmp_path)
+    target = versions / "0004_research_documents.py"
+    target.write_text(target.read_text() + "\n# unauthorized edit\n")
+    with pytest.raises(release_build.BuildError, match="migration contents differ"):
+        VERIFY_MIGRATION_CONTRACT(tmp_path)
 
 
 def test_validate_source_archive_accepts_required_files_and_trees() -> None:

@@ -484,7 +484,10 @@ def test_rollback_swaps_previous_back_into_current(tmp_path: Path) -> None:
     _make_release(world, SHA_B)
     _point(world, "current", SHA_B)
     _point(world, "previous", SHA_A)
-    ops = FakeOperations()
+    # Disaster recovery must not depend on a fresh backup/evidence or CI/main.
+    world.backup_manifest.unlink()
+    world.restore_evidence.unlink()
+    ops = FakeOperations(git_ok=False, ci_ok=False, preflight_ok=False)
 
     release_activate.execute(world.config(SHA_A, action="rollback"), operations=ops, now=NOW)
 

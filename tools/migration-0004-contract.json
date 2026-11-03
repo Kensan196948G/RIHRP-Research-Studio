@@ -1,0 +1,11 @@
+{
+  "files": {
+    "infra/migrations/versions/0002_audit_immutable.py": "a690a3885f5356b16dce8f6cdfe2c2f0ba54415a242365f9776a8ce87cc5a70a",
+    "infra/migrations/versions/0003_audit_truncate.py": "689e56d1f7d548b53981de524361fea949c353532dca9bfdb6035f7722f5c443",
+    "infra/migrations/versions/0004_research_documents.py": "1ffc71ab209e33b0eaa3e8e15961d6109d7e826cca72fb782f0a2dbad8af5db9",
+    "infra/migrations/versions/2dee6c390541_initial_schema.py": "79593a2affea8bdc10de1fade97cf1b166a8ed3f0893c0eedd33e2bbeba4aa7c"
+  },
+  "migration": "0004_research_documents",
+  "schema": 1,
+  "source_commit": "084a3e820994a2380c734ed813b3b39b47e08cce"
+}
