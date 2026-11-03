@@ -578,17 +578,22 @@ test("A-04b 320px で横スクロールしない（長いタイトルでも）",
   await openStudio(page);
   const csrf = (await page.context().cookies()).find((cookie) => cookie.name === "rihrp_csrf")?.value;
   const headers = { "X-CSRF-Token": csrf ?? "" };
-  const body = (await (await page.request.get("/api/projects")).json()) as {
-    projects: { id: string }[];
-  };
-  await page.request.patch(`/api/projects/${body.projects[0].id}`, {
+  const currentId = await page.locator("#projSel").inputValue();
+  const longTitle = "河道湾曲部における護岸基礎の洗掘対策（長い研究テーマ名の表示確認用）";
+  const patched = await page.request.patch(`/api/projects/${currentId}`, {
     headers,
-    data: { title: "河道湾曲部における護岸基礎の洗掘対策（長い研究テーマ名の表示確認用）" },
+    data: { title: longTitle },
   });
+  expect(patched.ok()).toBeTruthy();
 
   await page.setViewportSize({ width: 320, height: 640 });
   await page.reload();
   await expect(page.locator("#nav .navitem")).toHaveCount(6);
+  // 改名が実データに反映され、現在の研究として表示されていること（偽陽性の防止）
+  const matching = await page.locator("#projSel option", { hasText: "河道湾曲部における護岸基礎" }).count();
+  expect(matching).toBeGreaterThanOrEqual(1);
+  await expect(page.locator("#projSel")).toHaveValue(currentId);
+
   const overflow = await page.evaluate(() => {
     const doc = document.documentElement;
     return doc.scrollWidth - window.innerWidth;

@@ -301,8 +301,12 @@
  .studio-root .brand{flex-wrap:wrap;gap:6px;min-width:0;max-width:100%}
  .studio-root .brand-t{white-space:normal;font-size:13px}
  .studio-root .brand-s{overflow-wrap:anywhere;word-break:break-word}
- .studio-root .topbar select{max-width:100%;min-width:0}
- .studio-root .layout{grid-template-columns:minmax(0,1fr)}
+ .studio-root .topr{flex:1 1 100%;margin-left:0;min-width:0;max-width:100%}
+ .studio-root .topbar select{max-width:100%;min-width:0;width:100%;flex:1 1 140px}
+ .studio-root .topbar .btn,.studio-root .topbar .tbtn{flex:0 0 auto}
+ .studio-root .layout{grid-template-columns:minmax(0,1fr);min-width:0}
+ .studio-root nav#nav{min-width:0;max-width:100%;width:100%}
+ .studio-root main{min-width:0}
  .studio-root .grid2,.studio-root .grid3,.studio-root .chartrow,.studio-root .debate{grid-template-columns:minmax(0,1fr)}
  .studio-root .cands{grid-template-columns:minmax(0,1fr)}
  .studio-root .ev .bars{max-width:100%}
