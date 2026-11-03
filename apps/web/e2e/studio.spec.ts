@@ -445,6 +445,8 @@ test("保存待ちの編集はログアウトでも失われない（flush）", 
   // flush がログアウト要求より前に PUT を送っていること（デバウンス待ちでは成立しない）
   expect(order.indexOf("put")).toBeGreaterThanOrEqual(0);
   expect(order.indexOf("put")).toBeLessThan(order.indexOf("logout"));
+  // 同一スナップショットの二重保存をしない（destroy の flush がログアウト後に再送しない）
+  expect(order.filter((item) => item === "put")).toHaveLength(1);
 
   await openStudio(page);
   await selectMain(page);

@@ -9,6 +9,7 @@ export function createStudio(root, host, options) {
  function later(fn,ms){const t=setTimeout(()=>{timers.delete(t);fn()},ms);timers.add(t);return t}
  const CURRENT_KEY='rihrp_offline_studio_current';
  const VERSIONS={};
+ const dirty={};      // project id -> 未保存の変更がある（flush の重複保存を防ぐ）
  const SERVER_TITLES={};
  const ac=new AbortController();
 
@@ -277,32 +278,47 @@ function saveProject(project,detached){
  if(entry){clearTimeout(entry.timer);delete saveTimers[id]}
  project.updatedAt=nowStr();
  const snapshot=JSON.parse(JSON.stringify(project));
+ dirty[id]=true;
  setSave('保存中…');
  // version は送信時点で読む（連続保存で古い version を使わない）。
  saveChain=saveChain.then(async()=>{
   const version=VERSIONS[id]||0;
   try{
-   const res=await host.saveDocument(id,version,snapshot,detached?undefined:signal);
+   // 書き込みは中断しない。送信途中で abort するとサーバー側だけ version が進み、
+   // 以後の保存が 409 になって直近の編集が失われる。
+   const res=await host.saveDocument(id,version,snapshot);
    VERSIONS[id]=res.version;
+   dirty[id]=false;
    let titleSynced=true;
    if(project.title&&SERVER_TITLES[id]!==project.title&&host.renameProject){
-    try{await host.renameProject(id,project.title,detached?undefined:signal);SERVER_TITLES[id]=project.title}
+    try{await host.renameProject(id,project.title);SERVER_TITLES[id]=project.title}
     catch(e){titleSynced=false}
    }
    try{localStorage.setItem(CURRENT_KEY,id)}catch(e){}
-   if(P&&P.id===id){
+   if(!destroyed&&P&&P.id===id){
     if(titleSynced)setSave('サーバーに自動保存済み');
     else{setSave('タイトル同期に失敗しました');toast('タイトルを同期できませんでした（次回保存で再試行します）')}
    }
   }catch(err){
-   if(aborted())return;
-   setSave('保存に失敗しました');
    if(err&&err.code==='version_conflict'){
+    if(detached){
+     // 画面を離れた後の保存。最新 version を取り直し、同じスナップショットを送り直す。
+     try{
+      const latest=await host.getDocument(id);
+      const res=await host.saveDocument(id,latest.version,snapshot);
+      VERSIONS[id]=res.version;dirty[id]=false;
+     }catch(e){}
+     return;
+    }
+    if(destroyed||aborted())return;
+    setSave('保存に失敗しました');
     toast('他の更新と競合しました。再読み込みします');
     if(host.onConflict)host.onConflict();
-   }else{
-    toast('保存に失敗しました：'+((err&&err.message)||'通信エラー'));
+    return;
    }
+   if(destroyed||aborted())return;
+   setSave('保存に失敗しました');
+   toast('保存に失敗しました：'+((err&&err.message)||'通信エラー'));
   }
  });
  return saveChain;
@@ -312,6 +328,7 @@ function touch(){
  if(destroyed)return;
  if(!P||!P.id)return;
  const project=P;
+ dirty[project.id]=true;
  setSave('保存中…');
  const entry=saveTimers[project.id];
  if(entry)clearTimeout(entry.timer);
@@ -319,7 +336,7 @@ function touch(){
 }
 function flush(detached){
  const ids=new Set(Object.keys(saveTimers));
- if(P&&P.id)ids.add(P.id);
+ Object.keys(dirty).forEach(id=>{if(dirty[id])ids.add(id)});
  const jobs=[];
  ids.forEach(id=>{
   const pending=saveTimers[id]&&saveTimers[id].project;
@@ -365,6 +382,7 @@ const CRIT_SEVS=['高','中','低'];
 const CRIT_STATUSES=['未対応','対応済','却下'];
 function str(v,d){return typeof v==='string'?v:(v==null?d:String(v))}
 function num(v,d){const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:d}
+function lim(v,d,lo,hi){return Math.min(hi,Math.max(lo,num(v,d)))}
 function arr(v){return Array.isArray(v)?v:[]}
 function obj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:null}
 function safeId(v,pfx){const t=String(v==null?'':v).replace(/[^A-Za-z0-9_-]/g,'').slice(0,64);return t||uid(pfx||'id')}
@@ -375,11 +393,11 @@ function sanitizeProject(p){
  p.background=str(p.background,'');
  p.conditions=str(p.conditions,'');
  p.reportNote=str(p.reportNote,'');
- p.revision=Math.max(0,Math.floor(num(p.revision,0)));
+ p.revision=Math.min(100000,Math.max(0,Math.floor(num(p.revision,0))));
  const c=obj(p.constraints)||{};
  p.constraints={budget:['潤沢','標準','厳しい'].includes(c.budget)?c.budget:'標準',period:['余裕あり','標準','短期'].includes(c.period)?c.period:'標準',safety:!!c.safety};
  p.revisions=arr(p.revisions).filter(obj).map(r=>({rev:Math.max(1,Math.floor(num(r.rev,1))),hypothesis:str(r.hypothesis,''),conditions:str(r.conditions,''),at:str(r.at,''),note:str(r.note,'')}));
- p.evidence=arr(p.evidence).filter(obj).map(e=>Object.assign({},e,{id:safeId(e.id,'ev'),title:str(e.title,'（無題）'),type:str(e.type,''),year:str(e.year,''),summary:str(e.summary,''),note:str(e.note,''),stance:STANCES.includes(e.stance)?e.stance:'neutral',reliability:e.reliability==null?null:num(e.reliability,0),relevance:num(e.relevance,0),tags:arr(e.tags).map(x=>str(x,''))}));
+ p.evidence=arr(p.evidence).filter(obj).map(e=>Object.assign({},e,{id:safeId(e.id,'ev'),title:str(e.title,'（無題）'),type:str(e.type,''),year:str(e.year,''),summary:str(e.summary,''),note:str(e.note,''),stance:STANCES.includes(e.stance)?e.stance:'neutral',reliability:e.reliability==null?null:lim(e.reliability,0,0,100),relevance:lim(e.relevance,0,0,100),tags:arr(e.tags).map(x=>str(x,''))}));
  p.debate=arr(p.debate).filter(obj).map(m=>({id:safeId(m.id,'m'),agent:AGENTS[m.agent]?m.agent:'fac',round:Math.max(1,Math.floor(num(m.round,1))),kind:str(m.kind,''),text:str(m.text,'')}));
  p.debateShown=Math.max(0,Math.floor(num(p.debateShown,0)));
  // 解析結果は派生データ。壊れた形をそのまま保持すると描画時に例外になるため、
@@ -393,11 +411,11 @@ function sanitizeProject(p){
  if(p.ethics!=null)p.ethics=arr(p.ethics).filter(obj).map(x=>({level:x.level==='要確認'?'要確認':'問題なし',text:str(x.text,''),action:str(x.action,'')}));
  const pl=obj(p.plan);
  if(pl&&arr(pl.methods).filter(obj).length){
-  p.plan=Object.assign({},pl,{methods:arr(pl.methods).filter(obj).map(m=>({n:str(m.n,'手法'),cost:num(m.cost,3),time:num(m.time,3),val:num(m.val,3)})),measures:arr(pl.measures).filter(obj).map(m=>({n:str(m.n,''),u:str(m.u,''),m:str(m.m,''),role:MEASURE_ROLES.includes(m.role)?m.role:'関連変数'})),controls:arr(pl.controls).filter(obj).map(m=>({n:str(m.n,''),u:str(m.u,''),m:str(m.m,'')})),design:str(pl.design,''),levels:str(pl.levels,'')});
+  p.plan=Object.assign({},pl,{methods:arr(pl.methods).filter(obj).map(m=>({n:str(m.n,'手法'),cost:lim(m.cost,3,1,5),time:lim(m.time,3,1,5),val:lim(m.val,3,1,5)})),measures:arr(pl.measures).filter(obj).map(m=>({n:str(m.n,''),u:str(m.u,''),m:str(m.m,''),role:MEASURE_ROLES.includes(m.role)?m.role:'関連変数'})),controls:arr(pl.controls).filter(obj).map(m=>({n:str(m.n,''),u:str(m.u,''),m:str(m.m,'')})),design:str(pl.design,''),levels:str(pl.levels,'')});
  }else p.plan=null;
- if(p.candidates!=null)p.candidates=arr(p.candidates).filter(obj).map(x=>{const sc=obj(x.scores)||{};return{id:safeId(x.id,'ca'),label:(typeof x.label==='string'&&x.label.trim())?x.label.trim().slice(0,50):'候補',type:str(x.type,''),origin:str(x.origin,''),status:CAND_STATUSES.includes(x.status)?x.status:'候補',text:str(x.text,''),vars:arr(x.vars).map(v=>str(v,'')),edited:!!x.edited,scores:{evidence:num(sc.evidence,0),testability:num(sc.testability,0),burden:num(sc.burden,0),importance:num(sc.importance,0),novelty:num(sc.novelty,0)},total:num(x.total,0)}});
+ if(p.candidates!=null)p.candidates=arr(p.candidates).filter(obj).map(x=>{const sc=obj(x.scores)||{};return{id:safeId(x.id,'ca'),label:(typeof x.label==='string'&&x.label.trim())?x.label.trim().slice(0,50):'候補',type:str(x.type,''),origin:str(x.origin,''),status:CAND_STATUSES.includes(x.status)?x.status:'候補',text:str(x.text,''),vars:arr(x.vars).map(v=>str(v,'')),edited:!!x.edited,scores:{evidence:lim(sc.evidence,0,0,100),testability:lim(sc.testability,0,0,100),burden:lim(sc.burden,0,0,100),importance:lim(sc.importance,0,0,100),novelty:lim(sc.novelty,0,0,100)},total:lim(x.total,0,0,100)}});
  const w=obj(p.weights)||{};
- p.weights={evidence:num(w.evidence,25),testability:num(w.testability,25),burden:num(w.burden,15),importance:num(w.importance,25),novelty:num(w.novelty,10)};
+ p.weights={evidence:lim(w.evidence,25,0,50),testability:lim(w.testability,25,0,50),burden:lim(w.burden,15,0,50),importance:lim(w.importance,25,0,50),novelty:lim(w.novelty,10,0,50)};
  p.decisions=arr(p.decisions).filter(obj).map(d=>({at:str(d.at,''),text:str(d.text,'')}));
  p.logs=arr(p.logs).filter(obj).map(l=>({t:str(l.t,''),msg:str(l.msg,'')}));
  p.stale=!!p.stale;
@@ -410,7 +428,7 @@ function normalize(p){
  Object.keys(blank).forEach(k=>{if(p[k]===undefined)p[k]=blank[k]});
  sanitizeProject(p);
  if(!Array.isArray(p.tasks)||p.tasks.length!==TASK_DEFS.length||new Set(p.tasks.map(t=>t&&t.key)).size!==TASK_DEFS.length||!p.tasks.every(t=>t&&TASK_DEFS.some(d=>d.key===t.key)))p.tasks=JSON.parse(JSON.stringify(blank.tasks));
- p.tasks.forEach(t=>{if(!t||typeof t!=='object')return;if(!TASK_STATUSES.includes(t.status))t.status='blocked';t.progress=Math.min(100,Math.max(0,num(t.progress,0)));t.runs=Math.max(0,Math.floor(num(t.runs,0)));if(t.status==='running')t.status='ready'});
+ p.tasks.forEach(t=>{if(!t||typeof t!=='object')return;if(!TASK_STATUSES.includes(t.status))t.status='blocked';t.progress=Math.min(100,Math.max(0,num(t.progress,0)));t.runs=Math.min(100000,Math.max(0,Math.floor(num(t.runs,0))));if(t.status==='running')t.status='ready'});
  refreshReady(p);
 }
 function log(msg,p){p=p||P;p.logs.unshift({t:nowStr(),msg});if(p.logs.length>300)p.logs.length=300}
@@ -880,12 +898,13 @@ function importAll(file){
   let first=null;
   for(const raw of list){
    const p=JSON.parse(JSON.stringify(raw));
-   const created=await host.createProject(p.title||'新しい研究テーマ');
+   const created=await host.createProject(p.title||'新しい研究テーマ',signal);
+   if(aborted()){try{await host.deleteProject(created.id)}catch(e){}return}
    p.id=created.id;normalize(p);VERSIONS[p.id]=0;DB.projects.push(p);if(!first)first=p;
-   try{const res=await host.saveDocument(p.id,0,JSON.parse(JSON.stringify(p)));VERSIONS[p.id]=res.version}catch(e){}
+   try{const res=await host.saveDocument(p.id,0,JSON.parse(JSON.stringify(p)),signal);VERSIONS[p.id]=res.version}catch(e){}
   }
   stopOrch();stopPlay();if(first){P=first;DB.currentId=P.id}render();toast(list.length+'件の研究データを読み込みました');
- }catch(e){toast('読込に失敗しました：'+e.message)}};r.readAsText(file);
+ }catch(e){if(!aborted())toast('読込に失敗しました：'+e.message)}};r.readAsText(file);
 }
 
 // ---------- rendering ----------
@@ -1226,13 +1245,13 @@ function fileSafe(s){return String(s||'research').replace(/[\\/:*?"<>|\s]+/g,'_'
 root.addEventListener('click',async e=>{
  const el=e.target.closest('[data-act]');if(!el||el.disabled)return;if(el.tagName==='A')e.preventDefault();
  const act=el.dataset.act,k=el.dataset.k,id=el.dataset.id;
- switch(act){
+ try{switch(act){
   case'go':go(el.dataset.v);break;
   case'admin':if(host.onAdmin)host.onAdmin();break;
   case'logout':if(host.onLogout)host.onLogout();break;
-  case'newProject':{stopOrch();stopPlay();const created=await host.createProject('新しい研究テーマ');const p=newProject();p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);P=p;DB.currentId=p.id;touch();go('register');toast('新しい研究を作成しました');break}
-  case'addSample':{stopOrch();stopPlay();const s=SAMPLES.find(x=>x.key===k);const created=await host.createProject(s.title,signal);const p=newProject(s);p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);P=p;DB.currentId=p.id;touch();go('register');toast('架空の研究事例を追加しました');break}
-  case'deleteProject':{if(!confirm(`「${P.title}」を削除します。元に戻せません。よろしいですか？`))return;stopOrch();stopPlay();const delId=P.id;try{await host.deleteProject(delId,signal)}catch(err){toast('削除できません：'+((err&&err.message)||'権限がありません'));break}delete VERSIONS[delId];DB.projects=DB.projects.filter(p=>p.id!==delId);if(!DB.projects.length){const created=await host.createProject('新しい研究テーマ');const np=newProject();np.id=created.id;VERSIONS[np.id]=0;DB.projects.push(np)}P=DB.projects[0];DB.currentId=P.id;go('register');toast('研究を削除しました');break}
+  case'newProject':{stopOrch();stopPlay();const created=await host.createProject('新しい研究テーマ',signal);if(aborted()){try{await host.deleteProject(created.id)}catch(e){}break}const p=newProject();p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);P=p;DB.currentId=p.id;touch();go('register');toast('新しい研究を作成しました');break}
+  case'addSample':{stopOrch();stopPlay();const s=SAMPLES.find(x=>x.key===k);const created=await host.createProject(s.title,signal);if(aborted()){try{await host.deleteProject(created.id)}catch(e){}break}const p=newProject(s);p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);P=p;DB.currentId=p.id;touch();go('register');toast('架空の研究事例を追加しました');break}
+  case'deleteProject':{if(!confirm(`「${P.title}」を削除します。元に戻せません。よろしいですか？`))return;stopOrch();stopPlay();const delId=P.id;try{await host.deleteProject(delId,signal)}catch(err){toast('削除できません：'+((err&&err.message)||'権限がありません'));break}delete VERSIONS[delId];DB.projects=DB.projects.filter(p=>p.id!==delId);if(!DB.projects.length){const created=await host.createProject('新しい研究テーマ',signal);if(aborted()){try{await host.deleteProject(created.id)}catch(e){}break}const np=newProject();np.id=created.id;VERSIONS[np.id]=0;DB.projects.push(np)}P=DB.projects[0];DB.currentId=P.id;go('register');toast('研究を削除しました');break}
   case'exportAll':download(`rihrp_backup_${dateTag()}.json`,JSON.stringify(DB,null,1),'application/json');toast('全研究データをJSONで保存しました');break;
   case'exportOne':download(`rihrp_${fileSafe(P.title)}_${dateTag()}.json`,JSON.stringify({version:1,projects:[P]},null,1),'application/json');break;
   case'importAll':$('#fileJson').click();break;
@@ -1275,7 +1294,7 @@ root.addEventListener('click',async e=>{
   case'dlTxt':download(`RIHRP報告書_${fileSafe(P.title)}_${dateTag()}.txt`,reportText());toast('報告書をテキストで保存しました');break;
   case'dlJson':download(`rihrp_${fileSafe(P.title)}_${dateTag()}.json`,JSON.stringify({version:1,projects:[P]},null,1),'application/json');break;
   case'print':window.print();break;
- }
+ }}catch(err){if(!aborted())console.error(err)}
 },{signal:ac.signal});
 function setPath(obj,path,val){const ks=path.split('.');let o=obj;for(let i=0;i<ks.length-1;i++)o=o[ks[i]];o[ks[ks.length-1]]=val}
 root.addEventListener('input',e=>{

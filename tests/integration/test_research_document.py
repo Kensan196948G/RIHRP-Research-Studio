@@ -265,6 +265,13 @@ def _valid_tasks() -> list[dict]:
         {"analysis": {"field": "bogus"}},
         {"analysis": {"field": "river", "vars": "not-a-list"}},
         {"analysis": {"field": "river", "quality": 9}},
+        {"field": ["river"]},
+        {"constraints": {"budget": []}},
+        {"tasks": [dict(item) for item in _valid_tasks()][:-1] + [{"key": "struct", "status": []}]},
+        {"evidence": [{"stance": {}}]},
+        {"critiques": [{"sev": []}]},
+        {"candidates": [{"status": []}]},
+        {"plan": {"measures": [{"n": "x", "role": []}]}},
         {"revision": -1},
     ],
 )

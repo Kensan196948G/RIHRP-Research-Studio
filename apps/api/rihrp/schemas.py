@@ -237,6 +237,13 @@ TASK_KEYS = {
     "report",
 }
 WEIGHT_KEYS = {"evidence", "testability", "burden", "importance", "novelty"}
+
+
+def _enum_ok(value: Any, allowed: set[str]) -> bool:
+    """列挙値を型ごと検証する（list 等の未ハッシュ型で 500 にしない）。"""
+    return isinstance(value, str) and value in allowed
+
+
 RESEARCH_ARRAY_FIELDS = (
     "revisions",
     "tasks",
@@ -271,7 +278,7 @@ class ResearchDocIn(BaseModel):
                 or not 0 <= revision <= 100000
             ):
                 raise ValueError("revision は 0 以上 100000 以下の整数で指定してください。")
-        if "field" in value and value["field"] not in ALLOWED_FIELDS:
+        if "field" in value and not _enum_ok(value["field"], ALLOWED_FIELDS):
             raise ValueError("field が不正です。")
         if (
             "analysis" in value
@@ -281,7 +288,7 @@ class ResearchDocIn(BaseModel):
             raise ValueError("analysis はオブジェクトで指定してください。")
         analysis = value.get("analysis")
         if analysis is not None:
-            if analysis.get("field") not in ALLOWED_FIELDS:
+            if not _enum_ok(analysis.get("field"), ALLOWED_FIELDS):
                 raise ValueError("analysis.field が不正です。")
             for key in ("vars", "inferred", "nums", "vague"):
                 items = analysis.get(key)
@@ -305,17 +312,13 @@ class ResearchDocIn(BaseModel):
         if constraints is not None:
             if not isinstance(constraints, dict):
                 raise ValueError("constraints はオブジェクトで指定してください。")
-            if constraints.get("budget") is not None and constraints["budget"] not in {
-                "潤沢",
-                "標準",
-                "厳しい",
-            }:
+            if constraints.get("budget") is not None and not _enum_ok(
+                constraints["budget"], {"潤沢", "標準", "厳しい"}
+            ):
                 raise ValueError("constraints.budget が不正です。")
-            if constraints.get("period") is not None and constraints["period"] not in {
-                "余裕あり",
-                "標準",
-                "短期",
-            }:
+            if constraints.get("period") is not None and not _enum_ok(
+                constraints["period"], {"余裕あり", "標準", "短期"}
+            ):
                 raise ValueError("constraints.period が不正です。")
             if constraints.get("safety") is not None and not isinstance(
                 constraints["safety"], bool
@@ -328,9 +331,9 @@ class ResearchDocIn(BaseModel):
             if not isinstance(task, dict):
                 raise ValueError("tasks の要素はオブジェクトで指定してください。")
             status = task.get("status")
-            if status is not None and status not in ALLOWED_TASK_STATUSES:
+            if status is not None and not _enum_ok(status, ALLOWED_TASK_STATUSES):
                 raise ValueError("tasks.status が不正です。")
-            if "key" in task and task["key"] not in TASK_KEYS:
+            if "key" in task and not _enum_ok(task["key"], TASK_KEYS):
                 raise ValueError("tasks.key が不正です。")
             progress = task.get("progress")
             if progress is not None:
@@ -353,7 +356,7 @@ class ResearchDocIn(BaseModel):
             if not isinstance(evidence, dict):
                 raise ValueError("evidence の要素はオブジェクトで指定してください。")
             stance = evidence.get("stance")
-            if stance is not None and stance not in ALLOWED_STANCES:
+            if stance is not None and not _enum_ok(stance, ALLOWED_STANCES):
                 raise ValueError("evidence.stance が不正です。")
             if evidence.get("id") is not None and not isinstance(evidence["id"], str):
                 raise ValueError("evidence.id は文字列で指定してください。")
@@ -375,16 +378,16 @@ class ResearchDocIn(BaseModel):
             if critique.get("id") is not None and not isinstance(critique["id"], str):
                 raise ValueError("critiques.id は文字列で指定してください。")
             sev = critique.get("sev")
-            if sev is not None and sev not in ALLOWED_CRITIQUE_SEVERITIES:
+            if sev is not None and not _enum_ok(sev, ALLOWED_CRITIQUE_SEVERITIES):
                 raise ValueError("critiques.sev が不正です。")
             status = critique.get("status")
-            if status is not None and status not in ALLOWED_CRITIQUE_STATUSES:
+            if status is not None and not _enum_ok(status, ALLOWED_CRITIQUE_STATUSES):
                 raise ValueError("critiques.status が不正です。")
         for candidate in value.get("candidates") or []:
             if not isinstance(candidate, dict):
                 raise ValueError("candidates の要素はオブジェクトで指定してください。")
             status = candidate.get("status")
-            if status is not None and status not in ALLOWED_CANDIDATE_STATUSES:
+            if status is not None and not _enum_ok(status, ALLOWED_CANDIDATE_STATUSES):
                 raise ValueError("candidates.status が不正です。")
             for key in ("id", "label", "type", "origin", "text"):
                 if candidate.get(key) is not None and not isinstance(candidate[key], str):
@@ -431,7 +434,11 @@ class ResearchDocIn(BaseModel):
             for key in ("measures", "controls"):
                 for item in plan.get(key) or []:
                     role = item.get("role")
-                    if key == "measures" and role is not None and role not in ALLOWED_MEASURE_ROLES:
+                    if (
+                        key == "measures"
+                        and role is not None
+                        and not _enum_ok(role, ALLOWED_MEASURE_ROLES)
+                    ):
                         raise ValueError("plan.measures.role が不正です。")
         weights = value.get("weights")
         if weights is not None:
