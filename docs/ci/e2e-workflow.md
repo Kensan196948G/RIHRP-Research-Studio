@@ -24,7 +24,7 @@ jobs:
   e2e:
     name: Playwright (studio)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     services:
       postgres:
         image: postgres:16
@@ -103,12 +103,13 @@ jobs:
   `RIHRP_MIGRATION_DATABASE_URL` は設定しない（設定しても読まれない）。
 - `reporter` は `list` のみ（HTML レポートは未生成）のため、artifact は失敗時の
   trace / screenshot を回収する目的で `playwright-traces` とする。
-- 直列実行（`workers: 1`、1 テスト最大 180 秒 × 26 件）の最悪ケースを考慮して
-  `timeout-minutes: 60` とする。
+- 直列実行（`workers: 1`、1 テスト最大 180 秒 × 26 件 = 78 分）にセットアップ・
+  依存導入・ビルドの時間を見込み、`timeout-minutes: 90` とする。
 
 ## 人間が行う手順
 
 1. `.github/workflows/e2e.yml` を上記内容で追加（またはブランチへコミット）。
-2. PR を作成し、CI が緑になることを確認。
+2. 追加後に GitHub Actions の「E2E (manual)」を **手動実行（workflow_dispatch）** し、
+   緑になることを確認する。`pull_request` 起動ではないため、PR の CI では検証されない。
 3. 必要なら PR ごとの自動実行へ変更（`pull_request` を追加し、ブランチ保護の
    required checks に `Playwright (studio)` を追加）。実行時間と課金を確認のうえ判断する。
