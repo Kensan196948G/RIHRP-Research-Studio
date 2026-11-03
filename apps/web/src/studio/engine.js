@@ -428,6 +428,7 @@ function sanitizeProject(p){
   p.plan=Object.assign({},pl,{methods:arr(pl.methods).filter(obj).map(m=>({n:str(m.n,'手法'),cost:lim(m.cost,3,1,5),time:lim(m.time,3,1,5),val:lim(m.val,3,1,5)})),measures:arr(pl.measures).filter(obj).map(m=>({n:str(m.n,''),u:str(m.u,''),m:str(m.m,''),role:MEASURE_ROLES.includes(m.role)?m.role:'関連変数'})),controls:arr(pl.controls).filter(obj).map(m=>({n:str(m.n,''),u:str(m.u,''),m:str(m.m,'')})),design:str(pl.design,''),levels:str(pl.levels,'')});
  }else p.plan=null;
  if(p.candidates!=null)p.candidates=arr(p.candidates).filter(obj).map(x=>{const sc=obj(x.scores)||{};return{id:safeId(x.id,'ca'),label:(typeof x.label==='string'&&x.label.trim())?x.label.trim().slice(0,50):'候補',type:str(x.type,''),origin:str(x.origin,''),status:CAND_STATUSES.includes(x.status)?x.status:'候補',text:str(x.text,''),vars:arr(x.vars).map(v=>str(v,'')),edited:!!x.edited,scores:{evidence:lim(sc.evidence,0,0,100),testability:lim(sc.testability,0,0,100),burden:lim(sc.burden,0,0,100),importance:lim(sc.importance,0,0,100),novelty:lim(sc.novelty,0,0,100)},total:lim(x.total,0,0,100)}});
+ if(Array.isArray(p.candidates)&&!p.candidates.length)p.candidates=null;
  const w=obj(p.weights)||{};
  p.weights={evidence:lim(w.evidence,25,0,50),testability:lim(w.testability,25,0,50),burden:lim(w.burden,15,0,50),importance:lim(w.importance,25,0,50),novelty:lim(w.novelty,10,0,50)};
  p.decisions=arr(p.decisions).filter(obj).map(d=>({at:str(d.at,''),text:str(d.text,'')}));
@@ -1235,7 +1236,7 @@ const REPORT_CSS=`.report{background:#fff;color:#111827;max-width:900px;margin:0
 .report blockquote{margin:8px 0;padding:10px 14px;border-left:4px solid #0f766e;background:#f0faf8}.report .rp-kicker{font:700 11.5px Consolas,monospace;letter-spacing:.12em;color:#0f766e}
 .report .rp-warn{font-size:12px;background:#fff7e6;border:1px solid #f3d7a0;padding:8px 12px;border-radius:4px}.report .na{color:#6b7280}.report small{color:#4b5563}
 .report .rp-meta th{width:16%}.report .rp-name{font-size:11.5px;color:#4b5563;margin-top:2px}.report .rp-foot{margin-top:30px;font-size:11px;color:#6b7280;text-align:right}.report .pre{white-space:pre-wrap}
-@media (max-width:700px){.report{padding:22px 16px}}@media print{.report{box-shadow:none;padding:0;max-width:none}}`;
+@media (max-width:700px){.report{padding:22px 16px}.report table{table-layout:fixed}.report th{white-space:normal}.report th,.report td{padding:4px;font-size:11px;word-break:break-word;overflow-wrap:anywhere}}@media print{.report{box-shadow:none;padding:0;max-width:none}}`;
 function viewReport(){
  const head=pageHead('06','研究報告書','研究過程（仮説・根拠・批判・討論・比較・研究者の判断）を報告書として統合します。HTML・テキスト・JSONで保存、またはブラウザの印刷機能でPDF化できます。',
   `<button class="btn pri" data-act="dlHtml">HTMLで保存</button><button class="btn" data-act="dlTxt">テキストで保存</button><button class="btn" data-act="dlJson">JSONで保存</button><button class="btn" data-act="print">印刷 / PDF</button>`);

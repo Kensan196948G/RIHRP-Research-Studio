@@ -34,6 +34,27 @@ async function saveState(page: Page): Promise<string> {
   return (await page.locator("#saveState").innerText()).trim();
 }
 
+async function csrfHeaders(page: Page): Promise<{ "X-CSRF-Token": string }> {
+  const csrf = (await page.context().cookies()).find((cookie) => cookie.name === "rihrp_csrf")?.value;
+  if (!csrf) throw new Error("CSRF cookie が見つかりません");
+  return { "X-CSRF-Token": csrf };
+}
+
+/** payload を部分更新する。409（version 競合）は最新版を取り直して最大 3 回まで再試行する。 */
+async function putDocument(page: Page, id: string, patch: Record<string, unknown>): Promise<void> {
+  const headers = await csrfHeaders(page);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const doc = (await (await page.request.get(`/api/projects/${id}/research`)).json()) as ResearchDoc;
+    const res = await page.request.put(`/api/projects/${id}/research`, {
+      headers,
+      data: { expected_version: doc.version, payload: { ...(doc.payload ?? {}), ...patch } },
+    });
+    if (res.ok()) return;
+    if (res.status() !== 409) break;
+  }
+  throw new Error(`payload の復元に失敗しました: ${id}`);
+}
+
 test.describe.configure({ mode: "serial" });
 
 test("S-01/S-02/S-09/S-10 シェル（トップバー・警告ノート・6ステップナビ）", async ({ page }) => {
@@ -572,4 +593,160 @@ test("作成応答の保留中に画面遷移しても孤児プロジェクト�
       { timeout: 20_000 },
     )
     .toBe(before.projects.length);
+});
+
+test("A-04b 320px で横スクロールしない（長いタイトルでも）", async ({ page }) => {
+  await openStudio(page);
+  const currentId = await page.locator("#projSel").inputValue();
+  const projects = (await (await page.request.get("/api/projects")).json()) as {
+    projects: { id: string; title: string }[];
+  };
+  const originalTitle = projects.projects.find((item) => item.id === currentId)?.title ?? TITLE;
+  const longTitle = "河道湾曲部における護岸基礎の洗掘対策（長い研究テーマ名の表示確認用）";
+  try {
+    // 改名は UI から行う（payload.title とサーバー一覧の両方を更新する経路）。
+    // PATCH /api/projects は一覧の title だけを更新し、描画に使う payload.title は変わらない。
+    await page.locator('input[data-bind="title"]').fill(longTitle);
+    await expect(page.locator("#saveState")).toHaveText(/サーバーに自動保存済み/, { timeout: 20_000 });
+
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.reload();
+    await expect(page.locator("#nav .navitem")).toHaveCount(6);
+    await expect(page.locator("#projSel")).toHaveValue(currentId);
+    // 長いタイトルが payload 由来で実際に描画されていること（旧タイトルでは通らない語で拘束）
+    await expect(page.locator("#projSel option", { hasText: "長い研究テーマ名" })).toHaveCount(1);
+    await expect(page.locator('input[data-bind="title"]')).toHaveValue(longTitle);
+
+    // 全 6 ビューで文書の横スクロールがないこと（報告書の 9 列表も含む）
+    const views = ["register", "tasks", "debate", "evidence", "compare", "report"];
+    for (const view of views) {
+      await page.locator(`#nav .navitem[data-v="${view}"]`).click();
+      await expect(page.locator(`#nav .navitem[data-v="${view}"]`)).toHaveClass(/active/);
+      const overflow = await page.evaluate(() => {
+        const doc = document.documentElement;
+        return doc.scrollWidth - doc.clientWidth;
+      });
+      expect(overflow, `view=${view}`).toBeLessThanOrEqual(1);
+    }
+  } finally {
+    // 後続テストへ改名を持ち越さない（payload.title とサーバー一覧の両方を戻す）
+    await putDocument(page, currentId, { title: originalTitle });
+    const patched = await page.request.patch(`/api/projects/${currentId}`, {
+      headers: await csrfHeaders(page),
+      data: { title: originalTitle },
+    });
+    expect(patched.ok()).toBeTruthy();
+  }
+});
+
+test("キーボードでナビを操作できる（Tab・フォーカス可視・Enter）", async ({ page }) => {
+  await openStudio(page);
+  const activeInShadow = () =>
+    page.evaluate(() => {
+      const host = document.activeElement as (HTMLElement & { shadowRoot?: ShadowRoot | null }) | null;
+      const inner = (host?.shadowRoot?.activeElement ?? host) as HTMLElement | null;
+      return inner?.getAttribute?.("data-v") ?? null;
+    });
+
+  // Tab だけでナビ項目に到達できること（プログラム的 focus では通さない）
+  let reached = false;
+  for (let i = 0; i < 30; i += 1) {
+    await page.keyboard.press("Tab");
+    if ((await activeInShadow()) === "tasks") {
+      reached = true;
+      break;
+    }
+  }
+  expect(reached).toBe(true);
+
+  // キーボード操作でフォーカスが見えること
+  const focusVisible = await page.evaluate(() => {
+    const host = document.activeElement as (HTMLElement & { shadowRoot?: ShadowRoot | null }) | null;
+    const inner = (host?.shadowRoot?.activeElement ?? host) as HTMLElement | null;
+    if (!inner) return false;
+    const style = getComputedStyle(inner);
+    return style.outlineStyle !== "none" && style.outlineWidth !== "0px";
+  });
+  expect(focusVisible).toBe(true);
+
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#main")).toContainText("AIタスク管理");
+  await expect(page.locator('#nav .navitem[data-v="tasks"]')).toHaveClass(/active/);
+});
+
+test("候補が空配列のとき比較ナビは「未生成」表示", async ({ page }) => {
+  await openStudio(page);
+  const csrf = (await page.context().cookies()).find((cookie) => cookie.name === "rihrp_csrf")?.value;
+  const headers = { "X-CSRF-Token": csrf ?? "" };
+  // 表示中（＝再読込後も選択される）プロジェクトに固定する
+  const id = await page.locator("#projSel").inputValue();
+  const readDoc = async () =>
+    (await (await page.request.get(`/api/projects/${id}/research`)).json()) as {
+      version: number;
+      payload: Record<string, unknown>;
+    };
+  const doc = await readDoc();
+  const originalCandidates = (doc.payload ?? {}).candidates ?? null;
+  const candidate = {
+    id: "ca_e2e",
+    label: "H0",
+    type: "代替案",
+    origin: "研究者",
+    status: "候補",
+    text: "E2E 用の候補",
+    vars: [],
+    scores: { evidence: 50, testability: 50, burden: 50, importance: 50, novelty: 50 },
+    total: 50,
+  };
+  try {
+    // 前提: 候補 1 件が「候補 1件」と表示されること（空配列テストの偽陽性を防ぐ）
+    const seeded = await page.request.put(`/api/projects/${id}/research`, {
+      headers,
+      data: { expected_version: doc.version, payload: { ...(doc.payload ?? {}), candidates: [candidate] } },
+    });
+    expect(seeded.ok()).toBeTruthy();
+    await page.reload();
+    const compare = page.locator('#nav .navitem[data-v="compare"]');
+    await expect(compare.locator(".st")).toHaveText("候補 1件");
+
+    // 空配列へ更新 → 未生成
+    const latest = await readDoc();
+    const emptied = await page.request.put(`/api/projects/${id}/research`, {
+      headers,
+      data: { expected_version: latest.version, payload: { ...(latest.payload ?? {}), candidates: [] } },
+    });
+    expect(emptied.ok()).toBeTruthy();
+
+    await page.reload();
+    await expect(page.locator("#nav .navitem")).toHaveCount(6);
+    await expect(page.locator("#projSel")).toHaveValue(id);
+    await expect(compare.locator(".st")).toHaveText("未生成");
+    await expect(compare.locator(".st")).not.toHaveClass(/\bon\b/);
+  } finally {
+    await putDocument(page, id, { candidates: originalCandidates });
+  }
+});
+
+test("ネットワーク遮断時は保存失敗を表示し、復帰後に再保存できる", async ({ page, context }) => {
+  await openStudio(page);
+  const id = await page.locator("#projSel").inputValue();
+  const doc = (await (await page.request.get(`/api/projects/${id}/research`)).json()) as {
+    payload: Record<string, unknown>;
+  };
+  const originalHypothesis = String((doc.payload ?? {}).hypothesis ?? HYPOTHESIS);
+  const value = `${HYPOTHESIS} オフライン確認。`;
+
+  try {
+    await context.setOffline(true);
+    await page.locator('textarea[data-bind="hypothesis"]').fill(value);
+    await expect(page.locator("#saveState")).toHaveText(/保存に失敗しました/, { timeout: 20_000 });
+
+    await context.setOffline(false);
+    await page.locator('textarea[data-bind="hypothesis"]').fill(`${value} 復帰。`);
+    await expect(page.locator("#saveState")).toHaveText(/サーバーに自動保存済み/, { timeout: 20_000 });
+  } finally {
+    // 失敗時も含めてオンラインへ戻し、仮説を元に戻す（後続テストへ持ち越さない）
+    await context.setOffline(false);
+    await putDocument(page, id, { hypothesis: originalHypothesis });
+  }
 });
