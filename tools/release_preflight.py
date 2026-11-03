@@ -268,7 +268,11 @@ def _backup_checks(
 
     checks.append(_freshness_check(candidate, now, config.max_age_hours))
     dump_value = candidate.data.get("dump")
-    dump_safe = isinstance(dump_value, str) and DUMP_RE.fullmatch(dump_value) is not None
+    dump_safe = (
+        isinstance(dump_value, str)
+        and DUMP_RE.fullmatch(dump_value) is not None
+        and candidate.path.name == f"{dump_value}.manifest.json"
+    )
     dump_path = config.backup_dir / dump_value if dump_safe else None
     dump_ok = dump_path is not None and _safe_file(dump_path)
     checks.append(

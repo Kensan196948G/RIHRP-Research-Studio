@@ -80,7 +80,9 @@ python3 tools/release_preflight.py --expect-sha <対象の40桁SHA> \
   --backup-dir "$HOME/.local/state/rihrp/backups"
 ```
 
-HEADとorigin/mainの完全一致、cleanな作業ツリー、新鮮で完全な本番バックアップを検査する。
+事前に `git fetch origin` を実行し、その観測時刻と対象SHAのリモートCI成功を別途確認する。
+このCLIはネットワークに接続せず、**ローカルremote-tracking ref**のorigin/mainとの完全一致、
+cleanな作業ツリー、新鮮で完全な本番バックアップを検査する。リモートrefの鮮度は保証しない。
 origin/mainと異なるコミットや編集中のツリーでは意図どおり失敗する。ブランチ名だけは検査しない。
 正常な結果だけで配備許可にはならない。
 

@@ -20,7 +20,7 @@
 | 6 | DB/migration | 本番0004、app superuser=false/createdb=false/schema CREATE=false。audit DELETE権限はあるがimmutableトリガー有効。admin/editor各1、有効ユーザー2 | 読み取り観測済み |
 | 7 | 認証/公開境界 | local保護API401、public4経路はcurlで302。Cloudflare policyは個別email2件のみ。実プロセスのallowlistも2件 | 負の境界PASS。値同一性/認証後通し操作は別確認 |
 | 8 | 監視/保守 | 5timer enabled/active。backup/restore/maintenance/audit-purge/healthcheckの直近Result success。アプリ起動後priority errのjournalなし | 観測済み。初回日次定時到来は翌日 |
-| 9 | 品質 | 基準main CI41624543437 success、PR#11 E2E41623804832=29 passed。新規事前検査32 unit pass、最終全量180 passed/1 skipped・Vitest10・ruff/format/OpenAPI/tsc/build成功、専用DBのE2E29 passed（1.6分） | 検証中 |
+| 9 | 品質 | 基準main CI41624543437 success、PR#11 E2E41623804832=29 passed。新規事前検査32 unit pass（PRレビュー後に組同一性の回帰1件追加）、最終全量180 passed/1 skipped・Vitest10・ruff/format/OpenAPI/tsc/build成功、専用DBのE2E29 passed（1.6分） | 検証中 |
 | 10 | 受入と記録 | 独立再レビューblockingなし。通常PR・CI・正規ゲートによるマージ後に第2組へ進む | ローカル受入済み・PR待ち |
 
 ## 本番の詳細観測
@@ -53,7 +53,9 @@
 ## 追加する事前検査
 
 [release_preflight.py](../../tools/release_preflight.py) は読み取り専用で、40桁SHA、HEAD/origin/main一致、clean tree、新鮮な本番バックアップのSHA/sidecar/manifest/11表/migrationを検査する。失敗時は非0。
-ネットワーク、DB、サービス、本番設定を変更しない。CI成功、独立レビュー、実プロセスのSHA、配備許可そのものは証明しない。
+ネットワーク、DB、サービス、本番設定を変更しない。CI成功、独立レビュー、実プロセスのSHA、配備許可そのものは証明しない。origin/mainはローカルremote-tracking refでありリモート鮮度を保証しないため、実配備では直前のfetchとリモートCI照合が別途必須。
+
+- PRレビューmedium2の対応: manifestファイル名と参照dumpの組同一性を強制する回帰1件を追加。ローカルrefの鮮度はネットワークなしCLIの保証外としてrunbookにfetch前提を明記。
 
 - 初回レビューの中2/低3を修正: production名のDB識別不一致を拒否、Git環境変数による別checkout参照を防止、countのbigint上限、JSON/sidecarサイズ・深度・巨大整数の例外、max-age上限を追加。
 - `pytest tests/unit/test_release_preflight.py -q`: **32 passed**。CLIの正常系・dirty/SHA・stale/future・hash・symlink・最新破損fallback・Git環境汚染・巨大入力を検証。

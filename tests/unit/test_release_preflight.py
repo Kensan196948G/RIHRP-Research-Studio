@@ -416,6 +416,14 @@ def test_mislabeled_production_manifest_fails_closed(
     assert _check(report, "latest_manifest")["ok"] is False
 
 
+def test_manifest_filename_must_match_referenced_dump(repo, backups):
+    manifest = _write_backup(backups, BackupSpec(created_at=datetime.now(UTC)))
+    manifest.rename(backups / f"{OLD_DUMP_NAME}.manifest.json")
+    report = release_preflight.run_preflight(_config(repo, backups), datetime.now(UTC))
+    assert report["ok"] is False
+    assert _check(report, "dump_file")["ok"] is False
+
+
 def test_production_db_mismatch_does_not_fall_back(repo, backups):
     now = datetime.now(UTC)
     _write_backup(backups, BackupSpec(created_at=now - timedelta(hours=2)))
