@@ -6,8 +6,8 @@
 
 | 項目 | 実装 | 実測 |
 |---|---|---|
-| 日次バックアップ | `infra/native/rihrp-backup.sh` + `rihrp-backup.timer`（03:30） | `systemctl --user start rihrp-backup.service` → `Result=success`、`rihrp_production-<stamp>.dump` を生成 |
-| 週次復元訓練 | `infra/native/rihrp-restore-check.sh` + `rihrp-restore-check.timer`（日曜 04:30） | 対象 DB の最新 `<db>-*.dump` を選び、SHA-256・migration・**バックアップ時点の manifest 件数**を検証。users 1/1・projects 4/4・audit_events 18/18 で `restore check: OK`。成功後に復元 DB を削除 |
+| 日次バックアップ | `infra/native/rihrp-backup.sh` + `backup_manifest.py` + `rihrp-backup.timer`（03:30） | **REPEATABLE READ + `pg_export_snapshot`** で dump と manifest（件数・migration・sha256）を同一スナップショットから取得。`Result=success`、dump/sha256/manifest の 3 点セットを生成 |
+| 週次復元訓練 | `infra/native/rihrp-restore-check.sh` + `rihrp-restore-check.timer`（日曜 04:30） | manifest 付きの最新 `<db>-*.dump` を選び、SHA-256・manifest と dump の対応（名前・ハッシュ）・migration・**バックアップ時点の件数**を検証。users 1/1・projects 4/4・audit_events 18/18 で `restore check: OK`。成功後に復元 DB を削除 |
 | セッション定期削除 | `rihrp-maintenance.service/.timer`（04:00） | `purged sessions: 0`（成功） |
 | 外形チェック | `infra/native/rihrp-healthcheck.sh` + `rihrp-healthcheck.timer`（5 分間隔） | `/healthz` 200・`/readyz` 200、失敗時は `alert.sh` が journal と `~/.local/state/rihrp/alerts.log` に記録 |
 | 通知経路 | `infra/native/alert.sh`（`RIHRP_ALERT_WEBHOOK` 対応、未設定でも記録） | 自己テストで `alerts.log` への記録を確認。**通知先の設定は人間** |
@@ -31,6 +31,13 @@
 | Playwright E2E | 26 passed |
 | ruff check / format | pass |
 | shellcheck | 警告なし（SC1090 / SC2012 も解消） |
+
+## 2.1 負の対照（実測）
+
+- manifest から 1 テーブルを欠落させた場合: `NG: manifest の件数を読み取れません` で exit 1（「0 件検査で成功」にしない）。
+- manifest が無いバックアップだけを置いた場合: `NG: ... manifest 付きの ... バックアップがありません` で exit 1。
+- 他 DB の dump（`rihrp-*.dump`）を混ぜた状態で `prune_backups.sh rihrp_production 1` を実行: 他 DB の dump は残り、対象 DB の古い世代だけが削除された。
+- `systemd-analyze --user verify` exit 0、shellcheck は対象スクリプトで警告なし。
 
 ## 3. 本番の実測（2026-11-03）
 

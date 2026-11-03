@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # 本番 DB の日次バックアップ（systemd timer から実行）。
 # DB 名は ~/.config/rihrp/rihrp.conf の RIHRP_DATABASE_URL から導出する。
-# バックアップ時点の件数を manifest に残し、復元訓練はこの値と比較する
-# （現在の本番件数と比較すると、バックアップ後の通常更新で誤検知するため）。
+# dump と manifest は同一スナップショットで取得し（backup_manifest.py）、
+# 完全な組が揃ってから世代削除を行う。
 set -euo pipefail
 umask 077
 
@@ -32,45 +32,15 @@ if ! psql -d "$db" -tAc 'SELECT 1' >/dev/null 2>&1; then
   exit 3
 fi
 
+BACKUP_DIR="${RIHRP_BACKUP_DIR:-$HOME/.local/state/rihrp/backups}"
+PG_BIN="${RIHRP_PG_BIN:-/usr/lib/postgresql/16/bin}"
+
 printf '%s backup start db=%s\n' "$(date -Is)" "$db"
-output="$("$ROOT/infra/db/backup.sh" "$db")"
-printf '%s\n' "$output"
-dump="${output##*backup: }"
-[[ -f "$dump" ]] || {
-  printf 'BLOCKED: バックアップファイルを特定できません（%s）\n' "$dump" >&2
-  exit 4
-}
+"$ROOT/.venv/bin/python" "$ROOT/infra/native/backup_manifest.py" \
+  --db "$db" \
+  --out-dir "$BACKUP_DIR" \
+  --pg-dump "$PG_BIN/pg_dump"
 
-counts="$(psql -d "$db" -tAc "
-  SELECT json_build_object(
-    'users', (SELECT count(*) FROM users),
-    'projects', (SELECT count(*) FROM projects),
-    'sources', (SELECT count(*) FROM sources),
-    'claims', (SELECT count(*) FROM claims),
-    'reports', (SELECT count(*) FROM reports),
-    'audit_events', (SELECT count(*) FROM audit_events)
-  )::text")"
-migration="$(psql -d "$db" -tAc 'SELECT version_num FROM alembic_version')"
-sha256="$(cut -d' ' -f1 "${dump}.sha256")"
-
-python3 - "$dump" "$db" "$migration" "$sha256" "$counts" <<'PY'
-import json
-import sys
-from datetime import datetime, timezone
-
-dump, db, migration, sha256, counts = sys.argv[1:6]
-manifest = {
-    "db": db,
-    "dump": dump.rsplit("/", 1)[-1],
-    "sha256": sha256,
-    "migration": migration,
-    "created_at": datetime.now(timezone.utc).isoformat(),
-    "counts": json.loads(counts),
-}
-path = f"{dump}.manifest.json"
-with open(path, "w", encoding="utf-8") as fh:
-    json.dump(manifest, fh, ensure_ascii=False, indent=2, sort_keys=True)
-print(f"manifest: {path}")
-PY
-
+# manifest まで揃った組だけを残して世代を削る。
+"$ROOT/infra/db/prune_backups.sh" "$db" "${RIHRP_BACKUP_KEEP:-14}"
 printf '%s backup done\n' "$(date -Is)"

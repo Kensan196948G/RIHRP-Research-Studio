@@ -51,22 +51,31 @@ if [[ -n "$MANIFEST" ]]; then
     printf '%-14s %10s %10s\n' "migration" "$expected_migration" "$restored_migration"
     fail=1
   fi
+  # manifest の抽出に失敗した場合は「検査 0 件で成功」にしない（fail closed）。
+  rows="$(python3 - "$MANIFEST" <<'PY'
+import json
+import sys
+
+counts = json.load(open(sys.argv[1], encoding="utf-8"))["counts"]
+tables = ("users", "projects", "sources", "claims", "reports", "audit_events")
+for table in tables:
+    print(table, int(counts[table]))
+PY
+)" || {
+    printf 'NG: manifest の件数を読み取れません（%s）\n' "$MANIFEST" >&2
+    exit 1
+  }
+  if [[ "$(wc -l <<<"$rows")" -ne 6 ]]; then
+    printf 'NG: manifest の件数が 6 テーブル分そろっていません\n' >&2
+    exit 1
+  fi
   while IFS=' ' read -r table expected; do
     restored_count="$(psql -d "$RESTORE_DB" -tAc "SELECT count(*) FROM $table")"
     printf '%-14s %10s %10s\n' "$table" "$expected" "$restored_count"
     if [[ "$expected" != "$restored_count" ]]; then
       fail=1
     fi
-  done < <(
-    python3 - "$MANIFEST" <<'PY'
-import json
-import sys
-
-counts = json.load(open(sys.argv[1], encoding="utf-8"))["counts"]
-for table in ("users", "projects", "sources", "claims", "reports", "audit_events"):
-    print(table, counts[table])
-PY
-  )
+  done <<<"$rows"
 else
   printf '%-14s %10s %10s\n' "table" "source" "restored"
   for table in users projects sources claims reports audit_events; do

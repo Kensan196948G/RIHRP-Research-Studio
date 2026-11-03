@@ -100,8 +100,13 @@ infra/native/rihrp-restore-check.sh
   バックアップが fail closed で停止する。`pg_dump` に接続情報は引き継がない（URL は DB 名の導出にのみ使う）。
 - 復元訓練のログ: `~/.local/state/rihrp/last-restore-check.log`。
 - 復元 DB を調査用に残す: `RIHRP_RESTORE_KEEP_DB=1 infra/native/rihrp-restore-check.sh`。
-- 旧形式（manifest なし）の dump は `infra/db/restore_check.sh <dump> [restore_db]` で手動検証できる
+- 旧形式（manifest なし）の dump は
+  `RIHRP_SOURCE_DB=rihrp_production infra/db/restore_check.sh <dump> [restore_db]` で手動検証できる
   （現在の本番件数との比較になる点に注意）。
+- `infra/db/backup.sh` は dump と checksum だけを作る（世代管理なし）。世代管理は
+  `infra/db/prune_backups.sh <db> [keep]`（対象 DB の dump だけを削る）。
+- 日次バックアップは **REPEATABLE READ のスナップショット**（`pg_export_snapshot`）で
+  dump と manifest を取得するため、バックアップ中の書き込みで件数がずれない。
 
 **禁止（承認が必要）**: `DROP DATABASE` / `DROP TABLE` / `TRUNCATE` / 大量 DELETE / 不可逆 migration / 本番データへの重大変更。
 

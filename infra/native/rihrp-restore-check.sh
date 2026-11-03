@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 最新バックアップからの復元訓練（systemd timer から週次実行）。
-# 対象 DB の最新 dump と manifest を選び、チェックサム・migration・
-# 「バックアップ時点の件数」を検証する。成功時は復元 DB を削除する。
+# 対象 DB の「manifest が揃った最新 dump」を選び、チェックサム・migration・
+# バックアップ時点の件数を検証する。成功時は復元 DB を削除する。
 set -euo pipefail
 umask 077
 
@@ -27,17 +27,19 @@ db="${url##*/}"
 BACKUP_DIR="${RIHRP_BACKUP_DIR:-$HOME/.local/state/rihrp/backups}"
 DUMP="$(
   find "$BACKUP_DIR" -maxdepth 1 -type f -name "${db}-*.dump" -printf '%T@ %p\n' 2>/dev/null |
-    sort -rn | head -n 1 | cut -d' ' -f2-
+    sort -rn | cut -d' ' -f2- |
+    while IFS= read -r candidate; do
+      if [[ -f "${candidate}.manifest.json" ]]; then
+        printf '%s\n' "$candidate"
+        break
+      fi
+    done
 )"
 [[ -n "$DUMP" ]] || {
-  printf 'NG: %s に %s のバックアップがありません\n' "$BACKUP_DIR" "$db" >&2
+  printf 'NG: %s に manifest 付きの %s バックアップがありません\n' "$BACKUP_DIR" "$db" >&2
   exit 1
 }
 MANIFEST="${DUMP}.manifest.json"
-[[ -f "$MANIFEST" ]] || {
-  printf 'NG: manifest がありません（%s）。先にバックアップを実行してください。\n' "$MANIFEST" >&2
-  exit 1
-}
 
 STATE_DIR="${RIHRP_STATE_DIR:-$HOME/.local/state/rihrp}"
 mkdir -p "$STATE_DIR"
