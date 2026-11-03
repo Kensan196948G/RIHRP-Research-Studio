@@ -4,7 +4,7 @@
 - 日付: 2026-11-03
 - 正本: リポジトリ直下 `RIHRP_Offline_Research_Studio.html`（1,461 行 / 約 146 KB、単一ファイル・オフライン動作）
 - 位置づけ: ユーザー指示「WebUI はプロトタイプに 100% 合わせる」に基づく **UI/UX の正本**。実装（`apps/web`）は本書に従う。
-- 関連: [ADR-0004](adr/0004-auth-session.md)（認証）、[01-architecture.md](architecture/01-architecture.md)、[詳細テスト仕様](../testing/02-detailed-test-spec.md)
+- 関連: [ADR-0004](../adr/0004-auth-session.md)（認証）、[01-architecture.md](../architecture/01-architecture.md)、[詳細テスト仕様](../testing/02-detailed-test-spec.md)
 
 ## 1. 全体像
 

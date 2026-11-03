@@ -57,7 +57,7 @@ function hash(s){let h=2166136261;s=String(s);for(let i=0;i<s.length;i++){h^=s.c
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function shuffle(arr,r){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;$('#toast').appendChild(t);later(()=>t.remove(),3600)}
-function download(name,content,type){const b=new Blob([content],{type:type||'text/plain;charset=utf-8'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(u);a.remove()},800)}
+function download(name,content,type){const b=new Blob([content],{type:type||'text/plain;charset=utf-8'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();later(()=>{URL.revokeObjectURL(u);a.remove()},800)}
 
 // ---------- domain dictionaries (fictional sample knowledge) ----------
 const FIELDS={
@@ -152,6 +152,7 @@ const FIELDS={
  }
 };
 const FIELD_KEYS=['river','geo','concrete','construction','general'];
+const MEASURE_ROLES=['独立変数','従属変数','関連変数','統制変数'];
 
 // fictional evidence corpus: [title, type, year, n, stance, tags, summary]
 const CORPUS={
@@ -269,7 +270,7 @@ function newProject(src){
 }
 let saveChain=Promise.resolve();
 const saveTimers={};   // project id -> {timer, project}
-function saveProject(project){
+function saveProject(project,detached){
  if(!project||!project.id)return saveChain;
  const id=project.id;
  const entry=saveTimers[id];
@@ -281,11 +282,11 @@ function saveProject(project){
  saveChain=saveChain.then(async()=>{
   const version=VERSIONS[id]||0;
   try{
-   const res=await host.saveDocument(id,version,snapshot);
+   const res=await host.saveDocument(id,version,snapshot,detached?undefined:signal);
    VERSIONS[id]=res.version;
    let titleSynced=true;
    if(project.title&&SERVER_TITLES[id]!==project.title&&host.renameProject){
-    try{await host.renameProject(id,project.title);SERVER_TITLES[id]=project.title}
+    try{await host.renameProject(id,project.title,detached?undefined:signal);SERVER_TITLES[id]=project.title}
     catch(e){titleSynced=false}
    }
    try{localStorage.setItem(CURRENT_KEY,id)}catch(e){}
@@ -294,6 +295,7 @@ function saveProject(project){
     else{setSave('タイトル同期に失敗しました');toast('タイトルを同期できませんでした（次回保存で再試行します）')}
    }
   }catch(err){
+   if(aborted())return;
    setSave('保存に失敗しました');
    if(err&&err.code==='version_conflict'){
     toast('他の更新と競合しました。再読み込みします');
@@ -305,8 +307,9 @@ function saveProject(project){
  });
  return saveChain;
 }
-function save(){ if(P)saveProject(P); }
+function save(){ if(destroyed)return; if(P)saveProject(P); }
 function touch(){
+ if(destroyed)return;
  if(!P||!P.id)return;
  const project=P;
  setSave('保存中…');
@@ -314,21 +317,27 @@ function touch(){
  if(entry)clearTimeout(entry.timer);
  saveTimers[project.id]={project,timer:later(()=>saveProject(project),500)};
 }
-function flush(){
+function flush(detached){
+ const ids=new Set(Object.keys(saveTimers));
+ if(P&&P.id)ids.add(P.id);
  const jobs=[];
- Object.keys(saveTimers).forEach(id=>jobs.push(saveProject(saveTimers[id].project)));
- if(P)jobs.push(saveProject(P));
+ ids.forEach(id=>{
+  const pending=saveTimers[id]&&saveTimers[id].project;
+  const project=pending||(P&&P.id===id?P:DB.projects.find(x=>x.id===id));
+  if(project)jobs.push(saveProject(project,detached));
+ });
  return Promise.all(jobs);
 }
 function setSave(t){const el=$('#saveState');if(el)el.textContent=t}
 async function load(){
  DB.projects=[];Object.keys(VERSIONS).forEach(k=>delete VERSIONS[k]);
  let list=[];
- try{list=await host.listProjects()}catch(e){setSave('読み込みに失敗しました');throw e}
+ try{list=await host.listProjects(signal)}catch(e){if(aborted())return false;setSave('読み込みに失敗しました');throw e}
  if(aborted())return false;
  for(const item of list){
   try{
-   const doc=await host.getDocument(item.id);
+   const doc=await host.getDocument(item.id,signal);
+   if(aborted())return false;
    const base=(doc&&doc.payload&&Object.keys(doc.payload).length)?doc.payload:newProject({title:item.title});
    base.id=item.id;
    VERSIONS[item.id]=doc?doc.version:0;
@@ -339,8 +348,8 @@ async function load(){
  }
  if(aborted())return false;
  if(!DB.projects.length){
-  const created=await host.createProject('新しい研究テーマ');
-  if(aborted())return false;
+  const created=await host.createProject('新しい研究テーマ',signal);
+  if(aborted()){try{await host.deleteProject(created.id)}catch(e){}return false}
   const p=newProject();p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);
  }
  let last=null;try{last=localStorage.getItem(CURRENT_KEY)}catch(e){}
@@ -358,9 +367,10 @@ function str(v,d){return typeof v==='string'?v:(v==null?d:String(v))}
 function num(v,d){const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:d}
 function arr(v){return Array.isArray(v)?v:[]}
 function obj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:null}
+function safeId(v,pfx){const t=String(v==null?'':v).replace(/[^A-Za-z0-9_-]/g,'').slice(0,64);return t||uid(pfx||'id')}
 function sanitizeProject(p){
  p.title=str(p.title,'無題');
- p.field=str(p.field,'auto');
+ p.field=['auto'].concat(FIELD_KEYS).includes(p.field)?p.field:'auto';
  p.hypothesis=str(p.hypothesis,'');
  p.background=str(p.background,'');
  p.conditions=str(p.conditions,'');
@@ -369,17 +379,23 @@ function sanitizeProject(p){
  const c=obj(p.constraints)||{};
  p.constraints={budget:['潤沢','標準','厳しい'].includes(c.budget)?c.budget:'標準',period:['余裕あり','標準','短期'].includes(c.period)?c.period:'標準',safety:!!c.safety};
  p.revisions=arr(p.revisions).filter(obj).map(r=>({rev:Math.max(1,Math.floor(num(r.rev,1))),hypothesis:str(r.hypothesis,''),conditions:str(r.conditions,''),at:str(r.at,''),note:str(r.note,'')}));
- p.evidence=arr(p.evidence).filter(obj).map(e=>Object.assign({},e,{title:str(e.title,'（無題）'),type:str(e.type,''),year:str(e.year,''),summary:str(e.summary,''),note:str(e.note,''),stance:STANCES.includes(e.stance)?e.stance:'neutral',reliability:e.reliability==null?null:num(e.reliability,0),relevance:num(e.relevance,0),tags:arr(e.tags).map(x=>str(x,''))}));
- p.debate=arr(p.debate).filter(obj).map(m=>({id:str(m.id,uid('m')),agent:AGENTS[m.agent]?m.agent:'fac',round:Math.max(1,Math.floor(num(m.round,1))),kind:str(m.kind,''),text:str(m.text,'')}));
+ p.evidence=arr(p.evidence).filter(obj).map(e=>Object.assign({},e,{id:safeId(e.id,'ev'),title:str(e.title,'（無題）'),type:str(e.type,''),year:str(e.year,''),summary:str(e.summary,''),note:str(e.note,''),stance:STANCES.includes(e.stance)?e.stance:'neutral',reliability:e.reliability==null?null:num(e.reliability,0),relevance:num(e.relevance,0),tags:arr(e.tags).map(x=>str(x,''))}));
+ p.debate=arr(p.debate).filter(obj).map(m=>({id:safeId(m.id,'m'),agent:AGENTS[m.agent]?m.agent:'fac',round:Math.max(1,Math.floor(num(m.round,1))),kind:str(m.kind,''),text:str(m.text,'')}));
  p.debateShown=Math.max(0,Math.floor(num(p.debateShown,0)));
- if(p.critiques!=null)p.critiques=arr(p.critiques).filter(obj).map(x=>({id:str(x.id,uid('c')),sev:CRIT_SEVS.includes(x.sev)?x.sev:'低',cat:str(x.cat,''),text:str(x.text,''),sug:str(x.sug,''),status:CRIT_STATUSES.includes(x.status)?x.status:'未対応'}));
+ // 解析結果は派生データ。壊れた形をそのまま保持すると描画時に例外になるため、
+ // 期待する形（列挙・配列・有限値）を満たすときだけ採用し、それ以外は再計算させる。
+ const an=obj(p.analysis);
+ p.analysis=(an&&['auto'].concat(FIELD_KEYS).includes(an.field)&&Array.isArray(an.vars)&&Array.isArray(an.inferred)&&Array.isArray(an.nums)&&Array.isArray(an.vague)&&Number.isFinite(num(an.quality,NaN)))
+  ?Object.assign({},an,{iv:an.iv==null?null:str(an.iv,''),dv:an.dv==null?null:str(an.dv,''),dir:str(an.dir,''),vars:an.vars.map(x=>str(x,'')),inferred:an.inferred.map(x=>str(x,'')),nums:an.nums.map(x=>str(x,'')),vague:an.vague.map(x=>str(x,'')),hasNum:!!an.hasNum,hasMech:!!an.hasMech,hasCond:!!an.hasCond,hasComp:!!an.hasComp,quality:Math.max(0,Math.min(5,Math.floor(num(an.quality,0))))})
+  :null;
+ if(p.critiques!=null)p.critiques=arr(p.critiques).filter(obj).map(x=>({id:safeId(x.id,'cr'),sev:CRIT_SEVS.includes(x.sev)?x.sev:'低',cat:str(x.cat,''),text:str(x.text,''),sug:str(x.sug,''),status:CRIT_STATUSES.includes(x.status)?x.status:'未対応'}));
  if(p.falsification!=null)p.falsification=arr(p.falsification).map(x=>str(x,''));
  if(p.ethics!=null)p.ethics=arr(p.ethics).filter(obj).map(x=>({level:x.level==='要確認'?'要確認':'問題なし',text:str(x.text,''),action:str(x.action,'')}));
  const pl=obj(p.plan);
  if(pl&&arr(pl.methods).filter(obj).length){
-  p.plan=Object.assign({},pl,{methods:arr(pl.methods).filter(obj).map(m=>({n:str(m.n,'手法'),cost:num(m.cost,3),time:num(m.time,3),val:num(m.val,3)})),measures:arr(pl.measures).filter(obj).map(m=>({n:str(m.n,''),u:str(m.u,''),m:str(m.m,''),role:str(m.role,'関連変数')})),controls:arr(pl.controls).filter(obj).map(m=>({n:str(m.n,''),u:str(m.u,''),m:str(m.m,'')})),design:str(pl.design,''),levels:str(pl.levels,'')});
+  p.plan=Object.assign({},pl,{methods:arr(pl.methods).filter(obj).map(m=>({n:str(m.n,'手法'),cost:num(m.cost,3),time:num(m.time,3),val:num(m.val,3)})),measures:arr(pl.measures).filter(obj).map(m=>({n:str(m.n,''),u:str(m.u,''),m:str(m.m,''),role:MEASURE_ROLES.includes(m.role)?m.role:'関連変数'})),controls:arr(pl.controls).filter(obj).map(m=>({n:str(m.n,''),u:str(m.u,''),m:str(m.m,'')})),design:str(pl.design,''),levels:str(pl.levels,'')});
  }else p.plan=null;
- if(p.candidates!=null)p.candidates=arr(p.candidates).filter(obj).map(x=>{const sc=obj(x.scores)||{};return{id:str(x.id,uid('c')),label:str(x.label,'候補'),type:str(x.type,''),origin:str(x.origin,''),status:CAND_STATUSES.includes(x.status)?x.status:'候補',text:str(x.text,''),vars:arr(x.vars).map(v=>str(v,'')),edited:!!x.edited,scores:{evidence:num(sc.evidence,0),testability:num(sc.testability,0),burden:num(sc.burden,0),importance:num(sc.importance,0),novelty:num(sc.novelty,0)},total:num(x.total,0)}});
+ if(p.candidates!=null)p.candidates=arr(p.candidates).filter(obj).map(x=>{const sc=obj(x.scores)||{};return{id:safeId(x.id,'ca'),label:(typeof x.label==='string'&&x.label.trim())?x.label.trim().slice(0,50):'候補',type:str(x.type,''),origin:str(x.origin,''),status:CAND_STATUSES.includes(x.status)?x.status:'候補',text:str(x.text,''),vars:arr(x.vars).map(v=>str(v,'')),edited:!!x.edited,scores:{evidence:num(sc.evidence,0),testability:num(sc.testability,0),burden:num(sc.burden,0),importance:num(sc.importance,0),novelty:num(sc.novelty,0)},total:num(x.total,0)}});
  const w=obj(p.weights)||{};
  p.weights={evidence:num(w.evidence,25),testability:num(w.testability,25),burden:num(w.burden,15),importance:num(w.importance,25),novelty:num(w.novelty,10)};
  p.decisions=arr(p.decisions).filter(obj).map(d=>({at:str(d.at,''),text:str(d.text,'')}));
@@ -393,7 +409,7 @@ function normalize(p){
  const blank=newProject();
  Object.keys(blank).forEach(k=>{if(p[k]===undefined)p[k]=blank[k]});
  sanitizeProject(p);
- if(!Array.isArray(p.tasks)||p.tasks.length!==TASK_DEFS.length)p.tasks=blank.tasks;
+ if(!Array.isArray(p.tasks)||p.tasks.length!==TASK_DEFS.length||new Set(p.tasks.map(t=>t&&t.key)).size!==TASK_DEFS.length||!p.tasks.every(t=>t&&TASK_DEFS.some(d=>d.key===t.key)))p.tasks=JSON.parse(JSON.stringify(blank.tasks));
  p.tasks.forEach(t=>{if(!t||typeof t!=='object')return;if(!TASK_STATUSES.includes(t.status))t.status='blocked';t.progress=Math.min(100,Math.max(0,num(t.progress,0)));t.runs=Math.max(0,Math.floor(num(t.runs,0)));if(t.status==='running')t.status='ready'});
  refreshReady(p);
 }
@@ -779,7 +795,7 @@ function runUpTo(k){
   if(t.status!=='approval'){try{EFFECTS[d.key](P)}catch(e){console.error(e);log('[エラー] '+e.message)}t.runs=(t.runs||0)+1}
   t.status='done';t.progress=100;t.endedAt=nowStr();log(`[即時実行] ${d.name}${d.approval?'（デモのため自動承認）':''}`)});
  refreshReady(P);touch();render();
- if(k==='debate'&&RT.view==='debate')setTimeout(playDebate,150);
+ if(k==='debate'&&RT.view==='debate')later(playDebate,150);
  toast('「'+tdef(k).name+'」まで即時実行しました');
 }
 function startFlow(){
@@ -798,16 +814,18 @@ function recordRevision(note){
 
 // ---------- debate playback ----------
 function playDebate(){
+ if(destroyed)return;
  if(RT.playing||!P.debate.length)return;
  if(P.debateShown>=P.debate.length)return;
  RT.playing=true;stepPlay();
 }
 function stepPlay(){
+ if(destroyed)return;
  if(!RT.playing)return;
  if(P.debateShown>=P.debate.length){RT.playing=false;RT.typing=null;renderChat();renderDebateCtrls();return}
  const m=P.debate[P.debateShown];RT.typing=m.agent;renderChat();
  const delay=clamp(500+m.text.length*9,700,1900)/(DB.settings.speed||1);
- RT.playTimer=setTimeout(()=>{P.debateShown++;RT.typing=null;renderChat();touch();RT.playTimer=setTimeout(stepPlay,240/(DB.settings.speed||1))},delay);
+ RT.playTimer=later(()=>{P.debateShown++;RT.typing=null;renderChat();touch();RT.playTimer=later(stepPlay,240/(DB.settings.speed||1))},delay);
 }
 function stopPlay(){RT.playing=false;RT.typing=null;clearTimeout(RT.playTimer)}
 function sendInterject(){
@@ -819,7 +837,7 @@ function sendInterject(){
  P.debateShown=P.debate.length;
  decide('討論で発言：'+short(text,80));
  respondTo(text).forEach(([ag,kind,t])=>P.debate.push({id:uid('m'),round:5,agent:ag,kind,text:t}));
- RT.draft='';touch();render();setTimeout(playDebate,150);
+ RT.draft='';touch();render();later(playDebate,150);
 }
 
 // ---------- import ----------
@@ -875,7 +893,7 @@ const VIEWS=[
  {k:'register',n:'01',t:'研究仮説登録'},{k:'tasks',n:'02',t:'AIタスク管理'},{k:'debate',n:'03',t:'複数AI討論'},
  {k:'evidence',n:'04',t:'根拠・反証'},{k:'compare',n:'05',t:'新仮説比較'},{k:'report',n:'06',t:'研究報告書'}
 ];
-function go(v){RT.view=v;RT.editing=null;if(v!=='debate')stopPlay();render();window.scrollTo(0,0);if(v==='debate'&&P.debateShown<P.debate.length)setTimeout(playDebate,250)}
+function go(v){RT.view=v;RT.editing=null;if(v!=='debate')stopPlay();render();window.scrollTo(0,0);if(v==='debate'&&P.debateShown<P.debate.length)later(playDebate,250)}
 function navStatus(k){
  const done=P.tasks.filter(t=>t.status==='done').length;
  switch(k){
@@ -1009,8 +1027,8 @@ function viewTasks(){
   return`<tr><td class="muted">${pad(i+1)}</td><td><b>${esc(d.name)}</b>${d.approval?' <span class="chip warn">◆承認</span>':''}<br><span class="muted" style="font-size:12px">${esc(d.desc)}</span></td>
   <td><span class="agentcell">${avatar(d.agent,'dot')}${AGENTS[d.agent].name}</span></td>
   <td class="muted" style="font-size:12px">${d.deps.map(k=>pad(TASK_DEFS.findIndex(z=>z.key===k)+1)).join(', ')||'—'}</td>
-  <td><span class="st-badge st-${stc}">${stl}</span></td>
-  <td><div class="pbar ${x.status}"><i data-pbar="${d.key}" style="width:${Math.round(x.progress)}%"></i></div><span class="muted" style="font-size:11px" data-ptext="${d.key}">${Math.round(x.progress)}%</span></td>
+  <td><span class="st-badge st-${esc(stc)}">${esc(stl)}</span></td>
+  <td><div class="pbar ${esc(x.status)}"><i data-pbar="${d.key}" style="width:${Math.round(x.progress)}%"></i></div><span class="muted" style="font-size:11px" data-ptext="${d.key}">${Math.round(x.progress)}%</span></td>
   <td class="muted">${x.runs||0}</td>
   <td style="white-space:nowrap">${x.status==='approval'?`<button class="btn sm pri" data-act="approve" data-k="${d.key}">承認</button> <button class="btn sm" data-act="reject" data-k="${d.key}">差戻し</button>`:x.status==='done'?`<button class="btn sm" data-act="rerun" data-k="${d.key}">再実行</button>`:`<span class="muted" style="font-size:12px">—</span>`}</td></tr>`}).join('')}
  </tbody></table></div></section>
@@ -1077,11 +1095,11 @@ function viewEvidence(){
   ${e.summary?`<div class="sum">${esc(e.summary)}</div>`:''}${e.note?`<div class="sum" style="color:var(--warn)">※ ${esc(e.note)}</div>`:''}
   <div class="bars"><span>信頼性</span><span class="minibar"><i style="width:${e.reliability||0}%"></i></span><b>${e.reliability!=null?e.reliability:'—'}</b><span>関連度</span><span class="minibar"><i style="width:${e.relevance||0}%;background:var(--info)"></i></span><b>${e.relevance!=null?e.relevance:'—'}</b></div>
   <div style="margin-top:6px">${(e.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
-  <div class="foot">立場：<select data-evstance="${e.id}">${Object.keys(STANCE).map(s=>`<option value="${s}"${e.stance===s?' selected':''}>${STANCE[s]}</option>`).join('')}</select>
-   <button class="btn sm" data-act="evAccept" data-id="${e.id}">${e.accepted===false?'根拠に含める':'根拠から除外'}</button>${e.source!=='builtin'?`<button class="btn sm danger" data-act="evDel" data-id="${e.id}">削除</button>`:''}</div></div>`).join('');
+  <div class="foot">立場：<select data-evstance="${esc(e.id)}">${Object.keys(STANCE).map(s=>`<option value="${s}"${e.stance===s?' selected':''}>${STANCE[s]}</option>`).join('')}</select>
+   <button class="btn sm" data-act="evAccept" data-id="${esc(e.id)}">${e.accepted===false?'根拠に含める':'根拠から除外'}</button>${e.source!=='builtin'?`<button class="btn sm danger" data-act="evDel" data-id="${esc(e.id)}">削除</button>`:''}</div></div>`).join('');
  const crs=P.critiques||[];
- const crHTML=crs.length?crs.map(c=>`<div class="crit s${c.sev}${c.status!=='未対応'?' closed':''}"><div class="h"><span class="chip ${c.sev==='高'?'bad':c.sev==='中'?'warn':'info'}">重要度 ${c.sev}</span><b>${esc(c.cat)}</b><span class="chip">${c.status}</span>
-  <span style="margin-left:auto" class="acts">${c.status==='未対応'?`<button class="btn sm good" data-act="crStatus" data-id="${c.id}" data-s="対応済">対応済にする</button><button class="btn sm" data-act="crStatus" data-id="${c.id}" data-s="却下">指摘を却下</button>`:`<button class="btn sm" data-act="crStatus" data-id="${c.id}" data-s="未対応">未対応に戻す</button>`}</span></div>
+ const crHTML=crs.length?crs.map(c=>`<div class="crit s${esc(c.sev)}${c.status!=='未対応'?' closed':''}"><div class="h"><span class="chip ${c.sev==='高'?'bad':c.sev==='中'?'warn':'info'}">重要度 ${esc(c.sev)}</span><b>${esc(c.cat)}</b><span class="chip">${esc(c.status)}</span>
+  <span style="margin-left:auto" class="acts">${c.status==='未対応'?`<button class="btn sm good" data-act="crStatus" data-id="${esc(c.id)}" data-s="対応済">対応済にする</button><button class="btn sm" data-act="crStatus" data-id="${esc(c.id)}" data-s="却下">指摘を却下</button>`:`<button class="btn sm" data-act="crStatus" data-id="${esc(c.id)}" data-s="未対応">未対応に戻す</button>`}</span></div>
   <p>${esc(c.text)}</p><div class="sug">${esc(c.sug)}</div></div>`).join(''):'<p class="muted">批判・反証レビューは未実行です。</p>';
  const plan=P.plan;const eth=P.ethics;
  return head+staleBanner()+addForm+
@@ -1092,9 +1110,9 @@ function viewEvidence(){
  <div><section class="card"><h2>批判・反証レビュー <span class="cnt">${crs.length}件</span>${!P.critiques?'<button class="btn sm" data-act="runUpTo" data-k="critic" style="margin-left:auto">レビューを実行</button>':''}</h2>${crHTML}</section>
   <section class="card"><h2>この仮説が棄却される条件</h2>${P.falsification?`<ol class="fals">${P.falsification.map(f=>`<li>${esc(f)}</li>`).join('')}</ol><p class="hint">検証前に棄却条件を定めておくことで、結果の後付け解釈を防ぎます。</p>`:'<p class="muted">批判・反証レビュー後に表示されます。</p>'}</section>
   <section class="card"><h2>検証計画（方法論AI）</h2>${plan?`<h3 style="margin-top:0">検証手法</h3>${plan.methods.map((m,i)=>`<div class="mth"><span>${i===0?'<span class="chip acc">主</span> ':i===1?'<span class="chip">補</span> ':'<span class="chip">代替</span> '}${esc(m.n)}</span><span style="display:flex;gap:10px;font-size:11px" class="muted">費用${lvl(num(m.cost,3),1)} 期間${lvl(num(m.time,3),1)} 妥当性${lvl(num(m.val,3))}</span></div>`).join('')}
-   <h3>測定項目</h3><div class="tblwrap"><table class="tbl"><tbody>${plan.measures.map(m=>`<tr><td><span class="chip ${m.role==='独立変数'?'info':m.role==='従属変数'?'acc':''}">${m.role}</span></td><td><b>${esc(m.n)}</b></td><td class="muted">${esc(m.u)}</td><td style="font-size:12.5px">${esc(m.m)}</td></tr>`).join('')}${plan.controls.map(m=>`<tr><td><span class="chip warn">統制変数</span></td><td><b>${esc(m.n)}</b></td><td class="muted">${esc(m.u)}</td><td style="font-size:12.5px">${esc(m.m)}</td></tr>`).join('')}</tbody></table></div>
+   <h3>測定項目</h3><div class="tblwrap"><table class="tbl"><tbody>${plan.measures.map(m=>`<tr><td><span class="chip ${m.role==='独立変数'?'info':m.role==='従属変数'?'acc':''}">${esc(m.role)}</span></td><td><b>${esc(m.n)}</b></td><td class="muted">${esc(m.u)}</td><td style="font-size:12.5px">${esc(m.m)}</td></tr>`).join('')}${plan.controls.map(m=>`<tr><td><span class="chip warn">統制変数</span></td><td><b>${esc(m.n)}</b></td><td class="muted">${esc(m.u)}</td><td style="font-size:12.5px">${esc(m.m)}</td></tr>`).join('')}</tbody></table></div>
    <h3>研究デザイン</h3><p style="margin:0;font-size:13px">${esc(plan.design)}。${esc(plan.levels)}。</p>`:'<p class="muted">変数定義・測定計画は未実行です。</p>'}</section>
-  <section class="card"><h2>研究倫理・安全チェック</h2>${eth?eth.map(i=>`<div class="ethi"><span class="chip ${i.level==='要確認'?'warn':'good'}">${i.level}</span><div><b>${esc(i.text)}</b><div class="a">${esc(i.action)}</div></div></div>`).join(''):'<p class="muted">研究倫理・安全性確認は未実行です。</p>'}</section>
+  <section class="card"><h2>研究倫理・安全チェック</h2>${eth?eth.map(i=>`<div class="ethi"><span class="chip ${i.level==='要確認'?'warn':'good'}">${esc(i.level)}</span><div><b>${esc(i.text)}</b><div class="a">${esc(i.action)}</div></div></div>`).join(''):'<p class="muted">研究倫理・安全性確認は未実行です。</p>'}</section>
  </div></div>`;
 }
 
@@ -1119,26 +1137,26 @@ function viewCompare(){
  const sc=(l,v,inv)=>`<span>${l}</span><span class="minibar"><i style="width:${v}%;${inv?'background:var(--warn)':''}"></i></span><b>${v}</b>`;
  const stChip=s=>s==='採択'?'good':s==='却下'?'bad':s==='保留'?'warn':s==='主仮説'?'acc':'';
  const cards=cs.map(c=>{const ed=RT.editing===c.id;return`<div class="cand${c.origin==='主仮説'?' main':''}${c.status==='却下'?' rej':''}">
-  <div class="hd"><span class="lb">${c.label}</span><span class="chip">${esc(c.type)}</span><span class="chip ${stChip(c.status)}">${esc(c.status)}</span>${c.edited?'<span class="chip info">研究者修正</span>':''}<span class="tot">${c.total}<small> 点</small></span></div>
+  <div class="hd"><span class="lb">${esc(c.label)}</span><span class="chip">${esc(c.type)}</span><span class="chip ${stChip(c.status)}">${esc(c.status)}</span>${c.edited?'<span class="chip info">研究者修正</span>':''}<span class="tot">${c.total}<small> 点</small></span></div>
   ${ed?`<textarea id="candEdit" rows="4">${esc(c.text)}</textarea>`:`<p class="tx">${esc(c.text)}</p>`}
   <div class="muted" style="font-size:11.5px">提案：${esc(c.origin)}　変数：${c.vars.map(esc).join('・')}</div>
   <div class="sc">${sc('根拠の充足度',c.scores.evidence)}${sc('検証可能性',c.scores.testability)}${sc('実験負担',c.scores.burden,1)}${sc('研究上の重要性',c.scores.importance)}${sc('新規性（例示）',c.scores.novelty)}</div>
-  <div class="ft">${ed?`<button class="btn sm pri" data-act="candSave" data-id="${c.id}">保存して再評価</button><button class="btn sm" data-act="candCancel">取消</button>`:
-   c.origin==='主仮説'?`<button class="btn sm" data-act="candEdit" data-id="${c.id}">修正して再実行</button><span class="muted" style="font-size:11.5px">現在の主仮説</span>`:
-   `<button class="btn sm good" data-act="candStatus" data-id="${c.id}" data-s="採択">採択</button><button class="btn sm" data-act="candStatus" data-id="${c.id}" data-s="保留">保留</button><button class="btn sm danger" data-act="candStatus" data-id="${c.id}" data-s="却下">却下</button><button class="btn sm" data-act="candEdit" data-id="${c.id}">修正</button>${c.status==='採択'?`<button class="btn sm pri" data-act="setMain" data-id="${c.id}">主仮説にして再実行</button>`:''}`}</div></div>`}).join('');
+  <div class="ft">${ed?`<button class="btn sm pri" data-act="candSave" data-id="${esc(c.id)}">保存して再評価</button><button class="btn sm" data-act="candCancel">取消</button>`:
+   c.origin==='主仮説'?`<button class="btn sm" data-act="candEdit" data-id="${esc(c.id)}">修正して再実行</button><span class="muted" style="font-size:11.5px">現在の主仮説</span>`:
+   `<button class="btn sm good" data-act="candStatus" data-id="${esc(c.id)}" data-s="採択">採択</button><button class="btn sm" data-act="candStatus" data-id="${esc(c.id)}" data-s="保留">保留</button><button class="btn sm danger" data-act="candStatus" data-id="${esc(c.id)}" data-s="却下">却下</button><button class="btn sm" data-act="candEdit" data-id="${esc(c.id)}">修正</button>${c.status==='採択'?`<button class="btn sm pri" data-act="setMain" data-id="${esc(c.id)}">主仮説にして再実行</button>`:''}`}</div></div>`}).join('');
  const wl=[['evidence','根拠の充足度'],['testability','検証可能性'],['burden','実験負担の低さ'],['importance','研究上の重要性'],['novelty','新規性（例示）']];
  const selC=cs.filter(c=>RT.cmpSel.includes(c.id));
  return head+staleBanner()+
- `<div class="banner acc"><span>現在の重み付けでの最高評価：<b>${best.label}（${esc(best.type)}）総合 ${best.total}点</b>　— 評価値はルールに基づく例示であり、仮説の真偽や新規性を保証するものではありません。</span></div>
+ `<div class="banner acc"><span>現在の重み付けでの最高評価：<b>${esc(best.label)}（${esc(best.type)}）総合 ${Math.round(num(best.total,0))}点</b>　— 評価値はルールに基づく例示であり、仮説の真偽や新規性を保証するものではありません。</span></div>
  <div class="cands" style="margin-bottom:16px">${cards}</div>
  <section class="card"><h2>評価の重み付け</h2><div class="wts">${wl.map(([k,l])=>`<div><label><span>${l}</span><b data-wv="${k}">${w[k]}</b></label><input type="range" min="0" max="50" value="${w[k]}" data-w="${k}"></div>`).join('')}</div><p class="hint">重みを変えると総合点・順位・チャートが即座に更新されます。実験負担は低いほど高得点として合算します。</p></section>
- <div class="chartrow"><section class="card"><h2>指標別比較（レーダー）</h2><div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;margin-bottom:6px">${cs.map(c=>`<label class="chk" style="margin:0"><input type="checkbox" data-cmp="${c.id}"${RT.cmpSel.includes(c.id)?' checked':''}> ${c.label}</label>`).join('')}</div>
-  <div style="display:flex;justify-content:center">${radarSVG(selC)}</div><div class="legend">${selC.map(c=>`<span style="--c:${PALETTE[P.candidates.indexOf(c)%PALETTE.length]}">${c.label} ${esc(c.type)}</span>`).join('')}</div></section>
+ <div class="chartrow"><section class="card"><h2>指標別比較（レーダー）</h2><div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;margin-bottom:6px">${cs.map(c=>`<label class="chk" style="margin:0"><input type="checkbox" data-cmp="${esc(c.id)}"${RT.cmpSel.includes(c.id)?' checked':''}> ${esc(c.label)}</label>`).join('')}</div>
+  <div style="display:flex;justify-content:center">${radarSVG(selC)}</div><div class="legend">${selC.map(c=>`<span style="--c:${PALETTE[P.candidates.indexOf(c)%PALETTE.length]}">${esc(c.label)} ${esc(c.type)}</span>`).join('')}</div></section>
  <section class="card"><h2>総合点ランキング</h2><div id="rank">${rankHTML()}</div>
-  <div class="tblwrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>仮説</th><th>根拠</th><th>検証</th><th>負担</th><th>重要</th><th>新規</th><th>総合</th></tr></thead><tbody>${sorted.map(c=>`<tr><td><b>${c.label}</b> <span class="muted" style="font-size:11.5px">${esc(c.type)}</span></td><td>${Math.round(num(c.scores.evidence,0))}</td><td>${Math.round(num(c.scores.testability,0))}</td><td>${Math.round(num(c.scores.burden,0))}</td><td>${Math.round(num(c.scores.importance,0))}</td><td>${Math.round(num(c.scores.novelty,0))}</td><td><b>${Math.round(num(c.total,0))}</b></td></tr>`).join('')}</tbody></table></div>
+  <div class="tblwrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>仮説</th><th>根拠</th><th>検証</th><th>負担</th><th>重要</th><th>新規</th><th>総合</th></tr></thead><tbody>${sorted.map(c=>`<tr><td><b>${esc(c.label)}</b> <span class="muted" style="font-size:11.5px">${esc(c.type)}</span></td><td>${Math.round(num(c.scores.evidence,0))}</td><td>${Math.round(num(c.scores.testability,0))}</td><td>${Math.round(num(c.scores.burden,0))}</td><td>${Math.round(num(c.scores.importance,0))}</td><td>${Math.round(num(c.scores.novelty,0))}</td><td><b>${Math.round(num(c.total,0))}</b></td></tr>`).join('')}</tbody></table></div>
   <div class="disc">指標の算出：根拠＝関連資料の立場×信頼性、検証可能性＝測定可能な変数・数値基準・条件の明示、実験負担＝検証手法の費用・期間と変数の数、重要性＝分野の重要度と成果変数の有無、新規性＝仮説類型と既存資料の少なさ（いずれも例示）。</div></section></div>`;
 }
-function rankHTML(){const s=P.candidates.slice().sort((x,y)=>y.total-x.total);return s.map((c,i)=>`<div class="hbar"><b>${c.label}</b><span class="b"><i style="width:${c.total}%;background:${PALETTE[P.candidates.indexOf(c)%PALETTE.length]}"></i></span><span style="font-family:var(--mono);font-weight:700">${c.total}</span></div>`).join('')}
+function rankHTML(){const s=P.candidates.slice().sort((x,y)=>y.total-x.total);return s.map((c,i)=>`<div class="hbar"><b>${esc(c.label)}</b><span class="b"><i style="width:${c.total}%;background:${PALETTE[P.candidates.indexOf(c)%PALETTE.length]}"></i></span><span style="font-family:var(--mono);font-weight:700">${c.total}</span></div>`).join('')}
 
 // ----- 06 report -----
 function buildReport(p){
@@ -1146,12 +1164,12 @@ function buildReport(p){
  const sorted=(p.candidates||[]).slice().sort((x,y)=>y.total-x.total);
  const nexts=[];
  const openHi=(p.critiques||[]).filter(c=>c.status==='未対応'&&c.sev==='高');
- if(openHi.length)nexts.push(`重要度「高」の未対応指摘（${openHi.map(c=>esc(c.cat)).join('・')}）への対応方針を決定する。`);
+ if(openHi.length)nexts.push(`重要度「高」の未対応指摘（${openHi.map(c=>c.cat).join('・')}）への対応方針を決定する。`);
  const adopted=(p.candidates||[]).filter(c=>c.status==='採択');
- if(adopted.length)nexts.push(`採択した仮説（${adopted.map(c=>esc(c.label)).join('・')}）について、検証計画と棄却条件を具体化する。`);
+ if(adopted.length)nexts.push(`採択した仮説（${adopted.map(c=>c.label).join('・')}）について、検証計画と棄却条件を具体化する。`);
  if(ev.filter(e=>e.stance==='support'&&(e.reliability||0)>=75).length<2)nexts.push('信頼性の高い支持根拠（査読論文・公的報告・計測データ）を追加収集する。');
  if(p.ethics&&p.ethics.some(i=>i.level==='要確認'))nexts.push('研究倫理・安全の要確認事項について、関係者と対応方針を合意する。');
- if(p.plan)nexts.push(`「${esc(p.plan.methods[0].n)}」による予備検証の実施計画（期間・費用・担当）を作成する。`);
+ if(p.plan)nexts.push(`「${p.plan.methods[0].n}」による予備検証の実施計画（期間・費用・担当）を作成する。`);
  if(!nexts.length)nexts.push('研究フローを実行し、評価結果を確認する。');
  const tdone=p.tasks.filter(t=>t.status==='done').length;
  return`<div class="rp-title"><div class="rp-kicker">RIHRP 研究報告書（ドラフト）</div><div class="rp-name">Research Inspiration &amp; Hypothesis Refinement Platform／研究着想・仮説洗練プラットフォーム</div><h1>${esc(p.title)}</h1>
@@ -1213,8 +1231,8 @@ root.addEventListener('click',async e=>{
   case'admin':if(host.onAdmin)host.onAdmin();break;
   case'logout':if(host.onLogout)host.onLogout();break;
   case'newProject':{stopOrch();stopPlay();const created=await host.createProject('新しい研究テーマ');const p=newProject();p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);P=p;DB.currentId=p.id;touch();go('register');toast('新しい研究を作成しました');break}
-  case'addSample':{stopOrch();stopPlay();const s=SAMPLES.find(x=>x.key===k);const created=await host.createProject(s.title);const p=newProject(s);p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);P=p;DB.currentId=p.id;touch();go('register');toast('架空の研究事例を追加しました');break}
-  case'deleteProject':{if(!confirm(`「${P.title}」を削除します。元に戻せません。よろしいですか？`))return;stopOrch();stopPlay();const delId=P.id;try{await host.deleteProject(delId)}catch(err){toast('削除できません：'+((err&&err.message)||'権限がありません'));break}delete VERSIONS[delId];DB.projects=DB.projects.filter(p=>p.id!==delId);if(!DB.projects.length){const created=await host.createProject('新しい研究テーマ');const np=newProject();np.id=created.id;VERSIONS[np.id]=0;DB.projects.push(np)}P=DB.projects[0];DB.currentId=P.id;go('register');toast('研究を削除しました');break}
+  case'addSample':{stopOrch();stopPlay();const s=SAMPLES.find(x=>x.key===k);const created=await host.createProject(s.title,signal);const p=newProject(s);p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);P=p;DB.currentId=p.id;touch();go('register');toast('架空の研究事例を追加しました');break}
+  case'deleteProject':{if(!confirm(`「${P.title}」を削除します。元に戻せません。よろしいですか？`))return;stopOrch();stopPlay();const delId=P.id;try{await host.deleteProject(delId,signal)}catch(err){toast('削除できません：'+((err&&err.message)||'権限がありません'));break}delete VERSIONS[delId];DB.projects=DB.projects.filter(p=>p.id!==delId);if(!DB.projects.length){const created=await host.createProject('新しい研究テーマ');const np=newProject();np.id=created.id;VERSIONS[np.id]=0;DB.projects.push(np)}P=DB.projects[0];DB.currentId=P.id;go('register');toast('研究を削除しました');break}
   case'exportAll':download(`rihrp_backup_${dateTag()}.json`,JSON.stringify(DB,null,1),'application/json');toast('全研究データをJSONで保存しました');break;
   case'exportOne':download(`rihrp_${fileSafe(P.title)}_${dateTag()}.json`,JSON.stringify({version:1,projects:[P]},null,1),'application/json');break;
   case'importAll':$('#fileJson').click();break;
@@ -1296,7 +1314,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  const api={
   async start(){ const ok=await load(); if(aborted()||!ok)return; render(); },
   flush(){ return flush(); },
-  destroy(){ destroyed=true; ac.abort(); clearInterval(RT.timer); clearInterval(RT.playTimer); timers.forEach(t=>clearTimeout(t)); timers.clear(); void flush(); root.innerHTML=''; },
+  destroy(){ destroyed=true; ac.abort(); clearInterval(RT.timer); clearTimeout(RT.playTimer); timers.forEach(t=>clearTimeout(t)); timers.clear(); void flush(true); root.innerHTML=''; },
  };
  return api;
 }

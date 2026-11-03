@@ -49,42 +49,48 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const studioHost = {
-  async listProjects(): Promise<ProjectSummary[]> {
-    const body = await request<{ projects: { id: string; title: string }[] }>("/api/projects");
+  async listProjects(signal?: AbortSignal): Promise<ProjectSummary[]> {
+    const body = await request<{ projects: { id: string; title: string }[] }>("/api/projects", {
+      signal,
+    });
     return body.projects.map((project) => ({ id: project.id, title: project.title }));
   },
 
-  async getDocument(id: string): Promise<ResearchDoc> {
-    return request<ResearchDoc>(`/api/projects/${encodeURIComponent(id)}/research`);
+  async getDocument(id: string, signal?: AbortSignal): Promise<ResearchDoc> {
+    return request<ResearchDoc>(`/api/projects/${encodeURIComponent(id)}/research`, { signal });
   },
 
   async saveDocument(
     id: string,
     expectedVersion: number,
     payload: unknown,
+    signal?: AbortSignal,
   ): Promise<ResearchDoc> {
     return request<ResearchDoc>(`/api/projects/${encodeURIComponent(id)}/research`, {
       method: "PUT",
       body: JSON.stringify({ expected_version: expectedVersion, payload }),
+      signal,
     });
   },
 
-  async createProject(title: string): Promise<ProjectSummary> {
+  async createProject(title: string, signal?: AbortSignal): Promise<ProjectSummary> {
     const body = await request<{ project: { id: string; title: string } }>("/api/projects", {
       method: "POST",
       body: JSON.stringify({ title, summary: "" }),
+      signal,
     });
     return { id: body.project.id, title: body.project.title };
   },
 
-  async renameProject(id: string, title: string): Promise<void> {
+  async renameProject(id: string, title: string, signal?: AbortSignal): Promise<void> {
     await request(`/api/projects/${encodeURIComponent(id)}`, {
       method: "PATCH",
       body: JSON.stringify({ title }),
+      signal,
     });
   },
 
-  async deleteProject(id: string): Promise<void> {
-    await request(`/api/projects/${encodeURIComponent(id)}`, { method: "DELETE" });
+  async deleteProject(id: string, signal?: AbortSignal): Promise<void> {
+    await request(`/api/projects/${encodeURIComponent(id)}`, { method: "DELETE", signal });
   },
 };

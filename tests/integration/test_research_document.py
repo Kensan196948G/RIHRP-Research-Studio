@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from rihrp.db import SessionLocal
 from rihrp.models import AuditEvent, ResearchDocument
+from rihrp.schemas import TASK_KEYS
 from tests.conftest import login
 
 
@@ -198,11 +199,26 @@ def test_valid_nested_payload_accepted(client: TestClient, users: dict[str, str]
     payload = {
         "title": "検証",
         "revision": 2,
-        "tasks": [{"key": "struct", "status": "done", "progress": 100, "runs": 1}],
+        "tasks": _valid_tasks(),
         "evidence": [{"title": "資料", "stance": "support", "relevance": 50}],
         "critiques": [{"sev": "高", "status": "未対応"}],
         "candidates": [{"label": "H1", "status": "採択", "scores": {"evidence": 10}}],
         "weights": {"evidence": 25},
+        "analysis": {
+            "field": "river",
+            "iv": "流量",
+            "dv": None,
+            "dir": "低減",
+            "vars": ["流量"],
+            "inferred": [],
+            "nums": ["10%"],
+            "hasNum": True,
+            "hasMech": False,
+            "hasCond": False,
+            "hasComp": True,
+            "vague": [],
+            "quality": 3,
+        },
     }
 
     response = client.put(
@@ -212,3 +228,55 @@ def test_valid_nested_payload_accepted(client: TestClient, users: dict[str, str]
 
     assert response.status_code == 200, response.text
     assert response.json()["payload"]["tasks"][0]["status"] == "done"
+
+
+def _valid_tasks() -> list[dict]:
+    return [{"key": key, "status": "done", "progress": 100, "runs": 1} for key in sorted(TASK_KEYS)]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"field": "bogus"},
+        {"constraints": []},
+        {"constraints": {"budget": "無限"}},
+        {"tasks": [{"key": "struct", "status": "done"}]},
+        {
+            "tasks": [dict(item) for item in _valid_tasks()][:-1]
+            + [{"key": "struct", "status": "done"}]
+        },
+        {
+            "tasks": [dict(item) for item in _valid_tasks()][:-1]
+            + [{"key": "bogus", "status": "done"}]
+        },
+        {
+            "tasks": [dict(item) for item in _valid_tasks()][:-1]
+            + [{"key": "report", "status": "done", "progress": 101}]
+        },
+        {"candidates": [{"label": ["配列は不可"]}]},
+        {"candidates": [{"label": "x" * 51}]},
+        {"candidates": [{"scores": {"evidence": 101}}]},
+        {"plan": {"methods": [{"n": "x", "cost": 9, "time": 3, "val": 3}]}},
+        {"plan": {"measures": [{"n": "x", "role": "謎の役割"}]}},
+        {"weights": {"evidence": 60}},
+        {"weights": {"unknown": 10}},
+        {"evidence": [{"relevance": 101}]},
+        {"evidence": [{"tags": "not-a-list"}]},
+        {"analysis": {"field": "bogus"}},
+        {"analysis": {"field": "river", "vars": "not-a-list"}},
+        {"analysis": {"field": "river", "quality": 9}},
+        {"revision": -1},
+    ],
+)
+def test_invalid_payload_variants_rejected(
+    client: TestClient, users: dict[str, str], payload: dict
+) -> None:
+    login(client)
+    project_id = create_project(client)
+
+    response = client.put(
+        f"/api/projects/{project_id}/research",
+        json={"expected_version": 0, "payload": payload},
+    )
+
+    assert response.status_code == 422

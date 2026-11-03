@@ -416,6 +416,12 @@ test("保存待ちの編集はテーマ切替で失われない（flush）", asy
   await page.selectOption("#projSel", { label: newTitle });
   await expect(page.locator('textarea[data-bind="hypothesis"]')).toHaveValue(newHypothesis);
 
+  // サーバーに保存されていることを、再読込して確認する
+  await page.reload();
+  await selectMain(page);
+  await page.selectOption("#projSel", { label: newTitle });
+  await expect(page.locator('textarea[data-bind="hypothesis"]')).toHaveValue(newHypothesis);
+
   // 後片付け
   page.on("dialog", (dialog) => void dialog.accept());
   await page.getByRole("button", { name: "この研究を削除" }).click();
@@ -426,10 +432,19 @@ test("保存待ちの編集はログアウトでも失われない（flush）", 
   await openStudio(page);
   await selectMain(page);
   const value = `${HYPOTHESIS} ログアウト前の保存確認。`;
+  const order: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "PUT" && request.url().includes("/research")) order.push("put");
+    if (request.url().includes("/api/auth/logout")) order.push("logout");
+  });
   await page.locator('textarea[data-bind="hypothesis"]').fill(value);
 
   await page.locator('[data-act="logout"]').click();
   await expect(page).toHaveURL(/\/login/);
+
+  // flush がログアウト要求より前に PUT を送っていること（デバウンス待ちでは成立しない）
+  expect(order.indexOf("put")).toBeGreaterThanOrEqual(0);
+  expect(order.indexOf("put")).toBeLessThan(order.indexOf("logout"));
 
   await openStudio(page);
   await selectMain(page);
@@ -452,6 +467,18 @@ test("保存済みデータ由来の XSS が成立しない", async ({ page }) =
   const malicious = JSON.parse(JSON.stringify(doc.payload)) as Record<string, unknown>;
   malicious.title = 'XSS<img src=x onerror="window.__xss=1">';
   malicious.hypothesis = "<script>window.__xss=2</script>仮説";
+  const candidates = malicious.candidates as Record<string, unknown>[] | null;
+  if (candidates?.length) {
+    candidates[0].label = 'XSS<img src=x onerror="window.__xss=4">';
+  }
+  const evidence = malicious.evidence as Record<string, unknown>[] | null;
+  if (evidence?.length) {
+    evidence[0].id = 'x" data-injected="1';
+  }
+  const critiques = malicious.critiques as Record<string, unknown>[] | null;
+  if (critiques?.length) {
+    critiques[0].cat = 'XSS<img src=x onerror="window.__xss=5">';
+  }
   const csrf = (await page.context().cookies()).find((cookie) => cookie.name === "rihrp_csrf")?.value;
   const headers = { "X-CSRF-Token": csrf ?? "" };
 
@@ -463,11 +490,25 @@ test("保存済みデータ由来の XSS が成立しない", async ({ page }) =
   const saved = (await put.json()) as { version: number };
 
   await page.reload();
+
+  // 報告書
   await page.locator('#nav .navitem[data-v="report"]').click();
   await expect(page.locator("#reportBody h1")).toContainText("<img");
   expect(await page.evaluate(() => (window as unknown as { __xss?: number }).__xss)).toBeUndefined();
   expect(await page.locator('#reportBody img[src="x"]').count()).toBe(0);
   expect(await page.locator("#reportBody script").count()).toBe(0);
+
+  // 比較画面（candidate.label 経由）
+  await page.locator('#nav .navitem[data-v="compare"]').click();
+  await expect(page.locator("#main")).toContainText("<img");
+  expect(await page.locator('#main img[src="x"]').count()).toBe(0);
+  expect(await page.evaluate(() => (window as unknown as { __xss?: number }).__xss)).toBeUndefined();
+
+  // 根拠画面（evidence.id / critique.cat 経由）
+  await page.locator('#nav .navitem[data-v="evidence"]').click();
+  expect(await page.locator('#main img[src="x"]').count()).toBe(0);
+  expect(await page.locator('[data-injected]').count()).toBe(0);
+  expect(await page.evaluate(() => (window as unknown as { __xss?: number }).__xss)).toBeUndefined();
 
   // 元に戻す
   await page.request.put(`/api/projects/${target!.id}/research`, {
