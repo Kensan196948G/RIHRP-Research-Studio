@@ -58,7 +58,7 @@
 - PRレビューmedium2の対応: manifestファイル名と参照dumpの組同一性を強制する回帰1件を追加。ローカルrefの鮮度はネットワークなしCLIの保証外としてrunbookにfetch前提を明記。
 
 - 初回レビューの中2/低3を修正: production名のDB識別不一致を拒否、Git環境変数による別checkout参照を防止、countのbigint上限、JSON/sidecarサイズ・深度・巨大整数の例外、max-age上限を追加。
-- `pytest tests/unit/test_release_preflight.py -q`: **32 passed**。CLIの正常系・dirty/SHA・stale/future・hash・symlink・最新破損fallback・Git環境汚染・巨大入力を検証。
+- `pytest tests/unit/test_release_preflight.py -q`: 初回32 passed、PR指摘後の追加回帰を含め **33 passed**。CLIの正常系・dirty/SHA・stale/future・hash・symlink・最新破損fallback・Git環境汚染・巨大入力を検証。
 - 本物のバックアップに対するCLI負の対照: 作業中ツリーだけを失敗として検出し、backup関係6検査は成功。全文・接続文字列・個人情報は出力しない。
 - 基準SHAのcleanな一時cloneに対して現行CLIを実行: **9/9検査成功、exit0**。実checkout/本番プロセスは変更しない。
 

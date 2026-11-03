@@ -84,7 +84,9 @@ python3 tools/release_preflight.py --expect-sha <対象の40桁SHA> \
 このCLIはネットワークに接続せず、**ローカルremote-tracking ref**のorigin/mainとの完全一致、
 cleanな作業ツリー、新鮮で完全な本番バックアップを検査する。リモートrefの鮮度は保証しない。
 origin/mainと異なるコミットや編集中のツリーでは意図どおり失敗する。ブランチ名だけは検査しない。
-正常な結果だけで配備許可にはならない。
+正常な結果だけで配備許可にはならない。この版は既存本番のmigration `0004_research_documents` のみを対象にする。
+新しいmigration追加時は「配備前の本番head」と「配備先head」を分ける設計と回帰テストを先に追加する。
+バックアップが対象リリースのmigration適用後であることを要求する設計ではない。
 
 ## 3. データベース
 

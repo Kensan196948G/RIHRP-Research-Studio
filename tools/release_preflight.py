@@ -5,6 +5,8 @@ This checks a local git checkout and a backup artifact only. A successful result
 is not deployment approval, proof that CI passed, or proof of the production
 runtime commit SHA. This tool performs no database, network, or service
 operation and never changes git configuration or fetches refs.
+This version checks backups of the existing 0004 production schema only; a new
+migration rollout must separately model pre-deploy and target migration heads.
 """
 
 from __future__ import annotations

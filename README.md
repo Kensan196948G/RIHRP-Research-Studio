@@ -90,8 +90,9 @@ RIHRP_SEED_DEMO=true
 RIHRP_COOKIE_SECURE=false
 EOF
 
-# 3) 配備（依存同期 → migration → Web ビルド → systemd → health check）
-infra/native/deploy.sh
+# 3) 本番配備は下記runbookのGo/No-Goを先に確認する。
+# 旧deploy.shは稼働ツリーを更新するため次回コード配備には使わない。
+# docs/runbooks/release.md / docs/verification/2026-11-03-production-batch1.md
 ```
 
 手元で動かすだけなら:
@@ -233,11 +234,19 @@ npx playwright test          # 26 passed（Chromium）
 6. **モバイル実機・スクリーンリーダーの検証未実施**（CSS / ARIA の実装のみ）。
 7. **SSO は未実装**: 認証基盤が提供されていないため（要件 §5 の対象外）。
 8. **外部合成監視と通知先は未設定**: 同一ホストの 5 分間隔チェック（`rihrp-healthcheck.timer`）と失敗記録は実装済み。別ホストからの外形監視とアラート配信先（`RIHRP_ALERT_WEBHOOK`）は未設定。
-9. **監査ログの保持期間削除は承認待ちで無効**: 方針は 365 日（[ADR-0006](docs/adr/0006-audit-retention.md)）。`purge-audit`（dry-run 既定）と `rihrp-audit-purge.timer` は実装済みだが、タイマーは承認後に有効化する。
+9. **監査ログ保持365日・削除タイマー有効**: [ADR-0006](docs/adr/0006-audit-retention.md)の方針に基づき既存承認後に有効化済み（2026-11-03再確認）。インストーラは既定で無効、CLIはdry-run既定。現在の運用は[本番準備記録](docs/verification/2026-11-03-production-batch1.md)を参照。
+10. **次回コード配備は旧方式で実施しない**: 現行サービスは正常稼働中だが、checkout上で依存更新・ビルドする旧方式は混在・切戻しのリスクがある。別リリース構築と切替を整備するまで[リリース判定](docs/runbooks/release.md)はNO-GO。
 
 ## 10. 検証記録
 
-### 2026-11-03（最新）
+### 2026-11-03 本番準備 第1組（最新）
+
+- 本番health/readiness正常、migration0004、許可2名、5timer enabled/active。新規バックアップを隔離DBへ復元し11表件数・SHA一致を確認。
+- 事前検査CLIを追加（SHA/clean/バックアップ完全性）。CI成功・runtime SHA・配備許可そのものの証明ではない。
+- 全量180 passed/1 skipped、Vitest10、E2E29。PRレビュー後の追加回帰を含むpreflight単体33 passed。
+- 詳細と次の10項目: [本番準備記録](docs/verification/2026-11-03-production-batch1.md)。過去の配備記録は以下に履歴として保持する。
+
+### 2026-11-03 初期リリース・準備の履歴
 
 - 独立レビュー（pr-verifier）: **6 巡で合格**（critical 0 / high 0 / medium 0 / low 0）。各巡の件数は [`2026-11-03-reviews.json`](docs/verification/2026-11-03-reviews.json)。主な対応は、監査ログの TRUNCATE 保護と DB ロール分離、承認と主張変更の直列化（`SELECT … FOR UPDATE`）、ロック後の identity map 更新、project 削除と子作成の直列化、数値境界判定。
 - CI（GitHub Actions）: run `41513750337`（head `6446935`）と main push の run `41533037024`（`5e3f410`）がいずれも **success 3/3**（API (ruff / pytest) / Web (tsc / vitest / build) / Secret scan (gitleaks)）。
