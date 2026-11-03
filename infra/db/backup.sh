@@ -13,4 +13,6 @@ FILE="$OUT_DIR/${DB_NAME}-${STAMP}.dump"
 "$PG_DUMP" -Fc --dbname="$DB_NAME" --file="$FILE"
 sha256sum "$FILE" > "$FILE.sha256"
 echo "backup: $FILE"
-ls -1t "$OUT_DIR"/*.dump | tail -n +"$((${RIHRP_BACKUP_KEEP:-14} + 1))" | xargs -r rm -f
+while IFS= read -r old; do
+  rm -f "$old" "$old.sha256"
+done < <(ls -1t "$OUT_DIR"/*.dump | tail -n +"$((${RIHRP_BACKUP_KEEP:-14} + 1))")

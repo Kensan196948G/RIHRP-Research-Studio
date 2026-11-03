@@ -1,0 +1,10 @@
+[Unit]
+Description=Weekly RIHRP restore drill (Sunday 04:30 JST)
+
+[Timer]
+OnCalendar=Sun *-*-* 04:30:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,8 @@
+[Unit]
+Description=RIHRP health check (fails when /healthz or /readyz is unhealthy)
+Documentation=file:///home/kensan/Projects/Business-Project/RIHRP-Research-Studio/docs/runbooks/operations.md
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.config/rihrp/rihrp.conf
+ExecStart=%h/Projects/Business-Project/RIHRP-Research-Studio/infra/native/rihrp-healthcheck.sh
