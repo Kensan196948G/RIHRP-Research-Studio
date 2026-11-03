@@ -7,8 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
 from ..audit import write_audit
-from ..auth import Principal, get_principal, require_admin, require_editor
+from ..auth import Principal, get_principal, require_editor
 from ..db import get_db
+from ..errors import ApiError
 from ..models import Project
 from ..schemas import ProjectIn, ProjectPatch
 from ..services import get_project_or_404, iso, lock_project, project_stats, utcnow
@@ -110,10 +111,14 @@ def update_project(
 @router.delete("/{project_id}")
 def delete_project(
     project_id: str,
-    principal: Principal = Depends(require_admin),
+    principal: Principal = Depends(require_editor),
     db: OrmSession = Depends(get_db),
 ) -> dict:
     project = get_project_or_404(db, project_id)
+    # 破棄直後の取り消し（画面遷移で残った空プロジェクトの後始末）を所有者にも許可する。
+    # 他人のプロジェクトは admin のみ削除できる。
+    if principal.role != "admin" and project.owner_id != principal.user_id:
+        raise ApiError(403, "forbidden", "このプロジェクトを削除する権限がありません。")
     project = lock_project(db, project.id)
     write_audit(
         db,

@@ -5,7 +5,7 @@ import { Loading } from "./components/ui";
 import { useAuth } from "./auth";
 import { canReview } from "./utils";
 import { AuditPage } from "./pages/Audit";
-import { DashboardPage } from "./pages/Dashboard";
+import { StudioPage } from "./studio/StudioPage";
 import { LoginPage } from "./pages/Login";
 import { ProjectPage } from "./pages/Project";
 import { ReportEditorPage } from "./pages/ReportEditor";
@@ -64,13 +64,21 @@ export function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route
+        path="/studio"
+        element={
+          <RequireAuth>
+            <StudioPage />
+          </RequireAuth>
+        }
+      />
+      <Route
         element={
           <RequireAuth>
             <Layout />
           </RequireAuth>
         }
       >
-        <Route index element={<DashboardPage />} />
+        <Route index element={<Navigate to="/studio" replace />} />
         <Route path="/projects/:projectId" element={<ProjectPage />} />
         <Route path="/projects/:projectId/verification" element={<VerificationPage />} />
         <Route path="/reports/:reportId" element={<ReportEditorPage />} />

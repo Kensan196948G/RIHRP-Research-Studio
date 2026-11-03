@@ -86,6 +86,23 @@ class Project(Base):
     )
 
 
+class ResearchDocument(Base):
+    """研究ワークスペースの文書（プロトタイプの研究状態を JSONB で保持する）。"""
+
+    __tablename__ = "research_documents"
+    __table_args__ = (CheckConstraint("version >= 1", name="ck_research_documents_version"),)
+
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    updated_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class Source(Base):
     __tablename__ = "sources"
     __table_args__ = (

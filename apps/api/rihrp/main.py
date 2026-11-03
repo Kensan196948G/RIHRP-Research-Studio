@@ -16,7 +16,7 @@ from .config import get_settings
 from .db import SessionLocal
 from .errors import error_body, install_error_handlers
 from .request_context import request_id_var
-from .routers import admin, auth, claims, health, projects, reports, sources
+from .routers import admin, auth, claims, health, projects, reports, research, sources
 from .seed import seed_all
 
 logger = logging.getLogger("rihrp")
@@ -55,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(sources.router)
     app.include_router(claims.router)
     app.include_router(reports.router)
+    app.include_router(research.router)
     app.include_router(admin.router)
 
     @app.middleware("http")

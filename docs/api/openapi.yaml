@@ -192,6 +192,22 @@ components:
           title: Title
       title: ReportUpdate
       type: object
+    ResearchDocIn:
+      description: 研究ワークスペース文書の保存入力（楽観ロック付き・形状検証あり）。
+      properties:
+        expected_version:
+          minimum: 0.0
+          title: Expected Version
+          type: integer
+        payload:
+          additionalProperties: true
+          title: Payload
+          type: object
+      required:
+      - expected_version
+      - payload
+      title: ResearchDocIn
+      type: object
     ReviewIn:
       properties:
         comment:
@@ -958,6 +974,99 @@ paths:
       summary: Create Report
       tags:
       - reports
+  /api/projects/{project_id}/research:
+    get:
+      operationId: get_research_document_api_projects__project_id__research_get
+      parameters:
+      - in: path
+        name: project_id
+        required: true
+        schema:
+          title: Project Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Get Research Document Api Projects  Project Id  Research
+                  Get
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Research Document
+      tags:
+      - research
+    put:
+      operationId: put_research_document_api_projects__project_id__research_put
+      parameters:
+      - in: path
+        name: project_id
+        required: true
+        schema:
+          title: Project Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResearchDocIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Put Research Document Api Projects  Project Id  Research
+                  Put
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Put Research Document
+      tags:
+      - research
+  /api/projects/{project_id}/research/meta:
+    get:
+      description: 研究文書の版だけを返す軽量エンドポイント（保存状態の確認用）。
+      operationId: get_research_meta_api_projects__project_id__research_meta_get
+      parameters:
+      - in: path
+        name: project_id
+        required: true
+        schema:
+          title: Project Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Get Research Meta Api Projects  Project Id  Research
+                  Meta Get
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Research Meta
+      tags:
+      - research
   /api/projects/{project_id}/sources:
     get:
       operationId: list_sources_api_projects__project_id__sources_get
