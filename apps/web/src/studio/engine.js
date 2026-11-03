@@ -934,7 +934,7 @@ function navStatus(k){
   case'tasks':return{t:RT.running?`実行中 ${overall(P)}%`:P.tasks.some(t=>t.status==='approval')?'承認待ちあり':`${done}/${P.tasks.length} 完了`,on:RT.running||P.tasks.some(t=>t.status==='approval')};
   case'debate':return P.debate.length?{t:`発言 ${P.debate.length}件`,on:true}:{t:'未実施'};
   case'evidence':return P.evidence.length?{t:`資料 ${P.evidence.length}件・指摘 ${(P.critiques||[]).length}件`,on:true}:{t:'未調査'};
-  case'compare':return P.candidates?{t:`候補 ${P.candidates.length}件`,on:true}:{t:'未生成'};
+  case'compare':return P.candidates&&P.candidates.length?{t:`候補 ${P.candidates.length}件`,on:true}:{t:'未生成'};
   case'report':return P.reportAt?{t:'ドラフト作成済み',on:true}:{t:'未作成'};
  }
 }

@@ -573,3 +573,35 @@ test("作成応答の保留中に画面遷移しても孤児プロジェクト�
     )
     .toBe(before.projects.length);
 });
+
+test("A-04b 320px で横スクロールしない", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await openStudio(page);
+  const overflow = await page.evaluate(() => {
+    const doc = document.documentElement;
+    return doc.scrollWidth - window.innerWidth;
+  });
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("キーボードでナビを操作できる", async ({ page }) => {
+  await openStudio(page);
+  const item = page.locator('#nav .navitem[data-v="tasks"]');
+  await item.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#main")).toContainText("AIタスク管理");
+  await expect(page.locator('#nav .navitem[data-v="tasks"]')).toHaveClass(/active/);
+});
+
+test("ネットワーク遮断時は保存失敗を表示し、復帰後に再保存できる", async ({ page, context }) => {
+  await openStudio(page);
+  const value = `${HYPOTHESIS} オフライン確認。`;
+
+  await context.setOffline(true);
+  await page.locator('textarea[data-bind="hypothesis"]').fill(value);
+  await expect(page.locator("#saveState")).toHaveText(/保存に失敗しました/, { timeout: 20_000 });
+
+  await context.setOffline(false);
+  await page.locator('textarea[data-bind="hypothesis"]').fill(`${value} 復帰。`);
+  await expect(page.locator("#saveState")).toHaveText(/サーバーに自動保存済み/, { timeout: 20_000 });
+});
