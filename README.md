@@ -125,7 +125,7 @@ RIHRP_DATABASE_URL=postgresql+psycopg://rihrp_app:<パスワード>@127.0.0.1:54
 # テスト DB を用意（初回のみ）
 createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指定可
 
-.venv/bin/pytest -q            # 115 passed / 1 skipped
+.venv/bin/pytest -q            # 144 passed / 1 skipped
 (cd apps/web && npx vitest run) # 10 passed
 .venv/bin/ruff check apps/api tests
 .venv/bin/ruff format --check apps/api tests
@@ -182,7 +182,7 @@ npx playwright test          # 26 passed（Chromium）
 
 | 機能 | 状態 | 根拠 |
 |---|---|---|
-| 認証・セッション・CSRF・RBAC | 実装済み | pytest（116 件中 115 passed / 1 skipped）、UI 実測 |
+| 認証・セッション・CSRF・RBAC | 実装済み | pytest（145 件中 144 passed / 1 skipped）、UI 実測 |
 | テーマ / 出典（SHA-256）/ 主張 / 根拠 / 検証 | 実装済み | pytest、API 実測、UI 実測 |
 | レポート / 版 / 検証 / 提出 / 承認 / 差し戻し | 実装済み | pytest、UI 実測（提出→承認） |
 | 承認後の整合性警告（根拠変更で矛盾になった場合） | 実装済み | pytest（`test_approved_report_flags_post_approval_tamper`）、画面確認 |
