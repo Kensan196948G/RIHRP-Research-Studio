@@ -4,6 +4,7 @@
 
 - **CONDITIONAL GO**: アプリ切替と技術的受入は完了。認証後の本番6ステップ実操作、実機/SR、長期安定性は未確認。
 - data_class: `observed`。evidence_id: `rihrp-production-82e6648-20261103T132408Z`。
+- 版管理された[構造化観測記録](2026-11-03-production-evidence.json)と[隔離E2Eログ](2026-11-03-isolated-e2e.log)を併せて保存する。署名付きledger/attestationではない。
 - 依頼: 本番デプロイに向けて10項目ずつ順次対応。公開/認証/secret/保持方針は変更しない。
 - release: `82e664867479cd8c9b6ecdabab4529457342c958`（[PR#13](https://github.com/Kensan196948G/RIHRP-Research-Studio/pull/13) squash merge）。
 - runtime manifest SHA-256: `a2e96fa720b42926ab58d82074d32564956f71bab6cc41082ddc78aa558d6af9`。
@@ -49,6 +50,7 @@ GitHubのrun番号は実測値。API/Web/secretの成功はCI画面とwatch exit
 - 旧専用unitを18114で起動しready確認。候補を意図的に18115へ起動して期待healthを失敗させた。
 - activationの復旧処理が旧unit bytes/pointerを復元して再起動。旧専用release ready、pendingなし、unit bytes一致を確認。
 - 専用PID903842→908037。本番PID2387641/起動17:42:48は訓練中不変。
+- 元の結果JSON自体はrelease SHA/時刻を自己束縛していない。22:21〜22:22の実行・保存script・ready記録から同releaseへ対応付けた観測で、第三者が原本だけで独立証明できるとは主張しない。
 - 訓練後に専用unitを停止・削除・daemon-reload。これは初回legacy相当の失敗復旧であり、本番manualrollbackを実行した証拠ではない。
 
 ## 配備直前の復旧地点

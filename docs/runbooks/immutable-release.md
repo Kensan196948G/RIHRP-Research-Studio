@@ -1,6 +1,6 @@
 # Nativeコミット別リリース配備
 
-> **2026-11-03 22:24 JSTに本番切替・受入済み**。実行releaseは `82e664867479cd8c9b6ecdabab4529457342c958`。
+> **2026-11-03 22:24 JSTに本番切替・技術受入済み（CONDITIONAL GO）**。実行releaseは `82e664867479cd8c9b6ecdabab4529457342c958`。
 > 実build、同じuvicornラッパーでの隔離E2E29件、専用unitの実失敗/復旧、直前backup実復元を確認した。
 > 証跡と残条件は[本番受入記録](../verification/2026-11-03-production-acceptance.md)。
 > この版はDB migration `0004_research_documents` のままの配備に限定し、DB更新/downgradeをしない。
