@@ -34,6 +34,27 @@ async function saveState(page: Page): Promise<string> {
   return (await page.locator("#saveState").innerText()).trim();
 }
 
+async function csrfHeaders(page: Page): Promise<{ "X-CSRF-Token": string }> {
+  const csrf = (await page.context().cookies()).find((cookie) => cookie.name === "rihrp_csrf")?.value;
+  if (!csrf) throw new Error("CSRF cookie が見つかりません");
+  return { "X-CSRF-Token": csrf };
+}
+
+/** payload を部分更新する。409（version 競合）は最新版を取り直して最大 3 回まで再試行する。 */
+async function putDocument(page: Page, id: string, patch: Record<string, unknown>): Promise<void> {
+  const headers = await csrfHeaders(page);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const doc = (await (await page.request.get(`/api/projects/${id}/research`)).json()) as ResearchDoc;
+    const res = await page.request.put(`/api/projects/${id}/research`, {
+      headers,
+      data: { expected_version: doc.version, payload: { ...(doc.payload ?? {}), ...patch } },
+    });
+    if (res.ok()) return;
+    if (res.status() !== 409) break;
+  }
+  throw new Error(`payload の復元に失敗しました: ${id}`);
+}
+
 test.describe.configure({ mode: "serial" });
 
 test("S-01/S-02/S-09/S-10 シェル（トップバー・警告ノート・6ステップナビ）", async ({ page }) => {
@@ -609,11 +630,12 @@ test("A-04b 320px で横スクロールしない（長いタイトルでも）",
     }
   } finally {
     // 後続テストへ改名を持ち越さない（payload.title とサーバー一覧の両方を戻す）
-    await page.locator('#nav .navitem[data-v="register"]').click().catch(() => {});
-    await page.locator('input[data-bind="title"]').fill(originalTitle).catch(() => {});
-    await expect(page.locator("#saveState"))
-      .toHaveText(/サーバーに自動保存済み/, { timeout: 20_000 })
-      .catch(() => {});
+    await putDocument(page, currentId, { title: originalTitle });
+    const patched = await page.request.patch(`/api/projects/${currentId}`, {
+      headers: await csrfHeaders(page),
+      data: { title: originalTitle },
+    });
+    expect(patched.ok()).toBeTruthy();
   }
 });
 
@@ -701,11 +723,7 @@ test("候補が空配列のとき比較ナビは「未生成」表示", async ({
     await expect(compare.locator(".st")).toHaveText("未生成");
     await expect(compare.locator(".st")).not.toHaveClass(/\bon\b/);
   } finally {
-    const latest = await readDoc();
-    await page.request.put(`/api/projects/${id}/research`, {
-      headers,
-      data: { expected_version: latest.version, payload: { ...(latest.payload ?? {}), candidates: originalCandidates } },
-    });
+    await putDocument(page, id, { candidates: originalCandidates });
   }
 });
 
@@ -718,15 +736,17 @@ test("ネットワーク遮断時は保存失敗を表示し、復帰後に再�
   const originalHypothesis = String((doc.payload ?? {}).hypothesis ?? HYPOTHESIS);
   const value = `${HYPOTHESIS} オフライン確認。`;
 
-  await context.setOffline(true);
-  await page.locator('textarea[data-bind="hypothesis"]').fill(value);
-  await expect(page.locator("#saveState")).toHaveText(/保存に失敗しました/, { timeout: 20_000 });
+  try {
+    await context.setOffline(true);
+    await page.locator('textarea[data-bind="hypothesis"]').fill(value);
+    await expect(page.locator("#saveState")).toHaveText(/保存に失敗しました/, { timeout: 20_000 });
 
-  await context.setOffline(false);
-  await page.locator('textarea[data-bind="hypothesis"]').fill(`${value} 復帰。`);
-  await expect(page.locator("#saveState")).toHaveText(/サーバーに自動保存済み/, { timeout: 20_000 });
-
-  // 後続テストへ編集内容を持ち越さない（復帰後の自動保存完了後に戻す）
-  await page.locator('textarea[data-bind="hypothesis"]').fill(originalHypothesis);
-  await expect(page.locator("#saveState")).toHaveText(/サーバーに自動保存済み/, { timeout: 20_000 });
+    await context.setOffline(false);
+    await page.locator('textarea[data-bind="hypothesis"]').fill(`${value} 復帰。`);
+    await expect(page.locator("#saveState")).toHaveText(/サーバーに自動保存済み/, { timeout: 20_000 });
+  } finally {
+    // 失敗時も含めてオンラインへ戻し、仮説を元に戻す（後続テストへ持ち越さない）
+    await context.setOffline(false);
+    await putDocument(page, id, { hypothesis: originalHypothesis });
+  }
 });

@@ -24,7 +24,7 @@
 | 修正7 | `0808c42`（正本の全フィールド正規化・配列型不正の耐性） |
 | レビュー9巡目 | **pass**（High 0 / Medium 1 / Low 1）→ head `0808c42` |
 | 修正8 | 本コミット（型不正データの起動保護・空候補 / vars 欠落） |
-| 自動テスト | pytest **144 passed / 1 skipped**、vitest **10 passed**、Playwright **22 passed**（46.0s） |
+| 自動テスト | pytest **144 passed / 1 skipped**、vitest **10 passed**、Playwright **26 passed**（51.3s、PR #5 時点は 22 passed） |
 | 静的検査 | `tsc -b` / `vite build` / `ruff check apps/api tests` / `ruff format --check apps/api tests` / `openapi --check` すべて pass |
 | CI | run `41560328053`（head `a7ad639`）**success** |
 
@@ -117,10 +117,10 @@ cd apps/web && npm run build && npx playwright test  # 26 passed (51.3s)
 
 ## 11. 未検証・残課題
 
-- CI に E2E ジョブは未追加（workflow 変更は要人間承認）。
-- スクリーンリーダー / キーボード全画面 / 320px / 実機 / ネットワーク遮断時の保存失敗 UI は未検証。
+- CI に E2E ジョブは未追加（workflow 変更は要人間承認。提案は §12 / PR #7）。
+- スクリーンリーダーによる読み上げと実機は未検証。キーボード操作・320px・ネットワーク遮断時の保存失敗 UI は §12 で E2E 化済み。
 - 書き込み中に画面遷移する競合（3巡目 High #1）の専用 E2E は未追加。孤児プロジェクト（4巡目 #2）とログアウト経路の「PUT 1 回」は E2E で拘束済み。
-- レビュー10巡目（最終確認）の結果はマージ後に追記する。
+- PR #6 のレビュー結果は §12.1〜§12.3 に記録（初回 pass、2巡目 fail→修正、3巡目 pass）。
 
 ## 12. マージ後の追加対応（本 PR）
 
@@ -158,6 +158,15 @@ PR #6 の独立レビューは **pass（critical 0 / high 0 / medium 2 / low 1�
 | 5 | Low | 新規 E2E が共有 DB の状態を復元せず、テスト順序に依存する | A-04b はタイトル、空候補テストは candidates、オフライン試験は仮説を finally で復元 |
 
 あわせて README の実測値を現行へ更新した（pytest 115→144、E2E 21→26）。
+
+### 12.3 独立レビュー（PR #6・3巡目）の指摘と対応
+
+3巡目は **pass（critical 0 / high 0 / medium 0 / low 2）**。low も修正した。
+
+| # | 重要度 | 指摘 | 対応 |
+|---|---|---|---|
+| 1 | Low | 後始末が fail-safe でない。オフライン試験の復元が `finally` の外にあり、A-04b は後始末の失敗を握りつぶし、空候補の最終 PUT は応答を検証していない（§12 の「全て finally で復元」と矛盾） | 復元を API ベースの `putDocument()`（409 は最大 3 回再試行）へ統一。A-04b は payload.title と一覧 title の両方を応答検証付きで復元。オフライン試験は `try/finally` で**オンライン復帰→仮説復元**。空候補も同ヘルパーで応答を検証 |
+| 2 | Low | 検証記録に矛盾が残る（冒頭は Playwright 22 passed、§11 はキーボード・320px・オフラインを未検証と記載） | 冒頭を **26 passed** に更新（PR #5 時点の 22 は注記）。§11 は「キーボード・320px・オフラインは §12 で E2E 化済み、スクリーンリーダーと実機のみ未検証」に修正 |
 
 **E2E 合計 26 passed**（pytest 144 passed / 1 skipped、vitest 10 passed、build pass）。
 
