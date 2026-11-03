@@ -1,0 +1,11 @@
+[Unit]
+Description=RIHRP session purge (expired sessions older than 7 days)
+Documentation=file:///home/kensan/Projects/Business-Project/RIHRP-Research-Studio/docs/runbooks/operations.md
+
+[Service]
+Type=oneshot
+UMask=0077
+WorkingDirectory=%h/Projects/Business-Project/RIHRP-Research-Studio
+EnvironmentFile=%h/.config/rihrp/rihrp.conf
+ExecStart=%h/Projects/Business-Project/RIHRP-Research-Studio/.venv/bin/python -m rihrp.maintenance purge-sessions --days 7
+Nice=10

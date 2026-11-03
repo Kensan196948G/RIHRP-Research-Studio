@@ -17,7 +17,7 @@
 > **CI（GitHub Actions）有効**: API (ruff / pytest) / Web (tsc / vitest / build) / Secret scan (gitleaks) の 3 ジョブ。
 > **本番公開済み**: [research.mirai-dx-platform.com](https://research.mirai-dx-platform.com)（Cloudflare Tunnel + Access。未認証は 302）。
 > **WebUI:** ルート直下の `RIHRP_Offline_Research_Studio.html`（6 ステップの研究ワークフロー）に整合させ、研究状態はサーバー（`research_documents`）へ保存。
-> **最終検証（2026-11-03）:** pytest **144 passed / 1 skipped** / vitest **10** / E2E **26 passed** / CI success 3/3 / `npm audit`（開発依存含む）0 / `pip-audit` 0 / Dependabot open critical・high 0 / スケール（1,000 主張）p95 claims 180ms・export 42ms / 通し E2E 成功。詳細は [`docs/verification/2026-11-03.md`](docs/verification/2026-11-03.md) と [`2026-11-03-cf-access-autologin.md`](docs/verification/2026-11-03-cf-access-autologin.md)。
+> **最終検証（2026-11-03）:** pytest **147 passed / 1 skipped** / vitest **10** / E2E **26 passed** / CI success 3/3 / `npm audit`（開発依存含む）0 / `pip-audit` 0 / Dependabot open critical・high 0 / スケール（1,000 主張）p95 claims 180ms・export 42ms / 通し E2E 成功。詳細は [`docs/verification/2026-11-03.md`](docs/verification/2026-11-03.md) と [`2026-11-03-cf-access-autologin.md`](docs/verification/2026-11-03-cf-access-autologin.md)。
 
 ## 01. これは何か
 
@@ -125,7 +125,7 @@ RIHRP_DATABASE_URL=postgresql+psycopg://rihrp_app:<パスワード>@127.0.0.1:54
 # テスト DB を用意（初回のみ）
 createdb -O rihrp_app rihrp_test   # 接続先は RIHRP_TEST_DATABASE_URL で指定可
 
-.venv/bin/pytest -q            # 144 passed / 1 skipped
+.venv/bin/pytest -q            # 147 passed / 1 skipped
 (cd apps/web && npx vitest run) # 10 passed
 .venv/bin/ruff check apps/api tests
 .venv/bin/ruff format --check apps/api tests
@@ -176,13 +176,16 @@ npx playwright test          # 26 passed（Chromium）
 
 `infra/native/deploy.sh` が systemd user unit `rihrp.service` を再起動し、`/healthz` と `/readyz` を確認する。
 本番公開は Cloudflare Tunnel（`rihrp-cloudflared.service`）と Cloudflare Access で構成済み。公開 URL は `https://research.mirai-dx-platform.com`。
-手順と禁止事項は [docs/runbooks/operations.md](docs/runbooks/operations.md) を参照。
+定期ジョブ（日次バックアップ・週次復元訓練・日次セッション削除・5 分間隔の外形チェック）は
+`infra/native/install_ops_units.sh` で導入する（systemd user timer）。
+手順と禁止事項は [docs/runbooks/operations.md](docs/runbooks/operations.md)、
+リリース判定は [docs/runbooks/release.md](docs/runbooks/release.md) を参照。
 
 ## 08. 実装状況
 
 | 機能 | 状態 | 根拠 |
 |---|---|---|
-| 認証・セッション・CSRF・RBAC | 実装済み | pytest（145 件中 144 passed / 1 skipped）、UI 実測 |
+| 認証・セッション・CSRF・RBAC | 実装済み | pytest（148 件中 147 passed / 1 skipped）、UI 実測 |
 | テーマ / 出典（SHA-256）/ 主張 / 根拠 / 検証 | 実装済み | pytest、API 実測、UI 実測 |
 | レポート / 版 / 検証 / 提出 / 承認 / 差し戻し | 実装済み | pytest、UI 実測（提出→承認） |
 | 承認後の整合性警告（根拠変更で矛盾になった場合） | 実装済み | pytest（`test_approved_report_flags_post_approval_tamper`）、画面確認 |
@@ -224,11 +227,13 @@ npx playwright test          # 26 passed（Chromium）
 
 1. **Cloudflare Access の認証後画面は人間の確認が必要**: 未認証 302 と Access 設定（アプリ・policy・DNS）は実測済みだが、OTP/SSO を通した画面確認は AI では実施できない（`docs/verification/2026-11-03.md` 第 6 章）。
 2. **OpenDesign Studio の run は `failed` 表示**: 再実行で成果物（8 画面のプロトタイプ）は生成されたが、run の状態は `failed`（`od_next_next_run_claim_failed`、daemon journal に `SQLITE_BUSY_SNAPSHOT`）。成果物は `docs/design/opendesign/` に保存し、実装との差異を [docs/design/01-webui-design.md](docs/design/01-webui-design.md) 第 8 章に記載した。
-3. **CI に依存脆弱性の自動監査 job は未追加**: Dependabot アラート（critical/high 0 件）と `npm audit`（full） / `pip-audit` の手動実行で代替している。
+3. **CI に依存脆弱性の自動監査 job は未追加**: Dependabot アラート（critical/high 0 件）と `npm audit`（full） / `pip-audit` の手動実行で代替している。追加提案は [docs/ci/dependency-audit.md](docs/ci/dependency-audit.md)（workflow 変更は人間適用）。
 4. **マージ方法**: PR #1 は人間の操作で **merge commit**（`5e3f410`）としてマージされた。以後の通常 PR は `claude-automerge merge`（`--auto --squash`）を使う。`feat/mvp` リモートブランチは残存（AI は `git push --delete` 不可）。
 5. **外部 URL の自動取得なし**: URL は識別子として保存し、本文は貼付を正とする（改竄検出の単純化）。
 6. **モバイル実機・スクリーンリーダーの検証未実施**（CSS / ARIA の実装のみ）。
 7. **SSO は未実装**: 認証基盤が提供されていないため（要件 §5 の対象外）。
+8. **外部合成監視と通知先は未設定**: 同一ホストの 5 分間隔チェック（`rihrp-healthcheck.timer`）と失敗記録は実装済み。別ホストからの外形監視とアラート配信先（`RIHRP_ALERT_WEBHOOK`）は未設定。
+9. **監査ログの保持期間削除は未実装**: 件数は `python -m rihrp.maintenance audit-stats` で確認できる。保持方針の決定後に削除ジョブを追加する。
 
 ## 10. 検証記録
 
@@ -236,12 +241,13 @@ npx playwright test          # 26 passed（Chromium）
 
 - 独立レビュー（pr-verifier）: **6 巡で合格**（critical 0 / high 0 / medium 0 / low 0）。各巡の件数は [`2026-11-03-reviews.json`](docs/verification/2026-11-03-reviews.json)。主な対応は、監査ログの TRUNCATE 保護と DB ロール分離、承認と主張変更の直列化（`SELECT … FOR UPDATE`）、ロック後の identity map 更新、project 削除と子作成の直列化、数値境界判定。
 - CI（GitHub Actions）: run `41513750337`（head `6446935`）と main push の run `41533037024`（`5e3f410`）がいずれも **success 3/3**（API (ruff / pytest) / Web (tsc / vitest / build) / Secret scan (gitleaks)）。
-- `pytest`: **144 passed / 1 skipped**（skip は所有者ロールのため対象外、`test_audit_immutable.py:40`）、`vitest`: 10 passed、E2E: 26 passed。
+- `pytest`: **147 passed / 1 skipped**（skip は所有者ロールのため対象外、`test_audit_immutable.py:40`）、`vitest`: 10 passed、E2E: 26 passed。
 - main マージ: PR #1 → merge commit **`5e3f410`**（2026-11-03 06:57 JST）。マージゲートは 18/20（高リスク 2 件はユーザーの明示 Y のうえ GitHub UI で人間がマージ）。
 - 配備（2026-11-03 07:00 JST 時点）: `infra/native/deploy.sh` → 稼働 commit **`5e3f410`**、`/healthz` 200・`/readyz` 200（`0003_audit_truncate`）。
 - 本番公開: `research.mirai-dx-platform.com`（Cloudflare Tunnel `35974e49…` + Access アプリ／policy `rihrp-allow`）。未認証は 302。
 - Dependabot アラート: 有効化。開発依存の critical 3 / high 1（vite / tinypool / vitest）は PR #3 で修正し、open の critical / high = **0 件**（再スキャン後に実測）。
 - Cloudflare Access 自動ログイン（PR #4）: `pytest` **96 passed / 1 skipped**、`vitest` **10 passed**（Access 関連 37 件 + UI 5 件を追加）。
+- リリース準備（2026-11-03）: 日次バックアップ・週次復元訓練・日次セッション削除・5 分間隔の外形チェックを systemd timer で導入し、各ジョブの実走と復元の件数一致を確認。NFR-16 の同時承認テストと行ロックの排他性テストを追加（`pytest` **147 passed / 1 skipped**）。詳細: [docs/verification/2026-11-03-release-readiness.md](docs/verification/2026-11-03-release-readiness.md)。
 - 詳細: [docs/verification/2026-11-03.md](docs/verification/2026-11-03.md)
 
 ### 2026-11-02
@@ -278,6 +284,9 @@ npx playwright test          # 26 passed（Chromium）
 - ADR: [0001](docs/adr/0001-web-stack.md) / [0002](docs/adr/0002-deterministic-verification.md) / [0003](docs/adr/0003-approval-rule.md) / [0004](docs/adr/0004-auth-session.md) / [0005](docs/adr/0005-audit-append-only.md)
 - API: [docs/api/openapi.yaml](docs/api/openapi.yaml)
 - 運用手順: [docs/runbooks/operations.md](docs/runbooks/operations.md)
+- リリース手順: [docs/runbooks/release.md](docs/runbooks/release.md)
+- 変更履歴: [CHANGELOG.md](CHANGELOG.md) / リリースノート: [docs/releases/2026-11-03-v0.1.0.md](docs/releases/2026-11-03-v0.1.0.md)
+- CI 提案: [E2E](docs/ci/e2e-workflow.md) / [依存監査](docs/ci/dependency-audit.md)
 - 要件トレーサビリティ: [docs/requirements/traceability.md](docs/requirements/traceability.md)
 - 検証記録: [2026-11-03](docs/verification/2026-11-03.md) / [2026-11-02](docs/verification/2026-11-02.md)
 - 独立レビュー記録: [docs/verification/2026-11-03-reviews.json](docs/verification/2026-11-03-reviews.json)

@@ -1,0 +1,10 @@
+[Unit]
+Description=RIHRP restore drill from the latest backup
+Documentation=file:///home/kensan/Projects/Business-Project/RIHRP-Research-Studio/docs/runbooks/operations.md
+
+[Service]
+Type=oneshot
+UMask=0077
+EnvironmentFile=-%h/.config/rihrp/rihrp.conf
+ExecStart=%h/Projects/Business-Project/RIHRP-Research-Studio/infra/native/rihrp-restore-check.sh
+Nice=10
