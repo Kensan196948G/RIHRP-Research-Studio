@@ -3,6 +3,13 @@
 本プロジェクトの主な変更点を記録する。形式は Keep a Changelog に準拠し、バージョンは
 [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [Unreleased]
+
+### Added
+
+- 監査ログの保持期間削除（`python -m rihrp.maintenance purge-audit`、dry-run 既定・
+  所有者ロール・承認後にタイマー有効化。ADR-0006）。
+
 ## [0.1.0] - 2026-11-03
 
 初回の正式リリース。根拠付きリサーチスタジオ（RIHRP）の MVP を本番公開する。

@@ -25,8 +25,8 @@
 
 | 項目 | 結果 |
 |---|---|
-| pytest | 148 collected / **147 passed / 1 skipped**（78.9s） |
-| 追加テスト | 同時承認の直列化（NFR-16）、行ロックの排他性、監査統計の保持超過件数 |
+| pytest | 149 collected / **148 passed / 1 skipped**（監査ログ削除テスト追加後） |
+| 追加テスト | 同時承認の直列化（NFR-16）、行ロックの排他性、監査統計の保持超過件数、監査ログ削除の dry-run/commit |
 | vitest | 10 passed |
 | Playwright E2E | 26 passed |
 | ruff check / format | pass |
@@ -53,6 +53,6 @@
 - Access の OTP/SSO を通した実ブラウザ確認（ログイン → 6 ステップ → 保存 → 再読込）。
 - リリース対象者の確定（現状は単一 email）と告知。
 - アラート通知先（`RIHRP_ALERT_WEBHOOK`）の選定・設定。外部合成監視を別ホストに置くかの判断。
-- 監査ログの保持方針（365 日でよいか）と削除ジョブの追加可否。
+- 監査ログ削除タイマーの有効化判断（保持 365 日は決定済み・ジョブ実装済み。ADR-0006）。
 - `.github/workflows/**` の適用（E2E・依存監査の提案ドキュメント）。workflow_dispatch での手動実行確認。
 - モバイル実機・スクリーンリーダーでの確認。
