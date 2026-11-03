@@ -5,6 +5,7 @@
 export function createStudio(root, host) {
  const CURRENT_KEY='rihrp_offline_studio_current';
  const VERSIONS={};
+ const SERVER_TITLES={};
  const ac=new AbortController();
 
  // ---- シェル（プロトタイプの body 構造） ----
@@ -266,15 +267,20 @@ let saveChain=Promise.resolve();
 function save(){
  if(P)P.updatedAt=nowStr();
  if(!P||!P.id)return;
+ const id=P.id;
  const snapshot=JSON.parse(JSON.stringify(P));
- const version=VERSIONS[P.id]||0;
  setSave('保存中…');
+ // version は送信時点で読む（連続保存で古い version を使わない）。
  saveChain=saveChain.then(async()=>{
+  const version=VERSIONS[id]||0;
   try{
-   const res=await host.saveDocument(P.id,version,snapshot);
-   VERSIONS[P.id]=res.version;
-   try{localStorage.setItem(CURRENT_KEY,P.id)}catch(e){}
-   if(P&&P.id===snapshot.id)setSave('サーバーに自動保存済み');
+   const res=await host.saveDocument(id,version,snapshot);
+   VERSIONS[id]=res.version;
+   if(P&&P.id===id&&P.title&&SERVER_TITLES[id]!==P.title&&host.renameProject){
+    try{await host.renameProject(id,P.title);SERVER_TITLES[id]=P.title}catch(e){}
+   }
+   try{localStorage.setItem(CURRENT_KEY,id)}catch(e){}
+   if(P&&P.id===id)setSave('サーバーに自動保存済み');
   }catch(err){
    setSave('保存に失敗しました');
    if(err&&err.code==='version_conflict'){
@@ -298,6 +304,7 @@ async function load(){
    const base=(doc&&doc.payload&&Object.keys(doc.payload).length)?doc.payload:newProject({title:item.title});
    base.id=item.id;
    VERSIONS[item.id]=doc?doc.version:0;
+   SERVER_TITLES[item.id]=item.title;
    normalize(base);
    DB.projects.push(base);
   }catch(e){/* 個別失敗はスキップして続行 */}

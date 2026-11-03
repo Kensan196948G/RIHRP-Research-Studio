@@ -77,6 +77,13 @@ export const studioHost = {
     return { id: body.project.id, title: body.project.title };
   },
 
+  async renameProject(id: string, title: string): Promise<void> {
+    await request(`/api/projects/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title }),
+    });
+  },
+
   async deleteProject(id: string): Promise<void> {
     await request(`/api/projects/${encodeURIComponent(id)}`, { method: "DELETE" });
   },
