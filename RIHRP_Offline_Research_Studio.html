@@ -1054,23 +1054,59 @@ function renderNav(){
  `<div class="navfoot"><b style="color:var(--ink2)">RIHRP</b><br>Research Inspiration &amp; Hypothesis Refinement Platform<br>研究着想・仮説洗練プラットフォーム<div style="margin-top:8px">エージェント8体・タスク10件<br>すべてローカル処理（通信なし）</div></div>`;
 }
 function renderHeader(){
- $('#projSel').innerHTML=DB.projects.map(p=>`<option value="${p.id}"${p.id===P.id?' selected':''}>${esc(short(p.title||'無題',30))}</option>`).join('');
+ $('#projSel').innerHTML=DB.projects.map(p=>`<option value="${esc(p.id)}"${p.id===P.id?' selected':''}>${esc(short(p.title||'無題',30))}</option>`).join('');
  updateGlobal();
 }
 function updateGlobal(){const g=overall(P);$('#gbar').style.width=g+'%';$('#gpct').textContent=g+'%'}
 function sanitizeP(p){
  const n=(v,d)=>{const x=typeof v==='number'?v:Number(v);return Number.isFinite(x)?x:d};
  const pick=(v,set,d)=>set.includes(v)?v:d;
- p.field=['auto','river','geo','concrete','construction','general'].includes(p.field)?p.field:'auto';
- p.revision=Math.min(100000,Math.max(0,Math.floor(n(p.revision,0))));
- (p.revisions||[]).forEach(r=>{r.rev=Math.max(1,Math.floor(n(r.rev,1)))});
- (p.tasks||[]).forEach(t=>{t.status=pick(t.status,['blocked','ready','running','approval','done'],'blocked');t.progress=Math.min(100,Math.max(0,n(t.progress,0)));t.runs=Math.min(100000,Math.max(0,Math.floor(n(t.runs,0))))});
- (p.evidence||[]).forEach(e=>{e.stance=pick(e.stance,['support','contradict','neutral'],'neutral');e.reliability=e.reliability==null?null:Math.min(100,Math.max(0,n(e.reliability,0)));e.relevance=Math.min(100,Math.max(0,n(e.relevance,0)))});
+ const s=(v,d)=>typeof v==='string'?v:d;
+ const list=v=>Array.isArray(v)?v:[];
+ const obj=v=>(v&&typeof v==='object'&&!Array.isArray(v))?v:null;
+ const cl=(v,lo,hi,d)=>Math.min(hi,Math.max(lo,n(v,d)));
+ p.id=s(p.id,'');
+ p.title=s(p.title,'無題');p.hypothesis=s(p.hypothesis,'');p.background=s(p.background,'');p.conditions=s(p.conditions,'');p.reportNote=s(p.reportNote,'');
+ p.field=pick(p.field,['auto','river','geo','concrete','construction','general'],'auto');
+ p.revision=cl(p.revision,0,100000,0);
+ p.revisions=list(p.revisions).filter(x=>x&&typeof x==='object').map(r=>({rev:cl(r.rev,1,100000,1),hypothesis:s(r.hypothesis,''),conditions:s(r.conditions,''),at:s(r.at,''),note:s(r.note,'')}));
+ p.tasks=list(p.tasks).filter(x=>x&&typeof x==='object');
+ p.tasks.forEach(t=>{t.status=pick(t.status,['blocked','ready','running','approval','done'],'blocked');t.progress=cl(t.progress,0,100,0);t.runs=cl(Math.floor(n(t.runs,0)),0,100000,0)});
+ p.evidence=list(p.evidence).filter(x=>x&&typeof x==='object');
+ p.evidence.forEach(e=>{e.stance=pick(e.stance,['support','contradict','neutral'],'neutral');e.reliability=e.reliability==null?null:cl(e.reliability,0,100,0);e.relevance=cl(e.relevance,0,100,0);e.tags=list(e.tags)});
+ p.critiques=Array.isArray(p.critiques)?p.critiques.filter(x=>x&&typeof x==='object'):null;
  (p.critiques||[]).forEach(c=>{c.sev=pick(c.sev,['高','中','低'],'低');c.status=pick(c.status,['未対応','対応済','却下'],'未対応')});
- (p.candidates||[]).forEach(c=>{c.status=pick(c.status,['候補','採択','保留','却下','主仮説'],'候補');const q=c.scores||{};c.scores={evidence:Math.min(100,Math.max(0,n(q.evidence,0))),testability:Math.min(100,Math.max(0,n(q.testability,0))),burden:Math.min(100,Math.max(0,n(q.burden,0))),importance:Math.min(100,Math.max(0,n(q.importance,0))),novelty:Math.min(100,Math.max(0,n(q.novelty,0)))};c.total=Math.min(100,Math.max(0,n(c.total,0)))});
- if(p.plan){(p.plan.methods||[]).forEach(m=>{m.cost=Math.min(5,Math.max(1,n(m.cost,3)));m.time=Math.min(5,Math.max(1,n(m.time,3)));m.val=Math.min(5,Math.max(1,n(m.val,3)))});(p.plan.measures||[]).forEach(m=>{m.role=pick(m.role,['独立変数','従属変数','関連変数','統制変数'],'関連変数')})}
+ p.candidates=Array.isArray(p.candidates)?p.candidates.filter(x=>x&&typeof x==='object'):null;
+ (p.candidates||[]).forEach(c=>{c.status=pick(c.status,['候補','採択','保留','却下','主仮説'],'候補');const q=obj(c.scores)||{};c.scores={evidence:cl(q.evidence,0,100,0),testability:cl(q.testability,0,100,0),burden:cl(q.burden,0,100,0),importance:cl(q.importance,0,100,0),novelty:cl(q.novelty,0,100,0)};c.total=cl(c.total,0,100,0)});
+ const pl=obj(p.plan);
+ if(pl){pl.methods=list(pl.methods).filter(x=>x&&typeof x==='object');pl.measures=list(pl.measures).filter(x=>x&&typeof x==='object');pl.controls=list(pl.controls).filter(x=>x&&typeof x==='object');
+  pl.methods.forEach(m=>{m.cost=cl(m.cost,1,5,3);m.time=cl(m.time,1,5,3);m.val=cl(m.val,1,5,3)});
+  pl.measures.forEach(m=>{m.role=pick(m.role,['独立変数','従属変数','関連変数','統制変数'],'関連変数')});
+  p.plan=pl.methods.length?pl:null;
+ }
+ p.ethics=Array.isArray(p.ethics)?p.ethics.filter(x=>x&&typeof x==='object'):null;
  (p.ethics||[]).forEach(i=>{i.level=pick(i.level,['要確認','問題なし'],'問題なし')});
- (p.debate||[]).forEach(m=>{m.agent=AGENTS[m.agent]?m.agent:'fac'});
+ p.debate=list(p.debate).filter(x=>x&&typeof x==='object');
+ p.debate.forEach(m=>{m.agent=AGENTS[m.agent]?m.agent:'fac'});
+ p.falsification=list(p.falsification);
+ p.logs=list(p.logs).filter(x=>x&&typeof x==='object');
+ p.decisions=list(p.decisions).filter(x=>x&&typeof x==='object');
+ p.constraints=obj(p.constraints)||{};
+ p.constraints.budget=pick(p.constraints.budget,['潤沢','標準','厳しい'],'標準');
+ p.constraints.period=pick(p.constraints.period,['余裕あり','標準','短期'],'標準');
+ p.constraints.safety=!!p.constraints.safety;
+ p.weights=obj(p.weights)||{};
+ ['evidence','testability','burden','importance','novelty'].forEach(k=>{p.weights[k]=cl(p.weights[k],0,50,25)});
+ p.debateShown=cl(Math.floor(n(p.debateShown,0)),0,list(p.debate).length,0);
+ p.genCount=cl(Math.floor(n(p.genCount,0)),0,100000,0);
+ const a=obj(p.analysis);
+ if(p.analysis!=null&&!a)p.analysis=null;
+ if(a){
+  a.field=pick(a.field,['river','geo','concrete','construction','general'],'general');
+  a.iv=a.iv==null?null:s(a.iv,'');a.dv=a.dv==null?null:s(a.dv,'');a.dir=s(a.dir,'');
+  a.vars=list(a.vars).map(x=>s(x,''));a.inferred=list(a.inferred).map(x=>s(x,''));a.nums=list(a.nums).map(x=>s(x,''));a.vague=list(a.vague).map(x=>s(x,''));
+  a.hasNum=!!a.hasNum;a.hasMech=!!a.hasMech;a.hasCond=!!a.hasCond;a.hasComp=!!a.hasComp;a.quality=cl(Math.floor(n(a.quality,0)),0,5,0);
+ }
 }
 function render(){sanitizeP(P);renderNav();renderHeader();const f={register:viewRegister,tasks:viewTasks,debate:viewDebate,evidence:viewEvidence,compare:viewCompare,report:viewReport}[RT.view];$('#main').innerHTML=f();afterRender()}
 function afterRender(){if(RT.view==='debate'){const c=$('#chat');if(c)c.scrollTop=c.scrollHeight}}
@@ -1105,7 +1141,7 @@ function liveCheckHTML(){
   ${row(a.hasComp,'比較対象（対照条件）',a.hasComp?'比較の基準あり':'従来仕様などとの比較がありません')}
   ${row(!a.vague.length||a.hasNum,'曖昧な表現の有無',a.vague.length?`「${a.vague.join('」「')}」${a.hasNum?'（数値基準あり）':'が未定義'}`:'問題なし')}
  </ul>
- <div class="qscore">構造スコア <b>${a.quality}</b> / 5　<span class="muted" style="font-size:12px">（ルールによる形式チェック）</span></div>`;
+ <div class="qscore">構造スコア <b>${esc(a.quality)}</b> / 5　<span class="muted" style="font-size:12px">（ルールによる形式チェック）</span></div>`;
 }
 function viewRegister(){
  const c=P.constraints;
@@ -1229,7 +1265,7 @@ function viewDebate(){
   <aside><section class="card"><h2>参加エージェント</h2><div class="agents">${AG_KEYS.map(k=>`<div class="agent${RT.typing===k?' speaking':''}" data-ag="${k}">${avatar(k)}<span><span class="nm">${AGENTS[k].name}</span><span class="rl">${AGENTS[k].role}</span></span><span class="chip ${st[k].t}">${st[k].l}</span></div>`).join('')}</div></section>
   <section class="card"><h2>合意度（例示）</h2><div class="meter"><i style="left:calc(${cs}% - 2px)"></i></div><div style="display:flex;justify-content:space-between;font-size:11.5px" class="muted"><span>対立</span><b style="color:var(--ink)">${cs}</b><span>合意</span></div>
   <p class="hint">支持根拠・未対応の批判・採択状況から算出する例示指標です。</p></section></aside>
-  <section class="card" style="margin-bottom:0"><h2>討論タイムライン <span class="cnt" id="debCnt">${P.debateShown}/${P.debate.length}</span></h2>
+  <section class="card" style="margin-bottom:0"><h2>討論タイムライン <span class="cnt" id="debCnt">${esc(P.debateShown)}/${P.debate.length}</span></h2>
    <div class="chat" id="chat">${chatHTML()}</div>
    <div class="composer"><div class="qchips">${chips.map(c=>`<button class="qchip" data-act="chip" data-t="${esc(c[1])}">${c[0]}</button>`).join('')}</div>
     <div class="cr"><textarea id="draft" placeholder="研究者として反論・条件変更・質問を入力（Ctrl+Enterで送信）">${esc(RT.draft)}</textarea><button class="btn pri" data-act="send">発言する</button></div>
@@ -1307,7 +1343,7 @@ function viewCompare(){
  return head+staleBanner()+
  `<div class="banner acc"><span>現在の重み付けでの最高評価：<b>${esc(best.label)}（${esc(best.type)}）総合 ${best.total}点</b>　— 評価値はルールに基づく例示であり、仮説の真偽や新規性を保証するものではありません。</span></div>
  <div class="cands" style="margin-bottom:16px">${cards}</div>
- <section class="card"><h2>評価の重み付け</h2><div class="wts">${wl.map(([k,l])=>`<div><label><span>${l}</span><b data-wv="${k}">${w[k]}</b></label><input type="range" min="0" max="50" value="${w[k]}" data-w="${k}"></div>`).join('')}</div><p class="hint">重みを変えると総合点・順位・チャートが即座に更新されます。実験負担は低いほど高得点として合算します。</p></section>
+ <section class="card"><h2>評価の重み付け</h2><div class="wts">${wl.map(([k,l])=>`<div><label><span>${l}</span><b data-wv="${k}">${esc(w[k])}</b></label><input type="range" min="0" max="50" value="${esc(w[k])}" data-w="${k}"></div>`).join('')}</div><p class="hint">重みを変えると総合点・順位・チャートが即座に更新されます。実験負担は低いほど高得点として合算します。</p></section>
  <div class="chartrow"><section class="card"><h2>指標別比較（レーダー）</h2><div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;margin-bottom:6px">${cs.map(c=>`<label class="chk" style="margin:0"><input type="checkbox" data-cmp="${esc(c.id)}"${RT.cmpSel.includes(c.id)?' checked':''}> ${esc(c.label)}</label>`).join('')}</div>
   <div style="display:flex;justify-content:center">${radarSVG(selC)}</div><div class="legend">${selC.map(c=>`<span style="--c:${PALETTE[P.candidates.indexOf(c)%PALETTE.length]}">${esc(c.label)} ${esc(c.type)}</span>`).join('')}</div></section>
  <section class="card"><h2>総合点ランキング</h2><div id="rank">${rankHTML()}</div>

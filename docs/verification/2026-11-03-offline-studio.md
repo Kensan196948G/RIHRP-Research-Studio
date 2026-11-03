@@ -19,7 +19,9 @@
 | レビュー6巡目 | fail（High 2）→ head `bd32a8e` |
 | 修正5 | `6adffcf`（正本 HTML のエスケープ・複数件取込の flush 追跡） |
 | レビュー7巡目 | fail（High 1）→ head `6adffcf` |
-| 修正6 | 本コミット（正本 HTML の残存 sink を normalize + esc で解消） |
+| 修正6 | `bc134c3`（正本 HTML の残存 sink を normalize + esc で解消） |
+| レビュー8巡目 | fail（High 1 / Medium 1）→ head `bc134c3` |
+| 修正7 | 本コミット（正本の全フィールド正規化・配列型不正の耐性） |
 | 自動テスト | pytest **144 passed / 1 skipped**、vitest **10 passed**、Playwright **22 passed**（46.0s） |
 | 静的検査 | `tsc -b` / `vite build` / `ruff check apps/api tests` / `ruff format --check apps/api tests` / `openapi --check` すべて pass |
 | CI | run `41560328053`（head `a7ad639`）**success** |
@@ -76,13 +78,20 @@
 
 **正本の扱い**: 正本は UI/文言/CSS のオラクルだが、セキュリティ上の欠陥（HTML インジェクション）は正本側にも存在したため、表示結果が変わらない範囲で正本にも同じ `esc()` を適用した。仕様書 §5.1 の「逸脱」ではなく、正本と実装の双方に対する修正として扱う。
 
-## 7. レビュー7巡目の指摘と対応（本コミット）
+## 7. レビュー7巡目の指摘と対応（`bc134c3`）
 
 | # | 重要度 | 指摘 | 対応 |
 |---|---|---|---|
 | 1 | High | 正本 HTML に保存型 XSS の sink が残存。報告書の `plan.measures[].role`、`tasks[].status`（class）・`runs`、`revisions[].rev`、candidate の `scores` / `total`、`evidence.relevance`、plan methods の `cost`、`critique.sev` / `status`、`ethics.level` など。`normalize()` が型・列挙を検証しないため任意文字列が innerHTML に通る | 正本に `sanitizeP()` を追加し、`render()` の先頭で列挙・数値・配列を強制正規化（field / revision / revisions.rev / tasks.status・progress・runs / evidence.stance・reliability・relevance / critiques.sev・status / candidates.status・scores・total / plan.methods.cost・time・val / plan.measures.role / ethics.level / debate.agent）。加えて報告書の `m.role`・評論文言・`i.level`・各種数値を `esc()`。**全6画面**に hostile 値を注入し、`img[src=x]` 0・`[data-injected]` 0・`window.__p` 未定義を実測。通常表示のスモーク（6画面が描画・pageerror 0）も確認 |
 
-## 8. 実測コマンド
+## 8. レビュー8巡目の指摘と対応（本コミット）
+
+| # | 重要度 | 指摘 | 対応 |
+|---|---|---|---|
+| 1 | High | `sanitizeP()` が `p.id` / `analysis.quality` / `weights.*` / `debateShown` を正規化せず、innerHTML の sink（プロジェクト選択の option value、報告書の構造スコア・重み、討論タイムライン）に到達 | `sanitizeP()` を全フィールドへ拡張（文字列・列挙・有限数値・配列・オブジェクト形状を強制）。加えて当該 sink を `esc()` / 数値化。全6画面に hostile 値を注入して img 0・injected 0・`window.__z` 未定義を実測 |
+| 2 | Medium | `sanitizeP()` が配列を強制しないため、`revisions: {}` 等の取込で描画が例外になり、localStorage 保存後に再読込しても nav/main が空のまま（永続的に起動不能） | すべての配列を `Array.isArray` で検証し、非配列は `[]` / `null` に正規化。空の plan は `null`。malformed project を localStorage に保存して再読込し、nav/main が描画され pageerror 0 であることを実測 |
+
+## 9. 実測コマンド
 
 ```bash
 .venv/bin/python -m pytest -p no:warnings        # 144 passed, 1 skipped
@@ -95,9 +104,9 @@ cd apps/web && npm run build && npx playwright test  # 22 passed (46.0s)
 
 注意: `pytest` と Playwright を**同時に実行しない**。同じ `rihrp_test*` DB を奪い合い、無関係なテストが落ちる（実際に `test_admin_cannot_demote_self` が偽陽性で落ちた）。単独実行では pass。
 
-## 9. 未検証・残課題
+## 10. 未検証・残課題
 
 - CI に E2E ジョブは未追加（workflow 変更は要人間承認）。
 - スクリーンリーダー / キーボード全画面 / 320px / 実機 / ネットワーク遮断時の保存失敗 UI は未検証。
 - 書き込み中に画面遷移する競合（3巡目 High #1）の専用 E2E は未追加。孤児プロジェクト（4巡目 #2）とログアウト経路の「PUT 1 回」は E2E で拘束済み。
-- レビュー8巡目の結果はマージ後に追記する。
+- レビュー9巡目の結果はマージ後に追記する。
