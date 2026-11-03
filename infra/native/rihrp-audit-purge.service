@@ -8,5 +8,5 @@ UMask=0077
 WorkingDirectory=%h/Projects/Business-Project/RIHRP-Research-Studio
 EnvironmentFile=%h/.config/rihrp/rihrp.conf
 Environment=RIHRP_ALLOW_AUDIT_PURGE=1
-ExecStart=%h/Projects/Business-Project/RIHRP-Research-Studio/.venv/bin/python -m rihrp.maintenance purge-audit --days 365 --commit
+ExecStart=%h/Projects/Business-Project/RIHRP-Research-Studio/.venv/bin/python -m rihrp.maintenance purge-audit --commit
 Nice=10
