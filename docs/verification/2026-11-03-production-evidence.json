@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "data_class": "observed",
+  "evidence_id": "rihrp-production-82e6648-20261103T132408Z",
+  "release_sha": "82e664867479cd8c9b6ecdabab4529457342c958",
+  "manifest_sha256": "a2e96fa720b42926ab58d82074d32564956f71bab6cc41082ddc78aa558d6af9",
+  "activation": {
+    "observed_at": "2026-11-03T22:24:08+09:00",
+    "exit_code": 0,
+    "previous_pid": 2387641,
+    "new_pid": 924746,
+    "migration": "0004_research_documents",
+    "unit": "rihrp.service",
+    "status": "active",
+    "pending_transition": false
+  },
+  "isolated_e2e": {
+    "release_sha": "82e664867479cd8c9b6ecdabab4529457342c958",
+    "manifest_sha256": "a2e96fa720b42926ab58d82074d32564956f71bab6cc41082ddc78aa558d6af9",
+    "port": 18113,
+    "database_scope": "rihrp_test* only",
+    "startup": "release/.venv/bin/uvicorn",
+    "passed": 29,
+    "exit_code": 0,
+    "log_sha256": "146bf6d9d615e30a09656f13bea8508209d4571abbf35b1df02254c95463393b",
+    "log_path": "2026-11-03-isolated-e2e.log"
+  },
+  "isolated_systemd_recovery": {
+    "data_class": "observed_at_session_not_signed",
+    "observed_window_jst": "2026-11-03 22:21-22:22",
+    "release_sha_inferred_from_drill_script_and_ready_evidence": "82e664867479cd8c9b6ecdabab4529457342c958",
+    "unit": "rihrp-release-acceptance.service",
+    "healthy_port": 18114,
+    "bad_candidate_port": 18115,
+    "old_pid": 903842,
+    "recovered_pid": 908037,
+    "old_unit_bytes_restored": true,
+    "old_release_ready": true,
+    "production_unit_touched": false,
+    "production_database_touched": false,
+    "raw_result_sha256": "9a749d1079960697f1ef76deb917c5de6197ce4173bc50aa86373dcb46fe1de0",
+    "limitation": "Raw result did not self-bind release SHA or timestamp; this association relies on session execution and saved script, not independent signed provenance."
+  },
+  "backup_restore": {
+    "backup_basename": "rihrp_production-20261103T132218703528-910688.dump",
+    "tables_checked": 11,
+    "migration": "0004_research_documents",
+    "counts": {"users": 2, "projects": 4, "audit_events": 31, "other_tables": 0},
+    "audit_triggers_enabled": 2,
+    "scope": "same-host isolated restore database, subsequently removed",
+    "restore_evidence_file_mode": "0600",
+    "limitation": "Local operator observation; not offsite disaster recovery or RPO/RTO acceptance."
+  },
+  "post_activation": {
+    "local_auth_statuses": {"auth/me": 401, "projects": 401, "auth/access_without_assertion": 401},
+    "public_unauthenticated_statuses": {"/": 302, "/studio": 302, "/api/auth/me": 302, "/readyz": 302},
+    "js_sha256": "00862d675a5970a9aa039b20c67086759a02392ab3f2c61b01e3fc08a2d5ffa2",
+    "css_sha256": "3fcf5f32cf3c8e3e0277abeb4f30567ce6f0a1ff05e3979b95f82145d5276c19",
+    "asset_bytes_match_release": true,
+    "healthcheck_success_jst": ["22:24:55", "22:30:03", "22:35:04"],
+    "nrestarts_at_last_observation": 0,
+    "error_priority_journal_entries_at_last_observation": 0
+  },
+  "verdict": "CONDITIONAL GO",
+  "not_claimed": ["production Access-authenticated end-to-end journey", "physical device and screen-reader acceptance", "long-term stability", "offsite restore", "RPO/RTO compliance", "production manual rollback", "cryptographic release attestation"]
+}

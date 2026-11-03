@@ -22,14 +22,13 @@
 
 ## 2. リリース手順
 
-> **次回コード配備は現時点NO-GO**。現行 `deploy.sh` は稼働ツリー上で依存更新・ビルドを行い、
-> SHA固定・排他・失敗時のアプリ切戻しを強制しない。正常稼働中の本番を止めずに、
-> コミット別の配備先・切替・ロールバックを別変更で整備・検証してから使う。
-> 詳細と実測は [本番準備 第1組](../verification/2026-11-03-production-batch1.md)。
+> **2026-11-03 22:24 JSTに新方式へ移行済み**。現在の実行リリースは `82e664867479cd8c9b6ecdabab4529457342c958`。
+> 旧 `deploy.sh` は引き続き使わない。コミット別build/manifest/切替/切戻しは[新配備手順](immutable-release.md)。
+> 受入結果と保証外事項は[本番受入証跡](../verification/2026-11-03-production-acceptance.md)。
 
 1. `main` が最新で、配備対象の40桁SHAにCIと独立レビューが対応することを確認する。
 2. `v0.1.0` は作成済みなので再作成・付け替えしない。次の版は対象SHAとリリース内容を確定して採番する。
-3. 新しい配備方式の受入後に、固定SHAから配備する。以下は配備後の必須検査。
+3. 新配備手順に従い固定SHAから別releaseを構築し、隔離受入・最新backup実復元後にactivateする。以下は配備後の必須検査。
 4. 配備後の実測:
    - `/healthz` 200、`/readyz` 200（migration が期待値）
    - `/`・`/studio`・`/login` 200、`/api/auth/me` 401
@@ -48,7 +47,7 @@
 
 ## 4. ロールバック
 
-- アプリ: 旧方式の「稼働ツリーをcheckoutして再ビルド」は依存・成果物を保持せず、即時切戻しを保証しない。次回配備前に現行/直前リリースを別ディレクトリに保持する切戻し方式を検証する。現行サービスのために安易にcheckout/再起動しない。
+- アプリ: 新方式間は保持previousのSHAを指定して `tools/release_activate.py rollback --expect-sha <40桁SHA>`。同じ0004schemaと成果物整合を必須にするが、DB非変更の復旧をbackup鮮度で阻害しない。初回legacy移行の旧unit bytesはリポジトリ外に保持し、旧方式へ戻す場合は[新配備手順](immutable-release.md)の限界に従って手動復旧する。稼働releaseをcheckoutして再ビルドしない。
 - データ: `infra/native/rihrp-restore-check.sh` で検証済みのバックアップから復元する
   （別 DB で確認後、切替。`DROP DATABASE` を伴う操作は人間承認）。
 - Access を含む公開設定の変更は組織の高リスク変更手順（Approval PR + 明示 Y/N）に従う。

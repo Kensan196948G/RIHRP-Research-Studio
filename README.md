@@ -17,7 +17,7 @@
 > **CI（GitHub Actions）有効**: API (ruff / pytest) / Web (tsc / vitest / build) / Secret scan (gitleaks) の 3 ジョブ。
 > **本番公開済み**: [research.mirai-dx-platform.com](https://research.mirai-dx-platform.com)（Cloudflare Tunnel + Access。未認証は 302）。
 > **WebUI:** ルート直下の `RIHRP_Offline_Research_Studio.html`（6 ステップの研究ワークフロー）に整合させ、研究状態はサーバー（`research_documents`）へ保存。
-> **最新の統合済み検証（本番準備 第1組）:** pytest **180 passed / 1 skipped**（最終preflight単体は追加1件を含め**33**）/ vitest **10** / E2E **29 passed** / main CI success 3/3。詳細は[本番準備記録](docs/verification/2026-11-03-production-batch1.md)。初期検証・性能実測は[過去の検証記録](docs/verification/2026-11-03.md)に保持。現在は安全な別リリース配備方式を整備中で、旧方式による次回コード配備はNO-GO。
+> **本番更新（2026-11-03 22:24 JST）:** コミット別リリース **`82e6648`** へ切替済み。runtime SHA・manifest・静的asset・DB0004・認証境界を実測。local全量 **333 passed / 1 skipped**（後続追加回帰はCIで成功）/ Vitest **10** / 新release隔離E2E **29 passed** / main CI success3/3。詳細は[本番受入証跡](docs/verification/2026-11-03-production-acceptance.md)。旧checkout上配備方式は使わず、[新配備手順](docs/runbooks/immutable-release.md)に従う。認証後の本番通し実操作と実機確認は残条件。
 
 ## 01. これは何か
 
@@ -237,7 +237,7 @@ npx playwright test          # 26 passed（Chromium）
 7. **SSO は未実装**: 認証基盤が提供されていないため（要件 §5 の対象外）。
 8. **外部合成監視と通知先は未設定**: 同一ホストの 5 分間隔チェック（`rihrp-healthcheck.timer`）と失敗記録は実装済み。別ホストからの外形監視とアラート配信先（`RIHRP_ALERT_WEBHOOK`）は未設定。
 9. **監査ログ保持365日・削除タイマー有効**: [ADR-0006](docs/adr/0006-audit-retention.md)の方針に基づき既存承認後に有効化済み（2026-11-03再確認）。インストーラは既定で無効、CLIはdry-run既定。現在の運用は[本番準備記録](docs/verification/2026-11-03-production-batch1.md)を参照。
-10. **次回コード配備は旧方式で実施しない**: 現行サービスは正常稼働中だが、checkout上で依存更新・ビルドする旧方式は混在・切戻しのリスクがある。別リリース構築と切替を整備するまで[リリース判定](docs/runbooks/release.md)はNO-GO。
+10. **旧方式で配備しない**: checkout上ビルド方式の混在リスクを避け、別リリース構築・整合性検証・切替/切戻し方式へ移行済み。[リリース判定](docs/runbooks/release.md)と[受入証跡](docs/verification/2026-11-03-production-acceptance.md)の残条件を確認する。
 
 ## 10. 検証記録
 

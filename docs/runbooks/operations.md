@@ -71,7 +71,8 @@ RIHRP_CF_ACCESS_PROVISION=false
 現行 `infra/native/deploy.sh` は同じ稼働ツリーで `pip install -e ".[dev]"` → migration →
 Webビルド → unit再起動を行う旧方式。`set -e`で停止しても、変更済み依存・DB・distを元に戻さない。
 ビルド途中で旧プロセスと新成果物が混在し得るため、**次回コード配備には使用しない**。
-SHA固定・clean/CIゲート・排他・コミット別成果物・切戻しを整備し、隔離検証後に移行する。
+2026-11-03 22:24 JSTにSHA固定・clean/CIゲート・排他・コミット別成果物・切戻しを備える
+[新方式](immutable-release.md)へ移行済み。unitはリポジトリではなくrelease絶対パスを起動する。
 
 事前の読み取り専用検査（CI承認やruntime SHAの証明ではない）:
 
@@ -168,7 +169,7 @@ journalctl --user -u rihrp-restore-check.service -n 50 --no-pager
 
 ## 6. ロールバック
 
-- アプリ: 現行のcheckout＋再ビルド方式は即時切戻しを保証しない。次回配備の前に保持した現行/直前リリースへ切り替える方式を検証する（[リリース判定](release.md)）。
+- アプリ: 保持したpreviousリリースへ固定SHAで切戻す（[新方式](immutable-release.md)）。初回legacy移行で保存した旧unitは別途保持。checkout＋再ビルドへ戻さない。
 - DB: additive migration のみを原則とする。破壊的 migration は Approval PR で扱う。
 - データ: `infra/native/rihrp-restore-check.sh` で検証したバックアップからの復元（別 DB で確認後、切替）。
 
