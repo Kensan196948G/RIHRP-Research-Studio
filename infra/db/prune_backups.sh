@@ -3,6 +3,7 @@
 # 使い方: infra/db/prune_backups.sh <db> [keep]
 #   - 保持対象は「dump + .sha256 + manifest（db が一致）」の完全な組だけ。
 #   - 1 日以上経過した不完全な組・孤児 sidecar・.part/.tmp は掃除する。
+#   - すべての削除対象は DB 名の厳密な境界（<db>-<日時>[-<pid>]）で照合する。
 #   - RIHRP_BACKUP_DIR で保存先を変更できる（既定 ~/.local/state/rihrp/backups）。
 set -euo pipefail
 umask 077
@@ -11,7 +12,7 @@ DB_NAME="${1:?DB 名を指定してください}"
 KEEP="${2:-${RIHRP_BACKUP_KEEP:-14}}"
 OUT_DIR="${RIHRP_BACKUP_DIR:-$HOME/.local/state/rihrp/backups}"
 
-[[ "$DB_NAME" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
+[[ "$DB_NAME" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]] || {
   printf 'BLOCKED: DB 名が不正です（%s）\n' "$DB_NAME" >&2
   exit 2
 }
@@ -21,8 +22,9 @@ OUT_DIR="${RIHRP_BACKUP_DIR:-$HOME/.local/state/rihrp/backups}"
 }
 [[ -d "$OUT_DIR" ]] || exit 0
 
-# ファイル名は「<db>-<日時>[-<pid>].dump」。前方一致ではなく日時部分まで検証する。
 NAME_RE="^${DB_NAME}-[0-9]{8}T[0-9]+(-[0-9]+)?\\.dump$"
+SIDECAR_RE="^${DB_NAME}-[0-9]{8}T[0-9]+(-[0-9]+)?\\.dump\\.(sha256|manifest\\.json)$"
+RESIDUAL_RE="^${DB_NAME}-[0-9]{8}T[0-9]+(-[0-9]+)?\\.dump\\.(part|part\\.tmp|sha256\\.tmp|manifest\\.json\\.tmp)$"
 manifest_db() {
   python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("db",""))' "$1"
 }
@@ -50,23 +52,33 @@ done
 kept=${#sorted[@]}
 ((kept > KEEP)) && kept=$KEEP
 
-# 孤児（dump が無い sidecar）は即時、不完全な組・残骸は 1 日経過後に削除する。
+# 孤児 sidecar（dump が無い）は、対象 DB の厳密な名前のものだけを削除する。
 for sidecar in "$OUT_DIR"/*.sha256 "$OUT_DIR"/*.manifest.json; do
   [[ -f "$sidecar" ]] || continue
+  base="$(basename "$sidecar")"
+  [[ "$base" =~ $SIDECAR_RE ]] || continue
   dump="${sidecar%.sha256}"
   dump="${dump%.manifest.json}"
   [[ -f "$dump" ]] || rm -f -- "$sidecar"
 done
+
+# 不完全な組（sidecar 欠け）は 1 日経過後に削除する。
 for path in "${all_dumps[@]}"; do
-  [[ -f "${path}.manifest.json" && -f "${path}.sha256" ]] && continue
-  if [[ -f "$path" ]] && [[ "$(find "$path" -maxdepth 0 -mtime +0 -print -quit)" ]]; then
-    rm -f -- "$path"
+  [[ -f "$path" ]] || continue
+  if [[ -f "${path}.manifest.json" && -f "${path}.sha256" ]]; then
+    continue
   fi
-  find "${path}.sha256" "${path}.manifest.json" -maxdepth 0 -mtime +0 -delete 2>/dev/null || true
+  if [[ "$(find "$path" -maxdepth 0 -mtime +0 -print -quit)" ]]; then
+    rm -f -- "$path" "${path}.sha256" "${path}.manifest.json"
+  fi
 done
-find "$OUT_DIR" -maxdepth 1 -type f \
-  \( -name "${DB_NAME}-*.dump.part" -o -name "${DB_NAME}-*.dump.part.tmp" \
-     -o -name "${DB_NAME}-*.sha256.tmp" -o -name "${DB_NAME}-*.manifest.json.tmp" \) \
-  -mtime +0 -delete
+
+# 失敗したバックアップの残骸（.part / .tmp）も、厳密な名前のものだけを 1 日後に削除する。
+for path in "$OUT_DIR"/*; do
+  [[ -f "$path" ]] || continue
+  base="$(basename "$path")"
+  [[ "$base" =~ $RESIDUAL_RE ]] || continue
+  find "$path" -maxdepth 0 -mtime +0 -delete
+done
 
 printf 'pruned: %s（完全な組 %s 世代を保持）\n' "$DB_NAME" "$kept"

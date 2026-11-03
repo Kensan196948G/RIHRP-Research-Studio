@@ -19,7 +19,7 @@ set +a
 
 url="${RIHRP_DATABASE_URL%%\?*}"
 db="${url##*/}"
-[[ "$db" == rihrp* ]] || {
+[[ "$db" =~ ^rihrp[A-Za-z0-9_-]*$ ]] || {
   printf 'BLOCKED: DB 名が想定外です（%s）\n' "$db" >&2
   exit 2
 }

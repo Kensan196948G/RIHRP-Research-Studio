@@ -92,8 +92,8 @@ infra/native/rihrp-restore-check.sh
 ```
 
 - バックアップの保存先: `~/.local/state/rihrp/backups/`（`RIHRP_BACKUP_DIR` で変更可）。
-- 1 回のバックアップは `.dump`・`.sha256`・`.manifest.json`（バックアップ時点の件数と migration）を 1 組で保存する。
-  公開順序は checksum → dump → **manifest（最後＝完成の目印）**。途中で失敗した場合は `.part`/`.tmp` のまま残り、
+- 1 回のバックアップは `.dump`・`.sha256`・`.manifest.json`（バックアップ時点の件数（11 テーブル）と migration）を 1 組で保存する。
+  公開順序は dump → checksum → **manifest（最後＝完成の目印）**。途中で失敗した場合は `.part`/`.tmp` のまま残り、
   manifest が無い組は復元訓練の対象にならない。
 - バックアップはロックファイルで直列化し、ファイル名は `<db>-<UTC日時>-<PID>.dump`（同名衝突を避ける）。
 - 復元訓練は **manifest の件数**と比較する。現在の本番件数と比較すると、バックアップ後の通常更新で

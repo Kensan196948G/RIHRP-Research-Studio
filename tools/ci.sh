@@ -9,9 +9,9 @@ INSTALL=1
 [[ "${1:-}" == "--no-install" ]] && INSTALL=0
 
 printf '== ruff check\n'
-.venv/bin/ruff check apps/api tests
+.venv/bin/ruff check apps/api tests infra/native/backup_manifest.py
 printf '== ruff format --check\n'
-.venv/bin/ruff format --check apps/api tests
+.venv/bin/ruff format --check apps/api tests infra/native/backup_manifest.py
 printf '== openapi drift\n'
 .venv/bin/python infra/db/export_openapi.py --check
 printf '== pytest（実 PostgreSQL rihrp_test）\n'

@@ -63,7 +63,19 @@ import json
 import sys
 
 counts = json.load(open(sys.argv[1], encoding="utf-8"))["counts"]
-tables = ("users", "projects", "sources", "claims", "reports", "audit_events")
+tables = (
+    "users",
+    "projects",
+    "sources",
+    "claims",
+    "claim_evidence",
+    "reports",
+    "report_versions",
+    "report_verifications",
+    "reviews",
+    "research_documents",
+    "audit_events",
+)
 for table in tables:
     print(table, int(counts[table]))
 PY
@@ -71,8 +83,8 @@ PY
     printf 'NG: manifest の件数を読み取れません（%s）\n' "$MANIFEST" >&2
     exit 1
   }
-  if [[ "$(wc -l <<<"$rows")" -ne 6 ]]; then
-    printf 'NG: manifest の件数が 6 テーブル分そろっていません\n' >&2
+  if [[ "$(wc -l <<<"$rows")" -ne 11 ]]; then
+    printf 'NG: manifest の件数が 11 テーブル分そろっていません\n' >&2
     exit 1
   fi
   while IFS=' ' read -r table expected; do
@@ -84,7 +96,8 @@ PY
   done <<<"$rows"
 else
   printf '%-14s %10s %10s\n' "table" "source" "restored"
-  for table in users projects sources claims reports audit_events; do
+  for table in users projects sources claims claim_evidence reports report_versions \
+    report_verifications reviews research_documents audit_events; do
     source_count="$(psql -d "$SOURCE_DB" -tAc "SELECT count(*) FROM $table")"
     restored_count="$(psql -d "$RESTORE_DB" -tAc "SELECT count(*) FROM $table")"
     printf '%-14s %10s %10s\n' "$table" "$source_count" "$restored_count"

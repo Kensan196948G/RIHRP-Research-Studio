@@ -26,7 +26,20 @@ from pathlib import Path
 
 import psycopg
 
-TABLES = ("users", "projects", "sources", "claims", "reports", "audit_events")
+# 保持・復元の対象になるアプリケーションテーブル（sessions は揮発のため除外）。
+TABLES = (
+    "users",
+    "projects",
+    "sources",
+    "claims",
+    "claim_evidence",
+    "reports",
+    "report_versions",
+    "report_verifications",
+    "reviews",
+    "research_documents",
+    "audit_events",
+)
 
 
 def _sha256(path: Path) -> str:
