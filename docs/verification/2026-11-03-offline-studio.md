@@ -13,8 +13,10 @@
 | レビュー3巡目 | fail（High 1 / Medium 2 / Low 1）→ head `a7ad639` |
 | 修正2 | `5a328d3`（3巡目の全 4 件を修正） |
 | レビュー4巡目 | fail（High 1 / Medium 1）→ head `5a328d3` |
-| 修正3 | 本コミット（書き込みは abort せず完了・後始末する方針へ統一） |
-| 自動テスト | pytest **142 passed / 1 skipped**、vitest **10 passed**、Playwright **22 passed**（44.8s） |
+| 修正3 | `938a72e`（書き込みは abort せず完了・後始末する方針へ統一） |
+| レビュー5巡目 | fail（High 1 / Medium 1 / Low 1）→ head `938a72e` |
+| 修正4 | 本コミット（取込保存の flush 追跡・所有者による削除・cleanup 条件） |
+| 自動テスト | pytest **144 passed / 1 skipped**、vitest **10 passed**、Playwright **22 passed**（46.0s） |
 | 静的検査 | `tsc -b` / `vite build` / `ruff check apps/api tests` / `ruff format --check apps/api tests` / `openapi --check` すべて pass |
 | CI | run `41560328053`（head `a7ad639`）**success** |
 
@@ -31,7 +33,7 @@
 | 7 | Low | 次のステップ欄の二重エスケープ | 内側の `esc()` を外し、出力時の 1 回に統一（`A&B` が `A&amp;B` にならない） |
 | 8 | Low | 仕様書の内部リンク切れ | `../adr/0004-auth-session.md` / `../architecture/01-architecture.md` に修正 |
 
-## 3. レビュー3巡目の指摘と対応（本コミット）
+## 3. レビュー3巡目の指摘と対応（`5a328d3`）
 
 | # | 重要度 | 指摘 | 対応 |
 |---|---|---|---|
@@ -40,7 +42,7 @@
 | 3 | Medium | 列挙値に配列等を送ると型検査前に集合所属判定で未処理 TypeError → **HTTP 500**。クライアントも境界値をクランプしない | `_enum_ok()`（`isinstance(str)` を先に判定）へ全列挙判定を置換（field/analysis.field/constraints/tasks.key・status/evidence.stance/critiques.sev・status/candidates.status/plan role）。クライアントは weights 0〜50・reliability/relevance/candidate scores/total 0〜100・method cost/time/val 1〜5・tasks runs 0〜100000・revision 0〜100000 に正規化。500→422 の回帰テストを追加 |
 | 4 | Low | `flush` が未変更でも現在プロジェクトを保存し、ログアウト時に同一内容の PUT が2回（2回目は 401） | `dirty` マップで未保存変更を管理し、`flush` は dirty なプロジェクトだけ保存。ログアウト E2E で **PUT が1回だけ**であることを拘束 |
 
-## 4. レビュー4巡目の指摘と対応（本コミット）
+## 4. レビュー4巡目の指摘と対応（`938a72e`）
 
 同じ根因（**書き込みの abort**）に対する2件。
 
@@ -51,12 +53,22 @@
 
 方針: 読み取り（`listProjects` / `getDocument`）だけ AbortSignal で中断する。書き込み（create / save / rename / delete）は中断せず完了させ、画面破棄後は ID が確定してから後始末する。abort で打ち切るとサーバーだけコミットされ ID 不明の孤児・未保存が残るため。
 
-## 5. 実測コマンド
+## 5. レビュー5巡目の指摘と対応（本コミット）
+
+| # | 重要度 | 指摘 | 対応 |
+|---|---|---|---|
+| 1 | High | JSON 取込の初回保存が dirty / saveTimers / saveChain の追跡外で、ログアウト前 flush が完了を待たない。ログアウト後の PUT が 401 となり取込データが失われ、作成済みプロジェクトだけ残る | 取込の初回保存を `saveProject()`（dirty・saveChain・queued）経由に統一。`flush()` は保存待ちの tail を必ず await し、`queued` で同一プロジェクトの二重送信を抑止 |
+| 2 | Medium | 作成は editor 以上、DELETE は admin 限定のため、editor の cleanup DELETE が 403 となり孤児が残る | `DELETE /api/projects/{id}` を `require_editor` + 所有者判定へ変更（admin は全件、editor は**自分が作成したプロジェクトのみ**）。他人のプロジェクトは従来どおり admin のみ。RBAC テスト（editor 自作品 200 / 他人品 403）を追加 |
+| 3 | Low | `options.signal` なしで構成した場合、`destroy()` 後も cleanup 判定が `aborted()` だけを見るため削除されない | cleanup 条件を `aborted() \|\| destroyed` に統一（load・新規・サンプル・削除後の代替作成・取込） |
+
+**権限変更の注意**: editor に「自分が作成したプロジェクトの削除」を許可した。他人のプロジェクトの削除は admin のみで、監査イベント `project.deleted` は従来どおり記録する。viewer は引き続き削除不可。
+
+## 6. 実測コマンド
 
 ```bash
-.venv/bin/python -m pytest -p no:warnings        # 142 passed, 1 skipped
+.venv/bin/python -m pytest -p no:warnings        # 144 passed, 1 skipped
 cd apps/web && npx vitest run                    # 10 passed
-cd apps/web && npm run build && npx playwright test  # 22 passed (44.8s)
+cd apps/web && npm run build && npx playwright test  # 22 passed (46.0s)
 .venv/bin/ruff check apps/api tests
 .venv/bin/ruff format --check apps/api tests
 .venv/bin/python infra/db/export_openapi.py --check
@@ -64,9 +76,9 @@ cd apps/web && npm run build && npx playwright test  # 22 passed (44.8s)
 
 注意: `pytest` と Playwright を**同時に実行しない**。同じ `rihrp_test*` DB を奪い合い、無関係なテストが落ちる（実際に `test_admin_cannot_demote_self` が偽陽性で落ちた）。単独実行では pass。
 
-## 6. 未検証・残課題
+## 7. 未検証・残課題
 
 - CI に E2E ジョブは未追加（workflow 変更は要人間承認）。
 - スクリーンリーダー / キーボード全画面 / 320px / 実機 / ネットワーク遮断時の保存失敗 UI は未検証。
 - 書き込み中に画面遷移する競合（3巡目 High #1）の専用 E2E は未追加。孤児プロジェクト（4巡目 #2）とログアウト経路の「PUT 1 回」は E2E で拘束済み。
-- レビュー5巡目の結果はマージ後に追記する。
+- レビュー6巡目の結果はマージ後に追記する。

@@ -168,6 +168,28 @@ def test_project_delete_cascades_document(client: TestClient, users: dict[str, s
         assert db.get(ResearchDocument, project_id) is None
 
 
+def test_editor_can_delete_own_project(client: TestClient, users: dict[str, str]) -> None:
+    """画面遷移で残った空プロジェクトを、作成した editor 自身が後始末できる。"""
+    login(client)
+    project_id = create_project(client)
+
+    assert client.delete(f"/api/projects/{project_id}").status_code == 200
+
+
+def test_editor_cannot_delete_others_project(client: TestClient, users: dict[str, str]) -> None:
+    login(client, "admin")
+    project_id = create_project(client)
+    login(client, "editor")
+
+    assert client.delete(f"/api/projects/{project_id}").status_code == 403
+
+    login(client, "admin")
+    assert client.delete(f"/api/projects/{project_id}").status_code == 200
+
+    with SessionLocal() as db:
+        assert db.get(ResearchDocument, project_id) is None
+
+
 @pytest.mark.parametrize(
     "payload",
     [
