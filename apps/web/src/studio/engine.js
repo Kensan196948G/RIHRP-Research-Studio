@@ -2,7 +2,11 @@
 // - マークアップ・文言・CSS・ルールベース処理はプロトタイプを正本とする
 // - 永続化のみ localStorage からサーバー（host API）へ置き換える
 
-export function createStudio(root, host) {
+export function createStudio(root, host, options) {
+ const signal=options&&options.signal;
+ const aborted=()=>!!(signal&&signal.aborted);
+ const timers=new Set();
+ function later(fn,ms){const t=setTimeout(()=>{timers.delete(t);fn()},ms);timers.add(t);return t}
  const CURRENT_KEY='rihrp_offline_studio_current';
  const VERSIONS={};
  const SERVER_TITLES={};
@@ -25,7 +29,7 @@ export function createStudio(root, host) {
     <span class="saveState" id="saveState">—</span>
    </div>
   </header>
-  <div class="notice"><b>オフライン・シミュレーション：</b>本アプリの「AIエージェント」はブラウザ内のJavaScriptによるルールベース処理で、AIモデルによる推論ではありません。内蔵の研究資料・事例はすべて架空の模擬データです。評価値は例示指標であり、科学的な真偽や新規性を保証しません。</div>
+  <div class="notice"><b>オフライン・シミュレーション：</b>本アプリの「AIエージェント」はブラウザ内のJavaScriptによるルールベース処理で、AIモデルによる推論ではありません。内蔵の研究資料・事例はすべて<b>架空の模擬データ</b>です。評価値は例示指標であり、科学的な真偽や新規性を保証しません。</div>
   <div class="layout">
    <nav id="nav" aria-label="画面ナビゲーション"></nav>
    <main id="main"></main>
@@ -52,7 +56,7 @@ const short=(s,n)=>{s=String(s||'').replace(/\s+/g,' ').trim();return s.length>n
 function hash(s){let h=2166136261;s=String(s);for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function shuffle(arr,r){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;$('#toast').appendChild(t);setTimeout(()=>t.remove(),3600)}
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;$('#toast').appendChild(t);later(()=>t.remove(),3600)}
 function download(name,content,type){const b=new Blob([content],{type:type||'text/plain;charset=utf-8'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(u);a.remove()},800)}
 
 // ---------- domain dictionaries (fictional sample knowledge) ----------
@@ -264,11 +268,14 @@ function newProject(src){
  return p;
 }
 let saveChain=Promise.resolve();
-function save(){
- if(P)P.updatedAt=nowStr();
- if(!P||!P.id)return;
- const id=P.id;
- const snapshot=JSON.parse(JSON.stringify(P));
+const saveTimers={};   // project id -> {timer, project}
+function saveProject(project){
+ if(!project||!project.id)return saveChain;
+ const id=project.id;
+ const entry=saveTimers[id];
+ if(entry){clearTimeout(entry.timer);delete saveTimers[id]}
+ project.updatedAt=nowStr();
+ const snapshot=JSON.parse(JSON.stringify(project));
  setSave('保存中…');
  // version は送信時点で読む（連続保存で古い version を使わない）。
  saveChain=saveChain.then(async()=>{
@@ -276,11 +283,16 @@ function save(){
   try{
    const res=await host.saveDocument(id,version,snapshot);
    VERSIONS[id]=res.version;
-   if(P&&P.id===id&&P.title&&SERVER_TITLES[id]!==P.title&&host.renameProject){
-    try{await host.renameProject(id,P.title);SERVER_TITLES[id]=P.title}catch(e){}
+   let titleSynced=true;
+   if(project.title&&SERVER_TITLES[id]!==project.title&&host.renameProject){
+    try{await host.renameProject(id,project.title);SERVER_TITLES[id]=project.title}
+    catch(e){titleSynced=false}
    }
    try{localStorage.setItem(CURRENT_KEY,id)}catch(e){}
-   if(P&&P.id===id)setSave('サーバーに自動保存済み');
+   if(P&&P.id===id){
+    if(titleSynced)setSave('サーバーに自動保存済み');
+    else{setSave('タイトル同期に失敗しました');toast('タイトルを同期できませんでした（次回保存で再試行します）')}
+   }
   }catch(err){
    setSave('保存に失敗しました');
    if(err&&err.code==='version_conflict'){
@@ -291,13 +303,29 @@ function save(){
    }
   }
  });
+ return saveChain;
 }
-function touch(){clearTimeout(RT.saveT);setSave('保存中…');RT.saveT=setTimeout(save,500)}
+function save(){ if(P)saveProject(P); }
+function touch(){
+ if(!P||!P.id)return;
+ const project=P;
+ setSave('保存中…');
+ const entry=saveTimers[project.id];
+ if(entry)clearTimeout(entry.timer);
+ saveTimers[project.id]={project,timer:later(()=>saveProject(project),500)};
+}
+function flush(){
+ const jobs=[];
+ Object.keys(saveTimers).forEach(id=>jobs.push(saveProject(saveTimers[id].project)));
+ if(P)jobs.push(saveProject(P));
+ return Promise.all(jobs);
+}
 function setSave(t){const el=$('#saveState');if(el)el.textContent=t}
 async function load(){
  DB.projects=[];Object.keys(VERSIONS).forEach(k=>delete VERSIONS[k]);
  let list=[];
  try{list=await host.listProjects()}catch(e){setSave('読み込みに失敗しました');throw e}
+ if(aborted())return false;
  for(const item of list){
   try{
    const doc=await host.getDocument(item.id);
@@ -309,20 +337,64 @@ async function load(){
    DB.projects.push(base);
   }catch(e){/* 個別失敗はスキップして続行 */}
  }
+ if(aborted())return false;
  if(!DB.projects.length){
   const created=await host.createProject('新しい研究テーマ');
+  if(aborted())return false;
   const p=newProject();p.id=created.id;VERSIONS[p.id]=0;DB.projects.push(p);
  }
  let last=null;try{last=localStorage.getItem(CURRENT_KEY)}catch(e){}
  P=DB.projects.find(p=>p.id===last)||DB.projects[0];
  DB.currentId=P.id;
  try{DB.settings.speed=+(localStorage.getItem('rihrp_speed')||DB.settings.speed||1)}catch(e){}
+ return true;
+}
+const TASK_STATUSES=['blocked','ready','running','approval','done'];
+const STANCES=['support','contradict','neutral'];
+const CAND_STATUSES=['候補','採択','保留','却下','主仮説'];
+const CRIT_SEVS=['高','中','低'];
+const CRIT_STATUSES=['未対応','対応済','却下'];
+function str(v,d){return typeof v==='string'?v:(v==null?d:String(v))}
+function num(v,d){const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:d}
+function arr(v){return Array.isArray(v)?v:[]}
+function obj(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:null}
+function sanitizeProject(p){
+ p.title=str(p.title,'無題');
+ p.field=str(p.field,'auto');
+ p.hypothesis=str(p.hypothesis,'');
+ p.background=str(p.background,'');
+ p.conditions=str(p.conditions,'');
+ p.reportNote=str(p.reportNote,'');
+ p.revision=Math.max(0,Math.floor(num(p.revision,0)));
+ const c=obj(p.constraints)||{};
+ p.constraints={budget:['潤沢','標準','厳しい'].includes(c.budget)?c.budget:'標準',period:['余裕あり','標準','短期'].includes(c.period)?c.period:'標準',safety:!!c.safety};
+ p.revisions=arr(p.revisions).filter(obj).map(r=>({rev:Math.max(1,Math.floor(num(r.rev,1))),hypothesis:str(r.hypothesis,''),conditions:str(r.conditions,''),at:str(r.at,''),note:str(r.note,'')}));
+ p.evidence=arr(p.evidence).filter(obj).map(e=>Object.assign({},e,{title:str(e.title,'（無題）'),type:str(e.type,''),year:str(e.year,''),summary:str(e.summary,''),note:str(e.note,''),stance:STANCES.includes(e.stance)?e.stance:'neutral',reliability:e.reliability==null?null:num(e.reliability,0),relevance:num(e.relevance,0),tags:arr(e.tags).map(x=>str(x,''))}));
+ p.debate=arr(p.debate).filter(obj).map(m=>({id:str(m.id,uid('m')),agent:AGENTS[m.agent]?m.agent:'fac',round:Math.max(1,Math.floor(num(m.round,1))),kind:str(m.kind,''),text:str(m.text,'')}));
+ p.debateShown=Math.max(0,Math.floor(num(p.debateShown,0)));
+ if(p.critiques!=null)p.critiques=arr(p.critiques).filter(obj).map(x=>({id:str(x.id,uid('c')),sev:CRIT_SEVS.includes(x.sev)?x.sev:'低',cat:str(x.cat,''),text:str(x.text,''),sug:str(x.sug,''),status:CRIT_STATUSES.includes(x.status)?x.status:'未対応'}));
+ if(p.falsification!=null)p.falsification=arr(p.falsification).map(x=>str(x,''));
+ if(p.ethics!=null)p.ethics=arr(p.ethics).filter(obj).map(x=>({level:x.level==='要確認'?'要確認':'問題なし',text:str(x.text,''),action:str(x.action,'')}));
+ const pl=obj(p.plan);
+ if(pl&&arr(pl.methods).filter(obj).length){
+  p.plan=Object.assign({},pl,{methods:arr(pl.methods).filter(obj).map(m=>({n:str(m.n,'手法'),cost:num(m.cost,3),time:num(m.time,3),val:num(m.val,3)})),measures:arr(pl.measures).filter(obj).map(m=>({n:str(m.n,''),u:str(m.u,''),m:str(m.m,''),role:str(m.role,'関連変数')})),controls:arr(pl.controls).filter(obj).map(m=>({n:str(m.n,''),u:str(m.u,''),m:str(m.m,'')})),design:str(pl.design,''),levels:str(pl.levels,'')});
+ }else p.plan=null;
+ if(p.candidates!=null)p.candidates=arr(p.candidates).filter(obj).map(x=>{const sc=obj(x.scores)||{};return{id:str(x.id,uid('c')),label:str(x.label,'候補'),type:str(x.type,''),origin:str(x.origin,''),status:CAND_STATUSES.includes(x.status)?x.status:'候補',text:str(x.text,''),vars:arr(x.vars).map(v=>str(v,'')),edited:!!x.edited,scores:{evidence:num(sc.evidence,0),testability:num(sc.testability,0),burden:num(sc.burden,0),importance:num(sc.importance,0),novelty:num(sc.novelty,0)},total:num(x.total,0)}});
+ const w=obj(p.weights)||{};
+ p.weights={evidence:num(w.evidence,25),testability:num(w.testability,25),burden:num(w.burden,15),importance:num(w.importance,25),novelty:num(w.novelty,10)};
+ p.decisions=arr(p.decisions).filter(obj).map(d=>({at:str(d.at,''),text:str(d.text,'')}));
+ p.logs=arr(p.logs).filter(obj).map(l=>({t:str(l.t,''),msg:str(l.msg,'')}));
+ p.stale=!!p.stale;
+ p.genCount=Math.max(0,Math.floor(num(p.genCount,0)));
+ p.sampleKey=p.sampleKey==null?null:str(p.sampleKey,'');
+ p.reportAt=p.reportAt==null?null:str(p.reportAt,'');
 }
 function normalize(p){
  const blank=newProject();
  Object.keys(blank).forEach(k=>{if(p[k]===undefined)p[k]=blank[k]});
+ sanitizeProject(p);
  if(!Array.isArray(p.tasks)||p.tasks.length!==TASK_DEFS.length)p.tasks=blank.tasks;
- p.tasks.forEach(t=>{if(t.status==='running')t.status='ready'});
+ p.tasks.forEach(t=>{if(!t||typeof t!=='object')return;if(!TASK_STATUSES.includes(t.status))t.status='blocked';t.progress=Math.min(100,Math.max(0,num(t.progress,0)));t.runs=Math.max(0,Math.floor(num(t.runs,0)));if(t.status==='running')t.status='ready'});
  refreshReady(p);
 }
 function log(msg,p){p=p||P;p.logs.unshift({t:nowStr(),msg});if(p.logs.length>300)p.logs.length=300}
@@ -669,7 +741,7 @@ function completeTask(t){
  try{EFFECTS[t.key](P)}catch(e){console.error(e);log('[エラー] '+d.name+'：'+e.message)}
  if(d.approval){t.status='approval';log(`[承認待ち] ${d.name} — 研究者の確認が必要です`)}
  else{t.status='done';log(`[完了] ${d.name}`)}
- if(t.key==='debate'&&RT.view==='debate')setTimeout(playDebate,200);
+ if(t.key==='debate'&&RT.view==='debate')later(playDebate,200);
  refreshReady(P);
 }
 function stepOnce(){
@@ -1019,7 +1091,7 @@ function viewEvidence(){
   <div class="evlist">${evHTML||'<p class="muted">資料がありません。</p>'}</div></section>
  <div><section class="card"><h2>批判・反証レビュー <span class="cnt">${crs.length}件</span>${!P.critiques?'<button class="btn sm" data-act="runUpTo" data-k="critic" style="margin-left:auto">レビューを実行</button>':''}</h2>${crHTML}</section>
   <section class="card"><h2>この仮説が棄却される条件</h2>${P.falsification?`<ol class="fals">${P.falsification.map(f=>`<li>${esc(f)}</li>`).join('')}</ol><p class="hint">検証前に棄却条件を定めておくことで、結果の後付け解釈を防ぎます。</p>`:'<p class="muted">批判・反証レビュー後に表示されます。</p>'}</section>
-  <section class="card"><h2>検証計画（方法論AI）</h2>${plan?`<h3 style="margin-top:0">検証手法</h3>${plan.methods.map((m,i)=>`<div class="mth"><span>${i===0?'<span class="chip acc">主</span> ':i===1?'<span class="chip">補</span> ':'<span class="chip">代替</span> '}${esc(m.n)}</span><span style="display:flex;gap:10px;font-size:11px" class="muted">費用${lvl(m.cost,1)} 期間${lvl(m.time,1)} 妥当性${lvl(m.val)}</span></div>`).join('')}
+  <section class="card"><h2>検証計画（方法論AI）</h2>${plan?`<h3 style="margin-top:0">検証手法</h3>${plan.methods.map((m,i)=>`<div class="mth"><span>${i===0?'<span class="chip acc">主</span> ':i===1?'<span class="chip">補</span> ':'<span class="chip">代替</span> '}${esc(m.n)}</span><span style="display:flex;gap:10px;font-size:11px" class="muted">費用${lvl(num(m.cost,3),1)} 期間${lvl(num(m.time,3),1)} 妥当性${lvl(num(m.val,3))}</span></div>`).join('')}
    <h3>測定項目</h3><div class="tblwrap"><table class="tbl"><tbody>${plan.measures.map(m=>`<tr><td><span class="chip ${m.role==='独立変数'?'info':m.role==='従属変数'?'acc':''}">${m.role}</span></td><td><b>${esc(m.n)}</b></td><td class="muted">${esc(m.u)}</td><td style="font-size:12.5px">${esc(m.m)}</td></tr>`).join('')}${plan.controls.map(m=>`<tr><td><span class="chip warn">統制変数</span></td><td><b>${esc(m.n)}</b></td><td class="muted">${esc(m.u)}</td><td style="font-size:12.5px">${esc(m.m)}</td></tr>`).join('')}</tbody></table></div>
    <h3>研究デザイン</h3><p style="margin:0;font-size:13px">${esc(plan.design)}。${esc(plan.levels)}。</p>`:'<p class="muted">変数定義・測定計画は未実行です。</p>'}</section>
   <section class="card"><h2>研究倫理・安全チェック</h2>${eth?eth.map(i=>`<div class="ethi"><span class="chip ${i.level==='要確認'?'warn':'good'}">${i.level}</span><div><b>${esc(i.text)}</b><div class="a">${esc(i.action)}</div></div></div>`).join(''):'<p class="muted">研究倫理・安全性確認は未実行です。</p>'}</section>
@@ -1063,7 +1135,7 @@ function viewCompare(){
  <div class="chartrow"><section class="card"><h2>指標別比較（レーダー）</h2><div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;margin-bottom:6px">${cs.map(c=>`<label class="chk" style="margin:0"><input type="checkbox" data-cmp="${c.id}"${RT.cmpSel.includes(c.id)?' checked':''}> ${c.label}</label>`).join('')}</div>
   <div style="display:flex;justify-content:center">${radarSVG(selC)}</div><div class="legend">${selC.map(c=>`<span style="--c:${PALETTE[P.candidates.indexOf(c)%PALETTE.length]}">${c.label} ${esc(c.type)}</span>`).join('')}</div></section>
  <section class="card"><h2>総合点ランキング</h2><div id="rank">${rankHTML()}</div>
-  <div class="tblwrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>仮説</th><th>根拠</th><th>検証</th><th>負担</th><th>重要</th><th>新規</th><th>総合</th></tr></thead><tbody>${sorted.map(c=>`<tr><td><b>${c.label}</b> <span class="muted" style="font-size:11.5px">${esc(c.type)}</span></td><td>${c.scores.evidence}</td><td>${c.scores.testability}</td><td>${c.scores.burden}</td><td>${c.scores.importance}</td><td>${c.scores.novelty}</td><td><b>${c.total}</b></td></tr>`).join('')}</tbody></table></div>
+  <div class="tblwrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>仮説</th><th>根拠</th><th>検証</th><th>負担</th><th>重要</th><th>新規</th><th>総合</th></tr></thead><tbody>${sorted.map(c=>`<tr><td><b>${c.label}</b> <span class="muted" style="font-size:11.5px">${esc(c.type)}</span></td><td>${Math.round(num(c.scores.evidence,0))}</td><td>${Math.round(num(c.scores.testability,0))}</td><td>${Math.round(num(c.scores.burden,0))}</td><td>${Math.round(num(c.scores.importance,0))}</td><td>${Math.round(num(c.scores.novelty,0))}</td><td><b>${Math.round(num(c.total,0))}</b></td></tr>`).join('')}</tbody></table></div>
   <div class="disc">指標の算出：根拠＝関連資料の立場×信頼性、検証可能性＝測定可能な変数・数値基準・条件の明示、実験負担＝検証手法の費用・期間と変数の数、重要性＝分野の重要度と成果変数の有無、新規性＝仮説類型と既存資料の少なさ（いずれも例示）。</div></section></div>`;
 }
 function rankHTML(){const s=P.candidates.slice().sort((x,y)=>y.total-x.total);return s.map((c,i)=>`<div class="hbar"><b>${c.label}</b><span class="b"><i style="width:${c.total}%;background:${PALETTE[P.candidates.indexOf(c)%PALETTE.length]}"></i></span><span style="font-family:var(--mono);font-weight:700">${c.total}</span></div>`).join('')}
@@ -1074,32 +1146,32 @@ function buildReport(p){
  const sorted=(p.candidates||[]).slice().sort((x,y)=>y.total-x.total);
  const nexts=[];
  const openHi=(p.critiques||[]).filter(c=>c.status==='未対応'&&c.sev==='高');
- if(openHi.length)nexts.push(`重要度「高」の未対応指摘（${openHi.map(c=>c.cat).join('・')}）への対応方針を決定する。`);
+ if(openHi.length)nexts.push(`重要度「高」の未対応指摘（${openHi.map(c=>esc(c.cat)).join('・')}）への対応方針を決定する。`);
  const adopted=(p.candidates||[]).filter(c=>c.status==='採択');
- if(adopted.length)nexts.push(`採択した仮説（${adopted.map(c=>c.label).join('・')}）について、検証計画と棄却条件を具体化する。`);
+ if(adopted.length)nexts.push(`採択した仮説（${adopted.map(c=>esc(c.label)).join('・')}）について、検証計画と棄却条件を具体化する。`);
  if(ev.filter(e=>e.stance==='support'&&(e.reliability||0)>=75).length<2)nexts.push('信頼性の高い支持根拠（査読論文・公的報告・計測データ）を追加収集する。');
  if(p.ethics&&p.ethics.some(i=>i.level==='要確認'))nexts.push('研究倫理・安全の要確認事項について、関係者と対応方針を合意する。');
- if(p.plan)nexts.push(`「${p.plan.methods[0].n}」による予備検証の実施計画（期間・費用・担当）を作成する。`);
+ if(p.plan)nexts.push(`「${esc(p.plan.methods[0].n)}」による予備検証の実施計画（期間・費用・担当）を作成する。`);
  if(!nexts.length)nexts.push('研究フローを実行し、評価結果を確認する。');
  const tdone=p.tasks.filter(t=>t.status==='done').length;
  return`<div class="rp-title"><div class="rp-kicker">RIHRP 研究報告書（ドラフト）</div><div class="rp-name">Research Inspiration &amp; Hypothesis Refinement Platform／研究着想・仮説洗練プラットフォーム</div><h1>${esc(p.title)}</h1>
- <table class="rp-meta"><tr><th>研究分野</th><td>${F?esc(F.name):'—'}</td><th>改訂</th><td>r${p.revision||1}</td></tr><tr><th>作成日時</th><td>${esc(p.reportAt||nowStr())}</td><th>工程</th><td>${tdone}/${p.tasks.length} 完了</td></tr></table>
+ <table class="rp-meta"><tr><th>研究分野</th><td>${F?esc(F.name):'—'}</td><th>改訂</th><td>r${Math.max(1,Math.floor(num(p.revision,0)))}</td></tr><tr><th>作成日時</th><td>${esc(p.reportAt||nowStr())}</td><th>工程</th><td>${Math.floor(num(tdone,0))}/${p.tasks.length} 完了</td></tr></table>
  <p class="rp-warn">本報告書は、オフライン環境のルールベース・シミュレーションにより自動生成した草案です。AIモデルによる推論ではなく、内蔵資料はすべて架空の模擬データです。評価値は例示指標であり、科学的な真偽や新規性を保証しません。</p></div>
  <h2>1. 研究概要</h2><h3>背景・目的</h3><p>${esc(p.background)||'—'}</p><h3>前提条件・適用範囲</h3><p>${esc(p.conditions)||'—'}</p>
  <h3>研究条件・制約</h3><p>予算：${esc(p.constraints.budget)}　期間：${esc(p.constraints.period)}　安全性・倫理重視：${p.constraints.safety?'あり':'なし'}</p>
  <h2>2. 主仮説と構造</h2><blockquote>${esc(p.hypothesis)}</blockquote>
- ${a?`<table><tr><th>独立変数</th><td>${esc(a.iv)}</td><th>従属変数</th><td>${esc(a.dv)}</td></tr><tr><th>変化の方向</th><td>${esc(a.dir||'—')}</td><th>数値基準</th><td>${esc(a.nums.join('、')||'なし')}</td></tr><tr><th>因果メカニズム</th><td>${a.hasMech?'記述あり':'記述なし'}</td><th>適用条件／対照</th><td>${a.hasCond?'あり':'なし'}／${a.hasComp?'あり':'なし'}</td></tr></table><p>構造スコア：${a.quality} / 5</p>`:na}
- <h2>3. 研究作業の実行状況</h2><table><tr><th>タスク</th><th>担当</th><th>状態</th><th>完了日時</th></tr>${TASK_DEFS.map(d=>{const t=task(p,d.key);return`<tr><td>${esc(d.name)}</td><td>${AGENTS[d.agent].name}</td><td>${ST_LABEL[t.status]}</td><td>${esc(t.endedAt||'—')}</td></tr>`}).join('')}</table>
+ ${a?`<table><tr><th>独立変数</th><td>${esc(a.iv)}</td><th>従属変数</th><td>${esc(a.dv)}</td></tr><tr><th>変化の方向</th><td>${esc(a.dir||'—')}</td><th>数値基準</th><td>${esc(a.nums.join('、')||'なし')}</td></tr><tr><th>因果メカニズム</th><td>${a.hasMech?'記述あり':'記述なし'}</td><th>適用条件／対照</th><td>${a.hasCond?'あり':'なし'}／${a.hasComp?'あり':'なし'}</td></tr></table><p>構造スコア：${Math.round(num(a.quality,0))} / 5</p>`:na}
+ <h2>3. 研究作業の実行状況</h2><table><tr><th>タスク</th><th>担当</th><th>状態</th><th>完了日時</th></tr>${TASK_DEFS.map(d=>{const t=task(p,d.key);return`<tr><td>${esc(d.name)}</td><td>${AGENTS[d.agent].name}</td><td>${esc(ST_LABEL[t.status]||t.status||'')}</td><td>${esc(t.endedAt||'—')}</td></tr>`}).join('')}</table>
  <h2>4. 根拠の整理</h2>${ev.length?`<p>関連資料${ev.length}件（支持${ev.filter(e=>e.stance==='support').length}件・反証${ev.filter(e=>e.stance==='contradict').length}件・中立${ev.filter(e=>e.stance==='neutral').length}件）、平均信頼性${avgRel(ev)!=null?avgRel(ev):'—'}点。</p>
- <table><tr><th>資料</th><th>種別</th><th>年</th><th>立場</th><th>信頼性</th><th>関連度</th></tr>${ev.slice(0,12).map(e=>`<tr><td>${esc(e.title)}${e.source==='builtin'?'〔架空〕':'〔取込〕'}${e.note?`<br><small>${esc(e.note)}</small>`:''}</td><td>${esc(e.type)}</td><td>${esc(e.year)}</td><td>${STANCE[e.stance]}</td><td>${e.reliability!=null?e.reliability:'—'}</td><td>${e.relevance}</td></tr>`).join('')}</table>`:na}
- <h2>5. 批判・反証レビュー</h2>${p.critiques?`<table><tr><th>重要度</th><th>観点</th><th>指摘</th><th>状態</th></tr>${p.critiques.map(c=>`<tr><td>${c.sev}</td><td>${esc(c.cat)}</td><td>${esc(c.text)}<br><small>改善案：${esc(c.sug)}</small></td><td>${c.status}</td></tr>`).join('')}</table>`:na}
+ <table><tr><th>資料</th><th>種別</th><th>年</th><th>立場</th><th>信頼性</th><th>関連度</th></tr>${ev.slice(0,12).map(e=>`<tr><td>${esc(e.title)}${e.source==='builtin'?'〔架空〕':'〔取込〕'}${e.note?`<br><small>${esc(e.note)}</small>`:''}</td><td>${esc(e.type)}</td><td>${esc(e.year)}</td><td>${esc(STANCE[e.stance]||e.stance||'')}</td><td>${e.reliability!=null?Math.round(num(e.reliability,0)):'—'}</td><td>${Math.round(num(e.relevance,0))}</td></tr>`).join('')}</table>`:na}
+ <h2>5. 批判・反証レビュー</h2>${p.critiques?`<table><tr><th>重要度</th><th>観点</th><th>指摘</th><th>状態</th></tr>${p.critiques.map(c=>`<tr><td>${esc(c.sev)}</td><td>${esc(c.cat)}</td><td>${esc(c.text)}<br><small>改善案：${esc(c.sug)}</small></td><td>${esc(c.status)}</td></tr>`).join('')}</table>`:na}
  ${p.falsification?`<h3>棄却条件</h3><ol>${p.falsification.map(f=>`<li>${esc(f)}</li>`).join('')}</ol>`:''}
- <h2>6. 検証計画</h2>${p.plan?`<p><b>研究デザイン：</b>${esc(p.plan.design)}。${esc(p.plan.levels)}。</p><ul>${p.plan.methods.map((m,i)=>`<li>${i===0?'主':i===1?'補':'代替'}：${esc(m.n)}（費用${m.cost}/5・期間${m.time}/5・妥当性${m.val}/5）</li>`).join('')}</ul>
- <table><tr><th>区分</th><th>変数</th><th>単位</th><th>測定方法</th></tr>${p.plan.measures.map(m=>`<tr><td>${m.role}</td><td>${esc(m.n)}</td><td>${esc(m.u)}</td><td>${esc(m.m)}</td></tr>`).join('')}${p.plan.controls.map(m=>`<tr><td>統制変数</td><td>${esc(m.n)}</td><td>${esc(m.u)}</td><td>${esc(m.m)}</td></tr>`).join('')}</table>`:na}
- <h2>7. 研究倫理・安全</h2>${p.ethics?`<table><tr><th>区分</th><th>項目</th><th>対応方針</th></tr>${p.ethics.map(i=>`<tr><td>${i.level}</td><td>${esc(i.text)}</td><td>${esc(i.action)}</td></tr>`).join('')}</table>`:na}
+ <h2>6. 検証計画</h2>${p.plan?`<p><b>研究デザイン：</b>${esc(p.plan.design)}。${esc(p.plan.levels)}。</p><ul>${p.plan.methods.map((m,i)=>`<li>${i===0?'主':i===1?'補':'代替'}：${esc(m.n)}（費用${num(m.cost,3)}/5・期間${num(m.time,3)}/5・妥当性${num(m.val,3)}/5）</li>`).join('')}</ul>
+ <table><tr><th>区分</th><th>変数</th><th>単位</th><th>測定方法</th></tr>${p.plan.measures.map(m=>`<tr><td>${esc(m.role)}</td><td>${esc(m.n)}</td><td>${esc(m.u)}</td><td>${esc(m.m)}</td></tr>`).join('')}${p.plan.controls.map(m=>`<tr><td>統制変数</td><td>${esc(m.n)}</td><td>${esc(m.u)}</td><td>${esc(m.m)}</td></tr>`).join('')}</table>`:na}
+ <h2>7. 研究倫理・安全</h2>${p.ethics?`<table><tr><th>区分</th><th>項目</th><th>対応方針</th></tr>${p.ethics.map(i=>`<tr><td>${esc(i.level)}</td><td>${esc(i.text)}</td><td>${esc(i.action)}</td></tr>`).join('')}</table>`:na}
  <h2>8. 複数AI討論の記録</h2>${p.debate.length?`<table><tr><th>ラウンド</th><th>発言者</th><th>内容</th></tr>${p.debate.map(m=>`<tr><td>${esc((ROUND_T[m.round]||'').split('　')[0])}</td><td>${esc(AGENTS[m.agent].name)}</td><td>${esc(m.text)}</td></tr>`).join('')}</table>`:na}
- <h2>9. 新仮説の比較</h2>${sorted.length?`<p>重み：根拠${p.weights.evidence}・検証可能性${p.weights.testability}・実験負担の低さ${p.weights.burden}・重要性${p.weights.importance}・新規性${p.weights.novelty}</p>
- <table><tr><th>仮説</th><th>内容</th><th>根拠</th><th>検証</th><th>負担</th><th>重要</th><th>新規</th><th>総合</th><th>判断</th></tr>${sorted.map(c=>`<tr><td>${c.label}<br><small>${esc(c.type)}</small></td><td>${esc(c.text)}</td><td>${c.scores.evidence}</td><td>${c.scores.testability}</td><td>${c.scores.burden}</td><td>${c.scores.importance}</td><td>${c.scores.novelty}</td><td><b>${c.total}</b></td><td>${esc(c.status)}</td></tr>`).join('')}</table>`:na}
+ <h2>9. 新仮説の比較</h2>${sorted.length?`<p>重み：根拠${num(p.weights.evidence,0)}・検証可能性${num(p.weights.testability,0)}・実験負担の低さ${num(p.weights.burden,0)}・重要性${num(p.weights.importance,0)}・新規性${num(p.weights.novelty,0)}</p>
+ <table><tr><th>仮説</th><th>内容</th><th>根拠</th><th>検証</th><th>負担</th><th>重要</th><th>新規</th><th>総合</th><th>判断</th></tr>${sorted.map(c=>`<tr><td>${esc(c.label)}<br><small>${esc(c.type)}</small></td><td>${esc(c.text)}</td><td>${Math.round(num(c.scores.evidence,0))}</td><td>${Math.round(num(c.scores.testability,0))}</td><td>${Math.round(num(c.scores.burden,0))}</td><td>${Math.round(num(c.scores.importance,0))}</td><td>${Math.round(num(c.scores.novelty,0))}</td><td><b>${Math.round(num(c.total,0))}</b></td><td>${esc(c.status)}</td></tr>`).join('')}</table>`:na}
  <h2>10. 研究者の判断記録と所見</h2>${p.decisions.length?`<ul>${p.decisions.slice(-30).map(d=>`<li><small>${esc(d.at)}</small>　${esc(d.text)}</li>`).join('')}</ul>`:'<p>判断記録はありません。</p>'}
  ${p.reportNote?`<h3>研究者所見</h3><p class="pre">${esc(p.reportNote)}</p>`:''}
  <h2>11. 次のステップ（提案）</h2><ol>${nexts.map(n=>`<li>${esc(n)}</li>`).join('')}</ol>
@@ -1160,7 +1232,7 @@ root.addEventListener('click',async e=>{
   case'playDebate':playDebate();renderDebateCtrls();break;
   case'pausePlay':stopPlay();renderChat();renderDebateCtrls();break;
   case'showAll':stopPlay();P.debateShown=P.debate.length;touch();renderChat();renderDebateCtrls();break;
-  case'regenDebate':{if(!P.hypothesis.trim())return;stopPlay();const t=task(P,'debate');if(t.status==='done'||t.status==='approval'){EFFECTS.debate(P);log('↻ 討論を再生成');touch();render();setTimeout(playDebate,200)}else runUpTo('debate');break}
+  case'regenDebate':{if(!P.hypothesis.trim())return;stopPlay();const t=task(P,'debate');if(t.status==='done'||t.status==='approval'){EFFECTS.debate(P);log('↻ 討論を再生成');touch();render();later(playDebate,200)}else runUpTo('debate');break}
   case'chip':RT.draft=el.dataset.t;{const d=$('#draft');if(d){d.value=RT.draft;d.focus()}}break;
   case'send':sendInterject();break;
   case'importEv':if(!P.hypothesis.trim()){toast('研究仮説を入力してください');return}$('#fileEv').click();break;
@@ -1199,11 +1271,11 @@ root.addEventListener('input',e=>{
  }
  if(t.id==='draft')RT.draft=t.value;
  if(t.dataset.w){P.weights[t.dataset.w]=+t.value;const b=root.querySelector(`[data-wv="${t.dataset.w}"]`);if(b)b.textContent=t.value;scoreAll(P);touch();
-  clearTimeout(RT.wT);RT.wT=setTimeout(()=>{const y=window.scrollY;render();window.scrollTo(0,y)},180)}
+  clearTimeout(RT.wT);RT.wT=later(()=>{const y=window.scrollY;render();window.scrollTo(0,y)},180)}
 },{signal:ac.signal});
-root.addEventListener('change',e=>{
+root.addEventListener('change',async e=>{
  const t=e.target;
- if(t.id==='projSel'){stopOrch();stopPlay();P=DB.projects.find(p=>p.id===t.value)||P;DB.currentId=P.id;RT.cmpSel=null;RT.draft='';touch();render();return}
+ if(t.id==='projSel'){await flush();stopOrch();stopPlay();P=DB.projects.find(p=>p.id===t.value)||P;DB.currentId=P.id;RT.cmpSel=null;RT.draft='';touch();render();return}
  if(t.id==='speedSel'){DB.settings.speed=+t.value;try{localStorage.setItem('rihrp_speed',String(t.value))}catch(e){}touch();return}
  if(t.id==='fileJson'){if(t.files[0])importAll(t.files[0]);t.value='';return}
  if(t.id==='fileEv'){if(t.files.length)importEvidenceFiles(t.files);t.value='';return}
@@ -1217,12 +1289,14 @@ root.addEventListener('change',e=>{
  if(t.dataset.cmp){const id=t.dataset.cmp;RT.cmpSel=RT.cmpSel||[];if(t.checked){if(!RT.cmpSel.includes(id))RT.cmpSel.push(id)}else RT.cmpSel=RT.cmpSel.filter(x=>x!==id);const y=window.scrollY;render();window.scrollTo(0,y)}
 },{signal:ac.signal});
 root.addEventListener('keydown',e=>{if(e.target.id==='draft'&&e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();sendInterject()}},{signal:ac.signal});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')void flush()},{signal:ac.signal});
 
 
  let destroyed=false;
  const api={
-  async start(){ await load(); render(); },
-  destroy(){ destroyed=true; ac.abort(); clearTimeout(RT.saveT); clearInterval(RT.timer); clearInterval(RT.playTimer); save(); root.innerHTML=''; },
+  async start(){ const ok=await load(); if(aborted()||!ok)return; render(); },
+  flush(){ return flush(); },
+  destroy(){ destroyed=true; ac.abort(); clearInterval(RT.timer); clearInterval(RT.playTimer); timers.forEach(t=>clearTimeout(t)); timers.clear(); void flush(); root.innerHTML=''; },
  };
  return api;
 }

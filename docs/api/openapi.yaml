@@ -193,7 +193,7 @@ components:
       title: ReportUpdate
       type: object
     ResearchDocIn:
-      description: 研究ワークスペース文書の保存入力（楽観ロック付き）。
+      description: 研究ワークスペース文書の保存入力（楽観ロック付き・形状検証あり）。
       properties:
         expected_version:
           minimum: 0.0

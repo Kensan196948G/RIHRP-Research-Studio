@@ -10,7 +10,7 @@ async function login(page: Page): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("メールアドレス").fill(EMAIL);
   await page.getByLabel("パスワード").fill(PASSWORD);
-  await page.getByRole("button", { name: "サインイン" }).click();
+  await page.getByRole("button", { name: "サインイン", exact: true }).click();
   await expect(page.locator(".topbar")).toBeVisible();
 }
 
@@ -388,6 +388,92 @@ test("P-05/P-06 テキスト保存と JSON 保存", async ({ page }) => {
     page.getByRole("button", { name: "JSONで保存" }).click(),
   ]);
   expect(json.suggestedFilename()).toContain(".json");
+});
+
+test("保存待ちの編集はテーマ切替で失われない（flush）", async ({ page }) => {
+  await openStudio(page);
+  await selectMain(page);
+  // 前提を固定（先行テストの改訂で仮説が変わっている可能性がある）
+  await page.locator('textarea[data-bind="hypothesis"]').fill(HYPOTHESIS);
+  await expect
+    .poll(async () => saveState(page), { timeout: 10_000 })
+    .toBe("サーバーに自動保存済み");
+
+  const newTitle = "切替テスト研究";
+  const newHypothesis = "切替テストの仮説。洗掘深を30%低減する。";
+  const beforeCount = await page.locator("#projSel option").count();
+  await page.getByRole("button", { name: "＋ 新規研究" }).click();
+  // サーバー作成は非同期のため、完了（選択肢の増加とタイトルの初期値）を待ってから入力する
+  await expect(page.locator("#projSel option")).toHaveCount(beforeCount + 1);
+  await expect(page.locator('input[data-bind="title"]')).toHaveValue("新しい研究テーマ");
+  await page.locator('input[data-bind="title"]').fill(newTitle);
+  await page.locator('textarea[data-bind="hypothesis"]').fill(newHypothesis);
+
+  // デバウンス（500ms）を待たずに切替 → flush されていなければ失われる
+  await page.selectOption("#projSel", { label: TITLE });
+  await expect(page.locator('textarea[data-bind="hypothesis"]')).toHaveValue(HYPOTHESIS);
+
+  await page.selectOption("#projSel", { label: newTitle });
+  await expect(page.locator('textarea[data-bind="hypothesis"]')).toHaveValue(newHypothesis);
+
+  // 後片付け
+  page.on("dialog", (dialog) => void dialog.accept());
+  await page.getByRole("button", { name: "この研究を削除" }).click();
+  await expect(page.locator(`#projSel option:has-text("${newTitle}")`)).toHaveCount(0);
+});
+
+test("保存待ちの編集はログアウトでも失われない（flush）", async ({ page }) => {
+  await openStudio(page);
+  await selectMain(page);
+  const value = `${HYPOTHESIS} ログアウト前の保存確認。`;
+  await page.locator('textarea[data-bind="hypothesis"]').fill(value);
+
+  await page.locator('[data-act="logout"]').click();
+  await expect(page).toHaveURL(/\/login/);
+
+  await openStudio(page);
+  await selectMain(page);
+  await expect(page.locator('textarea[data-bind="hypothesis"]')).toHaveValue(value);
+});
+
+test("保存済みデータ由来の XSS が成立しない", async ({ page }) => {
+  await openStudio(page);
+  await selectMain(page);
+
+  const projects = (await (await page.request.get("/api/projects")).json()) as {
+    projects: { id: string; title: string }[];
+  };
+  const target = projects.projects.find((item) => item.title === TITLE);
+  expect(target).toBeTruthy();
+  const doc = (await (
+    await page.request.get(`/api/projects/${target!.id}/research`)
+  ).json()) as { version: number; payload: Record<string, unknown> };
+
+  const malicious = JSON.parse(JSON.stringify(doc.payload)) as Record<string, unknown>;
+  malicious.title = 'XSS<img src=x onerror="window.__xss=1">';
+  malicious.hypothesis = "<script>window.__xss=2</script>仮説";
+  const csrf = (await page.context().cookies()).find((cookie) => cookie.name === "rihrp_csrf")?.value;
+  const headers = { "X-CSRF-Token": csrf ?? "" };
+
+  const put = await page.request.put(`/api/projects/${target!.id}/research`, {
+    headers,
+    data: { expected_version: doc.version, payload: malicious },
+  });
+  expect(put.ok()).toBe(true);
+  const saved = (await put.json()) as { version: number };
+
+  await page.reload();
+  await page.locator('#nav .navitem[data-v="report"]').click();
+  await expect(page.locator("#reportBody h1")).toContainText("<img");
+  expect(await page.evaluate(() => (window as unknown as { __xss?: number }).__xss)).toBeUndefined();
+  expect(await page.locator('#reportBody img[src="x"]').count()).toBe(0);
+  expect(await page.locator("#reportBody script").count()).toBe(0);
+
+  // 元に戻す
+  await page.request.put(`/api/projects/${target!.id}/research`, {
+    headers,
+    data: { expected_version: saved.version, payload: doc.payload },
+  });
 });
 
 test("S-05/S-06 JSON 保存と読込", async ({ page }) => {

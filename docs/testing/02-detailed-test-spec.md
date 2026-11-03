@@ -210,7 +210,7 @@
 ## 13. 実行結果（2026-11-03 / AI 実測）
 
 実行コマンド: `cd apps/web && npm run build && npx playwright test`（Chromium 1280×900 / 390×844、実 PostgreSQL `rihrp_test`）
-結果: **18 passed / 0 failed（37.7s）**。API 側は `pytest`（106 passed / 1 skipped）で補完。
+結果: **21 passed / 0 failed（44.6s）**。API 側は `pytest`（115 passed / 1 skipped）で補完。
 
 | テスト項目 | 自動テスト（`apps/web/e2e/studio.spec.ts` / `tests/`） | 結果 |
 |---|---|---|
@@ -236,7 +236,9 @@
 | G-01 / G-02 / G-03 | `G-01/G-02/G-03 ログイン・管理導線・ログアウト` | PASS |
 | R-08 / R-09 | `R-08/R-09 改訂の記録と復元` | PASS |
 | R-11 | `R-11 架空の研究事例を追加できる` | PASS |
-| X-02（409 競合） / X-03（401） / X-04（viewer 403） / X-07（413） / X-09（監査） | `tests/integration/test_research_document.py`（10 件） | PASS |
+| X-02（409 競合） / X-03（401） / X-04（viewer 403） / X-07（413） / X-09（監査） / payload 形状 422 | `tests/integration/test_research_document.py`（19 件） | PASS |
+| X-01 保存の取りこぼし（テーマ切替・ログアウト） | `保存待ちの編集はテーマ切替/ログアウトで失われない（flush）` | PASS |
+| XSS（保存データ由来） | `保存済みデータ由来の XSS が成立しない` | PASS |
 | G-05（CSRF） | 既存 `tests/integration/test_auth_rbac.py` | PASS |
 | S-03 / S-11 / S-12 / S-14 | `S-03`（切替）は自動、他は手動 | PASS（S-03 自動） |
 | A-01〜A-03 / A-05 / A-06 | 未自動化（キーボード・ARIA・コントラストの目視確認） | 未検証 |

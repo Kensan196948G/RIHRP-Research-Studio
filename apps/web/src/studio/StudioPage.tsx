@@ -8,6 +8,7 @@ import studioCss from "./studio.css?inline";
 type StudioHandle = {
   start: () => Promise<void>;
   destroy: () => void;
+  flush: () => Promise<unknown>;
 };
 
 /**
@@ -25,6 +26,7 @@ export function StudioPage() {
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    const controller = new AbortController();
     const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
     shadow.innerHTML = "";
     const style = document.createElement("style");
@@ -34,14 +36,21 @@ export function StudioPage() {
     root.className = "studio-root";
     shadow.appendChild(root);
 
-    const studio = createStudio(root, {
+    let studio: StudioHandle | null = null;
+    studio = createStudio(root, {
       ...studioHost,
       onAdmin: () => navigate("/audit"),
       onLogout: () => {
-        void logout().finally(() => navigate("/login", { replace: true }));
+        void (async () => {
+          try {
+            await studio?.flush();
+          } finally {
+            await logout().finally(() => navigate("/login", { replace: true }));
+          }
+        })();
       },
       onConflict: () => window.location.reload(),
-    }) as StudioHandle;
+    }, { signal: controller.signal }) as StudioHandle;
 
     let disposed = false;
     void studio.start().catch((error: unknown) => {
@@ -68,7 +77,8 @@ export function StudioPage() {
 
     return () => {
       disposed = true;
-      studio.destroy();
+      controller.abort();
+      studio?.destroy();
     };
   }, [navigate, logout]);
 

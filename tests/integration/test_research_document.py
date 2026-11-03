@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -164,3 +165,50 @@ def test_project_delete_cascades_document(client: TestClient, users: dict[str, s
 
     with SessionLocal() as db:
         assert db.get(ResearchDocument, project_id) is None
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"revisions": "not-a-list"},
+        {"tasks": [{"key": "struct", "status": "bogus"}]},
+        {"evidence": [{"stance": "bogus"}]},
+        {"critiques": [{"sev": "超高"}]},
+        {"candidates": [{"status": "unknown"}]},
+        {"weights": {"evidence": "high"}},
+        {"revision": "1"},
+        {"title": ["配列は不可"]},
+    ],
+)
+def test_invalid_payload_rejected(client: TestClient, users: dict[str, str], payload: dict) -> None:
+    login(client)
+    project_id = create_project(client)
+
+    response = client.put(
+        f"/api/projects/{project_id}/research",
+        json={"expected_version": 0, "payload": payload},
+    )
+
+    assert response.status_code == 422
+
+
+def test_valid_nested_payload_accepted(client: TestClient, users: dict[str, str]) -> None:
+    login(client)
+    project_id = create_project(client)
+    payload = {
+        "title": "検証",
+        "revision": 2,
+        "tasks": [{"key": "struct", "status": "done", "progress": 100, "runs": 1}],
+        "evidence": [{"title": "資料", "stance": "support", "relevance": 50}],
+        "critiques": [{"sev": "高", "status": "未対応"}],
+        "candidates": [{"label": "H1", "status": "採択", "scores": {"evidence": 10}}],
+        "weights": {"evidence": 25},
+    }
+
+    response = client.put(
+        f"/api/projects/{project_id}/research",
+        json={"expected_version": 0, "payload": payload},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["payload"]["tasks"][0]["status"] == "done"

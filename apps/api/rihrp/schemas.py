@@ -215,8 +215,89 @@ def content_to_dict(content: ReportContentIn) -> dict[str, Any]:
     return {"sections": sections}
 
 
+ALLOWED_TASK_STATUSES = {"blocked", "ready", "running", "approval", "done"}
+ALLOWED_STANCES = {"support", "contradict", "neutral"}
+ALLOWED_CRITIQUE_SEVERITIES = {"高", "中", "低"}
+ALLOWED_CRITIQUE_STATUSES = {"未対応", "対応済", "却下"}
+ALLOWED_CANDIDATE_STATUSES = {"候補", "採択", "保留", "却下", "主仮説"}
+RESEARCH_TEXT_FIELDS = ("title", "hypothesis", "background", "conditions", "reportNote", "field")
+RESEARCH_ARRAY_FIELDS = (
+    "revisions",
+    "tasks",
+    "evidence",
+    "debate",
+    "candidates",
+    "decisions",
+    "logs",
+    "critiques",
+    "falsification",
+    "ethics",
+)
+
+
 class ResearchDocIn(BaseModel):
-    """研究ワークスペース文書の保存入力（楽観ロック付き）。"""
+    """研究ワークスペース文書の保存入力（楽観ロック付き・形状検証あり）。"""
 
     expected_version: int = Field(ge=0)
     payload: dict[str, Any]
+
+    @field_validator("payload")
+    @classmethod
+    def _payload_shape(cls, value: dict[str, Any]) -> dict[str, Any]:
+        for key in RESEARCH_TEXT_FIELDS:
+            if key in value and not isinstance(value[key], str):
+                raise ValueError(f"{key} は文字列で指定してください。")
+        if "revision" in value:
+            revision = value["revision"]
+            if not isinstance(revision, int) or isinstance(revision, bool) or revision < 0:
+                raise ValueError("revision は 0 以上の整数で指定してください。")
+        for key in RESEARCH_ARRAY_FIELDS:
+            if key in value and value[key] is not None and not isinstance(value[key], list):
+                raise ValueError(f"{key} は配列で指定してください。")
+        for task in value.get("tasks") or []:
+            if not isinstance(task, dict):
+                raise ValueError("tasks の要素はオブジェクトで指定してください。")
+            status = task.get("status")
+            if status is not None and status not in ALLOWED_TASK_STATUSES:
+                raise ValueError("tasks.status が不正です。")
+            progress = task.get("progress")
+            if progress is not None and (
+                not isinstance(progress, (int, float)) or isinstance(progress, bool)
+            ):
+                raise ValueError("tasks.progress は数値で指定してください。")
+        for evidence in value.get("evidence") or []:
+            if not isinstance(evidence, dict):
+                raise ValueError("evidence の要素はオブジェクトで指定してください。")
+            stance = evidence.get("stance")
+            if stance is not None and stance not in ALLOWED_STANCES:
+                raise ValueError("evidence.stance が不正です。")
+        for critique in value.get("critiques") or []:
+            if not isinstance(critique, dict):
+                raise ValueError("critiques の要素はオブジェクトで指定してください。")
+            sev = critique.get("sev")
+            if sev is not None and sev not in ALLOWED_CRITIQUE_SEVERITIES:
+                raise ValueError("critiques.sev が不正です。")
+            status = critique.get("status")
+            if status is not None and status not in ALLOWED_CRITIQUE_STATUSES:
+                raise ValueError("critiques.status が不正です。")
+        for candidate in value.get("candidates") or []:
+            if not isinstance(candidate, dict):
+                raise ValueError("candidates の要素はオブジェクトで指定してください。")
+            status = candidate.get("status")
+            if status is not None and status not in ALLOWED_CANDIDATE_STATUSES:
+                raise ValueError("candidates.status が不正です。")
+            scores = candidate.get("scores")
+            if scores is not None:
+                if not isinstance(scores, dict):
+                    raise ValueError("candidates.scores はオブジェクトで指定してください。")
+                for score in scores.values():
+                    if not isinstance(score, (int, float)) or isinstance(score, bool):
+                        raise ValueError("candidates.scores の値は数値で指定してください。")
+        weights = value.get("weights")
+        if weights is not None:
+            if not isinstance(weights, dict):
+                raise ValueError("weights はオブジェクトで指定してください。")
+            for weight in weights.values():
+                if not isinstance(weight, (int, float)) or isinstance(weight, bool):
+                    raise ValueError("weights の値は数値で指定してください。")
+        return value
