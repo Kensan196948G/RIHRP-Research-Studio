@@ -1,0 +1,79 @@
+name: E2E (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright (studio)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      RIHRP_ENV: development
+      RIHRP_DATABASE_URL: postgresql+psycopg://rihrp_app:ci-password@127.0.0.1:5432/rihrp_test
+      RIHRP_TEST_DATABASE_URL: postgresql+psycopg://rihrp_app:ci-password@127.0.0.1:5432/rihrp_test
+      RIHRP_COOKIE_SECURE: "false"
+      RIHRP_TRUST_CF_ACCESS: "false"
+      RIHRP_SEED_DEMO: "false"
+      PGPASSWORD: ci-postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Create the E2E database (owner = app role)
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres <<'SQL'
+          CREATE ROLE rihrp_app LOGIN PASSWORD 'ci-password';
+          CREATE DATABASE rihrp_test OWNER rihrp_app;
+          SQL
+      - name: Install Python dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -q -e ".[dev]"
+      - name: Install web dependencies and build
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm run build
+      - name: Install Playwright Chromium
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+      - name: Run E2E
+        working-directory: apps/web
+        run: npx playwright test
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
