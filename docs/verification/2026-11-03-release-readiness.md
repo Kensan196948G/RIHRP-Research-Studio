@@ -25,8 +25,8 @@
 
 | 項目 | 結果 |
 |---|---|
-| pytest | 148 collected / **147 passed / 1 skipped**（78.9s） |
-| 追加テスト | 同時承認の直列化（NFR-16）、行ロックの排他性、監査統計の保持超過件数 |
+| pytest | 149 collected / **148 passed / 1 skipped**（監査ログ削除テスト追加後） |
+| 追加テスト | 同時承認の直列化（NFR-16）、行ロックの排他性、監査統計の保持超過件数、監査ログ削除の dry-run/commit |
 | vitest | 10 passed |
 | Playwright E2E | 26 passed |
 | ruff check / format | pass |

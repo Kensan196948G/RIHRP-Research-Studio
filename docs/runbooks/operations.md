@@ -124,6 +124,9 @@ infra/native/rihrp-restore-check.sh
 | `rihrp-restore-check.timer` | 毎週日曜 04:30 | 最新の `<db>-*.dump` を復元し、SHA-256・migration・manifest の件数を検証 | `systemctl --user start rihrp-restore-check.service` |
 | `rihrp-healthcheck.timer` | 起動 2 分後、以降 5 分間隔 | `/healthz` と `/readyz` のチェック。失敗で非 0 | `systemctl --user start rihrp-healthcheck.service` |
 
+`rihrp-audit-purge.timer`（毎日 05:00・監査ログ削除）はインストールされるが**既定で無効**
+（§8 の承認後に有効化する）。
+
 ```bash
 systemctl --user list-timers 'rihrp-*' --all
 systemctl --user status rihrp-backup.timer rihrp-healthcheck.timer
@@ -163,16 +166,34 @@ journalctl --user -u rihrp-restore-check.service -n 50 --no-pager
 | 外部合成監視（別ホスト・外形サービス） | **未実装**（別ホストからの監視と通知先の選定が必要） |
 | ダッシュボード / アラート配信 | **未設定**（`RIHRP_ALERT_WEBHOOK` を設定すると webhook 通知） |
 
-## 8. 監査ログの保持
+## 8. 監査ログの保持（365 日・削除は承認制）
 
-- 保持期間の設定値は `RIHRP_AUDIT_RETENTION_DAYS`（既定 365 日）。
-- **削除ジョブは未実装**（保持方針の決定後に追加する）。判断材料として件数だけ確認できる:
+- 方針: **365 日**（2026-11-03 決定、[ADR-0006](../adr/0006-audit-retention.md)）。
+- 既定では削除しない。件数の確認:
 
 ```bash
 set -a; source "$HOME/.config/rihrp/rihrp.conf"; set +a
 .venv/bin/python -m rihrp.maintenance audit-stats
 # audit events: total=... older_than_retention=... retention_days=365
 ```
+
+- **dry-run（削除しない）**:
+
+```bash
+.venv/bin/python -m rihrp.maintenance purge-audit --days 365
+```
+
+- **実際の削除（承認時のみ）**: `RIHRP_ALLOW_AUDIT_PURGE=1` と `--commit` の両方が必要。
+  所有者ロールで 1 トランザクション内にトリガーを一時無効化し、削除後に再有効化する。
+
+```bash
+RIHRP_ALLOW_AUDIT_PURGE=1 .venv/bin/python -m rihrp.maintenance purge-audit --days 365 --commit
+```
+
+- 自動実行は `rihrp-audit-purge.timer`（毎日 05:00）。**インストーラは有効化しない**。
+  承認後に `systemctl --user enable --now rihrp-audit-purge.timer` を実行する。
+- 実行前に `infra/native/rihrp-backup.sh` でバックアップを取得する。削除は不可逆で、
+  実行中は `audit_events` に短時間の ACCESS EXCLUSIVE ロックがかかる。
 
 ## 9. リリース
 

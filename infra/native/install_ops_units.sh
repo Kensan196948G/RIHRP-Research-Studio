@@ -14,6 +14,8 @@ UNITS=(
   rihrp-maintenance.timer
   rihrp-healthcheck.service
   rihrp-healthcheck.timer
+  rihrp-audit-purge.service
+  rihrp-audit-purge.timer
 )
 TIMERS=(rihrp-backup.timer rihrp-restore-check.timer rihrp-maintenance.timer rihrp-healthcheck.timer)
 
@@ -42,3 +44,5 @@ for timer in "${TIMERS[@]}"; do
 done
 
 systemctl --user list-timers 'rihrp-*' --all --no-pager
+printf '\n注意: rihrp-audit-purge.timer は監査ログを削除するため既定では有効化しません。\n'
+printf '承認後に次を実行してください: systemctl --user enable --now rihrp-audit-purge.timer\n'
