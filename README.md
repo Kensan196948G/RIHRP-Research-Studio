@@ -220,6 +220,7 @@ npx playwright test          # 26 passed（Chromium）
 | ダッシュボード / 検証結果 / 監査 / 利用者管理 | 実装済み | UI 実測（スクリーンショット） |
 | systemd 配備 / health check | 実装済み | 実測（第 10 章） |
 | GitHub Actions CI | 実装済み | run `41513750337` success（API / Web / Secret scan） |
+| 依存脆弱性の自動監査（週次 / PR paths / 手動） | 実装済み | `.github/workflows/dependency-audit.yml`（PR #16）。run `42374269050` success（Python / Node）。`docs/verification/2026-11-07-dependency-audit.md` |
 | Cloudflare Tunnel / Access | 実装済み | `research.mirai-dx-platform.com`（未認証 302）。`docs/verification/2026-11-03.md` |
 | WebUI（Offline Research Studio・6 ステップ） | 実装済み | `apps/web/src/studio/`、E2E `apps/web/e2e/studio.spec.ts`（26 件） |
 | Cloudflare Access 自動ログイン（JWT 検証） | 実装済み | `tests/unit/test_cf_access.py`（25 件）、`tests/integration/test_access_login.py`（12 件）、`apps/web/src/auth.test.tsx`（4 件）、`apps/web/src/pages/Login.test.tsx`（1 件）、`docs/verification/2026-11-03-cf-access-autologin.md` |
@@ -230,7 +231,7 @@ npx playwright test          # 26 passed（Chromium）
 
 1. **Cloudflare Access の認証後画面は人間の確認が必要**: 未認証 302 と Access 設定（アプリ・policy・DNS）は実測済みだが、OTP/SSO を通した画面確認は AI では実施できない（`docs/verification/2026-11-03.md` 第 6 章）。
 2. **OpenDesign Studio の run は `failed` 表示**: 再実行で成果物（8 画面のプロトタイプ）は生成されたが、run の状態は `failed`（`od_next_next_run_claim_failed`、daemon journal に `SQLITE_BUSY_SNAPSHOT`）。成果物は `docs/design/opendesign/` に保存し、実装との差異を [docs/design/01-webui-design.md](docs/design/01-webui-design.md) 第 8 章に記載した。
-3. **CI に依存脆弱性の自動監査 job は未追加**: Dependabot アラート（critical/high 0 件）と `npm audit`（full） / `pip-audit` の手動実行で代替している。追加するワークフローは検証済み提案として [docs/ci/dependency-audit.md](docs/ci/dependency-audit.md) に全文・実測結果・適用手順を整備済みだが、**ジョブはまだ CI に存在しない**（人間の適用待ち。ローカル検証のみで、Actions 上での実行は未実施）。`.github/workflows/**` は self-evolution ポリシーで DEPLOY（critical）扱いのため AI は書き込めず、2026-11-07 に write 拒否を実測した（承認プロンプト無効のため AI 側からの承認要求も不可）。検証証跡は [docs/verification/2026-11-07-dependency-audit.md](docs/verification/2026-11-07-dependency-audit.md)。
+3. **CI の依存脆弱性監査を追加（週次 schedule は初回発火待ち）**: `.github/workflows/dependency-audit.yml` を 2026-11-07 に追加（PR #16、main `f868ec7`）。`workflow_dispatch` の初回実行（run `42374269050`）で Python / Node 両ジョブの緑を確認した。週次 `schedule`（月曜 09:00 JST）は設定済みだが**初回発火は未確認**（次回 2026-11-09 見込み）。**未設定**: `.github/dependabot.yml`（依存更新 PR の自動化）、失敗時の通知先、required checks への追加。`.github/workflows/**` は self-evolution ポリシーで DEPLOY（critical）扱いのため AI は書き込めず、適用は人間が行った（2026-11-07 実測）。詳細は [docs/ci/dependency-audit.md](docs/ci/dependency-audit.md) と [検証記録](docs/verification/2026-11-07-dependency-audit.md)。
 4. **マージ方法**: PR #1 は人間の操作で **merge commit**（`5e3f410`）としてマージされた。以後の通常 PR は `claude-automerge merge`（`--auto --squash`）を使う。`feat/mvp` リモートブランチは残存（AI は `git push --delete` 不可）。
 5. **外部 URL の自動取得なし**: URL は識別子として保存し、本文は貼付を正とする（改竄検出の単純化）。
 6. **モバイル実機・スクリーンリーダーの検証未実施**（CSS / ARIA の実装のみ）。
@@ -241,7 +242,17 @@ npx playwright test          # 26 passed（Chromium）
 
 ## 10. 検証記録
 
-### 2026-11-03 本番準備 第1組（最新）
+### 2026-11-07 依存脆弱性監査ワークフロー（最新）
+
+- `.github/workflows/dependency-audit.yml` を追加（PR #16、squash `f868ec7`）。
+  週次 `schedule`（月曜 09:00 JST）+ `workflow_dispatch` + `pull_request`（依存ファイルの paths 限定）。
+- 実 CI 検証: PR 上 run `42373686405`、main 初回 run `42374269050` がいずれも success。
+  CI ログで Python 本番 34 パッケージの監査を確認（dev extras 46 パッケージは同一 lockfile に対する
+  ローカル実測）、Node 本番・全依存とも 0 vulnerabilities。
+- 適用理由・設計判断は [docs/ci/dependency-audit.md](docs/ci/dependency-audit.md)、
+  証跡は [docs/verification/2026-11-07-dependency-audit.md](docs/verification/2026-11-07-dependency-audit.md)。
+
+### 2026-11-03 本番準備 第1組
 
 - 本番health/readiness正常、migration0004、許可2名、5timer enabled/active。新規バックアップを隔離DBへ復元し11表件数・SHA一致を確認。
 - 事前検査CLIを追加（SHA/clean/バックアップ完全性）。CI成功・runtime SHA・配備許可そのものの証明ではない。
@@ -297,9 +308,9 @@ npx playwright test          # 26 passed（Chromium）
 - 運用手順: [docs/runbooks/operations.md](docs/runbooks/operations.md)
 - リリース手順: [docs/runbooks/release.md](docs/runbooks/release.md)
 - 変更履歴: [CHANGELOG.md](CHANGELOG.md) / リリースノート: [docs/releases/2026-11-03-v0.1.0.md](docs/releases/2026-11-03-v0.1.0.md)
-- CI 提案: [E2E](docs/ci/e2e-workflow.md) / [依存監査](docs/ci/dependency-audit.md)
+- CI ワークフロー: [E2E](docs/ci/e2e-workflow.md)（提案） / [依存監査](docs/ci/dependency-audit.md)（適用済み）
 - 要件トレーサビリティ: [docs/requirements/traceability.md](docs/requirements/traceability.md)
-- 検証記録: [2026-11-03](docs/verification/2026-11-03.md) / [2026-11-02](docs/verification/2026-11-02.md)
+- 検証記録: [2026-11-07 依存監査](docs/verification/2026-11-07-dependency-audit.md) / [2026-11-03](docs/verification/2026-11-03.md) / [2026-11-02](docs/verification/2026-11-02.md)
 - 独立レビュー記録: [docs/verification/2026-11-03-reviews.json](docs/verification/2026-11-03-reviews.json)
 - CI 相当の一括検証: `tools/ci.sh`
 

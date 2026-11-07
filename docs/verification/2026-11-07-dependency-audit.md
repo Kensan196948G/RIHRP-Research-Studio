@@ -1,11 +1,12 @@
-# 検証記録 — 2026-11-07 依存脆弱性監査ワークフロー（検証済み提案）
+# 検証記録 — 2026-11-07 依存脆弱性監査ワークフロー（ローカル検証 + 実 CI）
 
-対象: `.github/workflows/dependency-audit.yml` として追加する提案の妥当性検証。
-**本記録はローカル環境での実測であり、GitHub Actions 上での実行結果ではない。**
+対象: `.github/workflows/dependency-audit.yml` の妥当性検証と、適用後の実 CI 検証。
+本記録はローカル実測（§1〜§8）と GitHub Actions の実行結果（§10）の両方を含む。
 
 - 実施日時: 2026-11-07（Asia/Tokyo）
-- 作業ブランチ: `ci/dependency-audit-20261107`（git の変更操作は行っていない。`git status` 等の参照のみ）
-- 関連: [CI への依存脆弱性監査ジョブ追加（提案）](../ci/dependency-audit.md)
+- 作業ブランチ: `ci/dependency-audit-20261107`（ローカル検証時）。適用は依頼者が別ブランチ
+  `ci/apply-dependency-audit-20261107` で実施（PR #16）。
+- 関連: [CI への依存脆弱性監査ジョブ](../ci/dependency-audit.md)
 
 ## 1. 環境
 
@@ -199,12 +200,47 @@ cd apps/web && npm audit --omit=dev --audit-level=high && npm audit --audit-leve
 
 ## 9. 未確認事項
 
-以下は**検証できていない**。適用後の初回実行で確認が必要。
+以下は**検証できていない**（§10 の実 CI 実行で確認できた項目は除く）。
 
-- GitHub Actions の `ubuntu-latest` ランナー上での実行結果（本記録はローカル実測）。
-- `actions/setup-python@v5` の `cache: pip` が `cache-dependency-path` を
-  期待どおり扱うか。キャッシュの効率に影響するのみで、監査結果の正しさには影響しない見込み。
+- `actions/setup-python@v5` の `cache: pip` が `cache-dependency-path` を期待どおり扱うか。
+  キャッシュの効率に影響するのみで、監査結果の正しさには影響しない見込み。
 - `ci.yml` / `e2e.yml` と同時に走った場合の Actions 分数・実行時間。
 - 実際の脆弱性検知時の挙動（現在の依存は 0 件のため、失敗経路は未検証）。
   なお `npm audit` の終了コードと `--audit-level` の関係、`pip-audit --strict` の
   失敗条件については、上記 §5・§6 で**失敗方向の挙動**は実測済みである。
+- `schedule`（週次）の実発火。cron は `0 0 * * 1` = 月曜 09:00 JST の設定で、
+  次回発火は 2026-11-09（月）09:00 JST の見込み。
+
+## 10. GitHub Actions での実行結果（2026-11-07）
+
+適用（PR #16）から実 CI までを実測した。ローカル検証（§1〜§8）の内容が
+ランナー上でも再現したことを確認した。
+
+### 10.1 実行一覧
+
+| # | 実行 | トリガー | run | head | 結果 |
+|---|---|---|---|---|---|
+| 1 | 適用 PR #16 | `pull_request`（paths 合致） | `42373686405` | `eb74d5b` | success（Python 35s / Node 11s） |
+| 2 | main CI（マージ後） | `push` | `42374211728` | `f868ec7` | success（API / Web / Secret scan） |
+| 3 | main 初回 | `workflow_dispatch` | `42374269050` | `f868ec7` | success（Python 26s / Node 14s） |
+
+マージ: PR #16 を squash で取り込み、main = `f868ec7`（2026-11-07 12:50 UTC）。
+
+### 10.2 実 CI のログ（抜粋）
+
+- `Successfully set up CPython (3.12.16)`
+- Python 本番固定: `No known vulnerabilities found`（34 パッケージ）
+- Python runtime + dev extras: `No known vulnerabilities found`
+  （`uv export --locked --all-extras --no-emit-project` が exit 0）
+- Node 本番: `found 0 vulnerabilities`
+- Node 全依存: `found 0 vulnerabilities`
+- 監査ステップはいずれもスキップされず、全 step が success
+
+### 10.3 ランナー上の警告（既知・失敗要因ではない）
+
+- `Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run
+  on Node.js 24`（2026-11-07。対象はジョブにより `actions/checkout@v4` /
+  `actions/setup-python@v5` / `actions/setup-node@v4`）
+- `The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026.`
+
+actions v7 への横断更新（別 PR）とランナー移行の継続監視が必要。

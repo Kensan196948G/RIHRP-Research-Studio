@@ -1,10 +1,12 @@
-# CI への依存脆弱性監査ジョブ追加（検証済み提案・人間適用待ち）
+# CI への依存脆弱性監査ジョブ（適用済み・実 CI 検証済み）
 
-> **状態: 未適用。ジョブはまだ CI に存在しない。**
-> 本ドキュメントは「検証済みの提案」であり、実装済みの機能ではない。以下に示す YAML を
-> 人間が `.github/workflows/dependency-audit.yml` として追加して初めて有効になる。
+> **状態: 適用済み（2026-11-07）。**
+> PR #16 で `.github/workflows/dependency-audit.yml` として追加し、main（`f868ec7`）にマージした。
+> 実 CI で緑を確認済み（PR の `pull_request` run `42373686405`、main の `workflow_dispatch`
+> run `42374269050`）。実行条件・結果は §4、詳細は
+> [検証記録](../verification/2026-11-07-dependency-audit.md) 第 10 章を参照。
 
-## 0. なぜ AI が適用できないか（実測）
+## 0. なぜ AI ではなく人間が適用したか（実測）
 
 AI エージェントは `.github/workflows/**` へ**書き込めない**。2026-11-07 に実測した。
 
@@ -17,14 +19,15 @@ AI エージェントは `.github/workflows/**` へ**書き込めない**。2026
 - 拒否された操作を別ルート（シェルリダイレクト等）で再試行することは方針上禁止であり、
   迂回はしていない。
 
-したがって「検証済み YAML をドキュメントに置き、人間が適用する」という形を採る。
+したがって「検証済み YAML をドキュメントに置き、人間が適用する」という形を採った。
+2026-11-07 に依頼者（人間）が PR #16 として適用し、main にマージされた。
 この挙動はワークフロー冒頭のコメント `Apply only after human approval` と整合している。
 
 ## 1. 検証済み最終 YAML 全文
 
 `actionlint 1.7.12`（shellcheck 0.9.0 併用）で **exit 0・警告 0**、`yaml.safe_load` で
-構文解析成功を確認済み（63 行）。この内容をそのまま
-`.github/workflows/dependency-audit.yml` として追加する。
+構文解析成功を確認済み（63 行）。この内容が 2026-11-07 に
+`.github/workflows/dependency-audit.yml` として適用された（PR #16 / commit `eb74d5b`）。
 
 ```yaml
 # Dependency audit — weekly + PR gate. Apply only after human approval: .github/workflows/**
@@ -186,20 +189,34 @@ actionlint 1.7.12 / shellcheck 0.9.0
   実行しておらず、`node_modules` を作り直していない（`npm audit` は lockfile ベースで動作）。
 - 詳細な生ログ・コマンド列は [検証記録](../verification/2026-11-07-dependency-audit.md) を参照。
 
-## 4. 人間の適用手順
+## 4. 適用と実 CI 検証（2026-11-07 実施済み）
 
-1. **ファイル追加**: 上記 YAML を `.github/workflows/dependency-audit.yml` として追加する。
-   PR 経由・ローカルでの commit・GitHub UI の「Add file」のいずれでもよい。
-2. **マージ**: PR をレビューして main にマージする。`schedule` と `workflow_dispatch` は
-   デフォルトブランチにワークフローが存在してから有効になるため、マージ前はどちらも使えない
-   （`schedule` は定期実行されず、`workflow_dispatch` も起動できない）。
-3. **初回手動実行**: `gh workflow run dependency-audit.yml` で `workflow_dispatch` を起動し、
-   **緑になることを確認する**。これが実 CI 上での初回検証になる。
-   （参考: PR head への push（synchronize）で paths 条件に合致すれば `pull_request` でも
-   実行されるが、初回確認は `workflow_dispatch` が最も単純。）
-4. **その後の判断（任意・別途）**: required checks への追加、失敗時の通知先
-   （Issue 自動作成・Webhook 等）の設定、`schedule` の時刻変更を必要に応じて検討する。
-   本提案では**いずれも行っていない**。
+1. **ファイル追加（人間）**: 依頼者が `tmp/dependency-audit.yml`（本ドキュメント §1 と同一バイト列）を
+   `.github/workflows/dependency-audit.yml` にコピーし、ブランチ `ci/apply-dependency-audit-20261107`
+   として commit `eb74d5b` を作成、PR #16 を開いた。
+2. **PR 検証**: チェック 5 件（必須 3 + 新規 2）がすべて green。新規ワークフローは
+   `pull_request` の paths 条件に合致し、**PR 上で初回実行**された（run `42373686405`）。
+3. **マージ**: squash マージで main へ（`f868ec7`、2026-11-07 12:50 UTC）。
+   main CI run `42374211728` は 3/3 success。
+4. **初回手動実行**: `gh workflow run dependency-audit.yml --ref main` → run `42374269050` success
+   （`workflow_dispatch` / head `f868ec7`）。
+5. **未実施（任意・別途）**: required checks への追加、失敗時の通知先
+   （Issue 自動作成・Webhook 等）、`schedule` の時刻変更。
+
+### 4.1 実 CI の実行結果
+
+| 実行 | トリガー | run | Python ジョブ | Node ジョブ |
+|---|---|---|---|---|
+| 適用 PR #16（head `eb74d5b`） | `pull_request` | `42373686405` | 35s / success | 11s / success |
+| main 初回（head `f868ec7`） | `workflow_dispatch` | `42374269050` | 26s / success | 14s / success |
+
+実 CI のログで確認した出力:
+
+- Python 本番固定: `No known vulnerabilities found`（34 パッケージ）
+- Python runtime + dev extras: `No known vulnerabilities found`
+  （`uv export --locked --all-extras --no-emit-project` が CI 上でも exit 0）
+- Node 本番: `found 0 vulnerabilities` / Node 全依存: `found 0 vulnerabilities`
+- 監査ステップはいずれもスキップされず実行され、全 step が success
 
 ## 5. 旧ドラフトとの差分
 
@@ -254,15 +271,17 @@ Python ジョブが必ず赤になる**（§2.1 の実測どおり）。主な�
 - **GitHub Actions のメジャーバージョン**: 2026-11-07 に GitHub API
   （`repos/<owner>/<repo>/releases/latest`）で確認した最新は `actions/checkout` **v7.0.1**・
   `actions/setup-python` **v7.1.0**・`actions/setup-node` **v7.1.0** で、いずれも v7 系。
-  本提案は**既存 CI と同じ `checkout@v4`・`setup-python@v5`・`setup-node@v4`** に揃えた
-  （2026-11-03 に同バージョンで CI が緑だった実績がある）。横断的な v7 更新は既存 2 ワークフロー
-  （`ci.yml` / `e2e.yml`）に影響するため、別 PR で行うのが安全。
+  本ワークフローは既存 CI と同じ `checkout@v4`・`setup-python@v5`・`setup-node@v4` に揃えた
+  （2026-11-03 に同バージョンで CI が緑だった実績がある）。ただし実 CI では
+  `Node.js 20 is deprecated ... forced to run on Node.js 24` の警告が出ており
+  （対象はジョブにより `actions/checkout@v4` / `actions/setup-python@v5` / `actions/setup-node@v4`。
+  2026-11-07 / run `42373686405`）、v7 への横断更新は既存 3 ワークフロー
+  （`ci.yml` / `e2e.yml` / 本ファイル）に影響するため別 PR で行う。
 - **paths 限定による取りこぼし**: `pull_request` トリガは依存ファイル変更時にしか走らない
   ため、依存を変更しない PR では監査されない。**週次の `schedule` 実行がこれを補完する**
   設計だが、依存変更 PR の検出遅れは残る。
-- **初回実行はまだ行われていない**: 本ドキュメントの実測はすべてローカル環境での結果であり、
-  GitHub Actions ランナー上での実行結果ではない（`actions/setup-*` のキャッシュ挙動、
-  ubuntu-latest のツールチェーン差異は未確認）。**適用後の初回手動実行で緑を確認するまで
-  「CI で監査が動いている」とは言えない。**
+- **実 CI の初回実行は完了**: PR #16（run `42373686405`）と main の `workflow_dispatch`
+  （run `42374269050`）で両ジョブの緑を確認した（§4.1）。継続監視の対象は、`ubuntu-latest` の
+  Ubuntu 26 移行（2026-10-19 以降）と `actions/*@v4/v5` の非推奨警告である。
 - **通知先は未設定**: 失敗時に誰がどう気づくかは未定。必要なら Issue 自動起票や
   Slack/Webhook 通知を別途追加する。
