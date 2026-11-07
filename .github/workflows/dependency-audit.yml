@@ -1,0 +1,63 @@
+# Dependency audit — weekly + PR gate. Apply only after human approval: .github/workflows/**
+# is risk-class DEPLOY (critical). Both jobs are NEW, non-required; branch protection untouched.
+name: Dependency audit
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # Mondays 00:00 UTC = 09:00 JST
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths: [requirements-production.txt, pyproject.toml, uv.lock, "apps/web/package*.json", .github/workflows/dependency-audit.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-audit:
+    name: Dependency audit (Python)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements-production.txt
+      # Never `pip install -e .`: an editable dist breaks `pip-audit --strict` ("not found on PyPI").
+      - name: Install auditors
+        run: python -m pip install --disable-pip-version-check "pip-audit>=2.10,<3" "uv>=0.12"
+      - name: Audit production pins (34 pkgs, hashed)
+        run: pip-audit -r requirements-production.txt --strict --progress-spinner off
+      - name: Export runtime + dev extras from uv.lock
+        run: uv export --locked --all-extras --no-emit-project --format requirements.txt -o "$RUNNER_TEMP/dev-extras.txt"
+      - name: Audit runtime + dev extras
+        run: pip-audit -r "$RUNNER_TEMP/dev-extras.txt" --strict --progress-spinner off
+
+  node-audit:
+    name: Dependency audit (Node)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install from lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Audit production deps (fail on high+)
+        run: npm audit --omit=dev --audit-level=high
+      - name: Audit all deps (fail on critical)
+        run: npm audit --audit-level=critical
