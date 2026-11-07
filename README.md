@@ -230,7 +230,7 @@ npx playwright test          # 26 passed（Chromium）
 
 1. **Cloudflare Access の認証後画面は人間の確認が必要**: 未認証 302 と Access 設定（アプリ・policy・DNS）は実測済みだが、OTP/SSO を通した画面確認は AI では実施できない（`docs/verification/2026-11-03.md` 第 6 章）。
 2. **OpenDesign Studio の run は `failed` 表示**: 再実行で成果物（8 画面のプロトタイプ）は生成されたが、run の状態は `failed`（`od_next_next_run_claim_failed`、daemon journal に `SQLITE_BUSY_SNAPSHOT`）。成果物は `docs/design/opendesign/` に保存し、実装との差異を [docs/design/01-webui-design.md](docs/design/01-webui-design.md) 第 8 章に記載した。
-3. **CI に依存脆弱性の自動監査 job は未追加**: Dependabot アラート（critical/high 0 件）と `npm audit`（full） / `pip-audit` の手動実行で代替している。追加提案は [docs/ci/dependency-audit.md](docs/ci/dependency-audit.md)（workflow 変更は人間適用）。
+3. **CI に依存脆弱性の自動監査 job は未追加**: Dependabot アラート（critical/high 0 件）と `npm audit`（full） / `pip-audit` の手動実行で代替している。追加するワークフローは検証済み提案として [docs/ci/dependency-audit.md](docs/ci/dependency-audit.md) に全文・実測結果・適用手順を整備済みだが、**ジョブはまだ CI に存在しない**（人間の適用待ち。ローカル検証のみで、Actions 上での実行は未実施）。`.github/workflows/**` は self-evolution ポリシーで DEPLOY（critical）扱いのため AI は書き込めず、2026-11-07 に write 拒否を実測した（承認プロンプト無効のため AI 側からの承認要求も不可）。検証証跡は [docs/verification/2026-11-07-dependency-audit.md](docs/verification/2026-11-07-dependency-audit.md)。
 4. **マージ方法**: PR #1 は人間の操作で **merge commit**（`5e3f410`）としてマージされた。以後の通常 PR は `claude-automerge merge`（`--auto --squash`）を使う。`feat/mvp` リモートブランチは残存（AI は `git push --delete` 不可）。
 5. **外部 URL の自動取得なし**: URL は識別子として保存し、本文は貼付を正とする（改竄検出の単純化）。
 6. **モバイル実機・スクリーンリーダーの検証未実施**（CSS / ARIA の実装のみ）。
