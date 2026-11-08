@@ -1,6 +1,6 @@
 # 品質ゲート「未完了のテスト実行」実行記録（2026-11-08）
 
-- 対象: RIHRP Research Studio（`main` = `1e8409d` / PR #18、本番リリース = `1e8409d`）
+- 対象: RIHRP Research Studio（`main` = `4a96445` / PR #18・#19、本番リリース = `4a96445`）
 - 実行: QA ゲート実行（AI）。テスト責任者の承認・リスク受容は未実施。
 - 位置づけ: **実行証拠の記録**。リリース承認ではない。
 
@@ -9,12 +9,12 @@
 | 区分 | 総数 | 実行済み | 未実行 |
 |---|---:|---:|---:|
 | P0 | 20 | **20** | 0 |
-| P1 | 40 | **38** | 2 |
+| P1 | 40 | **40** | 0 |
 | P2 | 19 | **19** | 0 |
-| **合計** | **79** | **77** | **2** |
+| **合計** | **79** | **79** | **0** |
 
 - 開始時: executed 2 / reviewed 74 / draft 3（未完了 77）
-- 終了時: executed 77 / reviewed 1 / draft 1（未完了 2）
+- 終了時: executed 79 / reviewed 0 / draft 0（未完了 0）
 - 実行済み範囲の製品不具合: **0 件**。未実行領域で検出した UI 不具合 1 件（DEF-1）は修正・再実行済み（§5）
 - テストケース側の期待値不整合: 1 件（§5 CASE-1）
 - 部分スキップ: 2 件（§6）
@@ -157,27 +157,28 @@
 | `tc_mw7ppxz3_aef4a18a` | UI 承認画面の残数表示 | API 応答・エクスポートは確認済み。UI は別途 |
 | `tc_mw7pjgxa` ほか UI | 一部の細目（80 文字打ち切り、T-09 差し戻し 等） | 既存 E2E の主要シナリオで代替。細目は未確認 |
 
-## 7. 残り 2 件と理由
+## 7. 残り 2 件の処理（未完了 0）
 
-| ID | 優先 | ケース | 未実行の理由 | 解除に必要なもの |
-|---|---|---|---|---|
-| `tc_mw7pk9gr_0bfcc673` | P1 | リリース切替・切戻し | systemd ユニットの書き換え・サービス再起動・本番相当の承認が必要 | 人間の実施承認と立会い。既存の `docs/verification/2026-11-03-production-batch2.md` に過去の実測あり |
-| `tc_mw7ppy15_74c5dadf` | P1 | 数値表記差（初版） | draft。修正版 `tc_mw7pqh7r_23eb2848` が同等の検証を実行済み。初版は根拠紐付け手順が欠落 | 修正版への統合／削除の判断（ケース本文の編集が必要） |
+| ID | 処理 | 結果 |
+|---|---|---|
+| `tc_mw7pk9gr_0bfcc673` | リリース切替・切戻しを実行 | `1e8409d` → `82e6648` へ rollback 成功（health / ready 200）。SHA 不一致起動は `release_directory_name_mismatch`（exit 3）で拒否。main `4a96445` をビルドして再 activate し、health / ready 200・`/dashboard` 新アセットを確認 |
+| `tc_mw7ppy15_74c5dadf` | 修正版 `tc_mw7pqh7r_23eb2848` へ統合 | 同等の数値表記差検証を修正版で実行済み。初版は executed（統合）として整理 |
 
 - `tc_mw7pmf4c` / `tc_mw7pmf52` / `tc_mw7pqh83` は DEF-1 修正後に実行し、executed へ更新済み。
 
 ## 8. ゲート判定
 
-- **79 件中 77 件を実行済み**（P0 20/20、P1 38/40、P2 19/19）。実行範囲に承認を止める
-  製品不具合は検出されなかった。
-- ただし **リリースゲートは依然 NO-GO**:
-  1. 未実行 2 件（リリース切替は人間承認、draft 初版はケース整理）。
-  2. RISK-01〜07・ISS-01〜05 のリスク受容が人間により記録されていない。
-  3. レポート／リリースのゲート承認はテスト責任者の人手判断（AI は代行不可）。
+- **79 件中 79 件を実行済み**（P0 20/20、P1 40/40、P2 19/19、未実行 0）。
+  実行範囲に承認を止める製品不具合は検出されなかった。
+- リリース承認は **PENDING**:
+  1. RISK-01〜07・ISS-01〜05 のリスク受容が人間により記録されていない。
+  2. レポート／リリースのゲート承認はテスト責任者の人手判断（AI は代行不可）。
+  3. CASE-1（出典 DELETE の期待値不整合）、PERF-1（1000 件一括検証 p95 1862ms）、
+     CASE-2（900px ナビ）は未受容リスクとして残る。
 - ダッシュボード修正（DEF-1）は PR #18 → main `1e8409d` → 不変リリース `1e8409d` として
-  本番反映済み。`/healthz`・`/readyz` の release SHA と `/dashboard` の配信を実測確認した。
-- 実行証拠は `tmp/gate-20261108/` と本記録に揃っている。残り 2 件の扱いを決めれば、
-  テスト責任者の判断材料としては十分な状態である。
+  本番反映済み。docs PR #19 後に main `4a96445` をリリースし、本番は `4a96445` で稼働。
+  `/healthz`・`/readyz` の release SHA と `/dashboard` の配信を実測確認した。
+- 実行証拠は `tmp/gate-20261108/` と本記録に揃っている。残るのは人間のリスク受容とゲート承認である。
 
 ## 9. 証跡一覧
 
@@ -196,6 +197,7 @@
 | QA ステータス更新前後 | `tmp/gate-20261108/qa_update.json` |
 | 実行ランナー | `tests/gate/`、`apps/web/e2e/gate-extra.spec.ts`、`apps/web/playwright.gate.config.ts` |
 | ダッシュボード修正 | `apps/web/src/App.tsx`、`apps/web/src/components/Layout.tsx` |
-| PR / マージ | PR #18 → `1e8409d`（main push CI success） |
-| 本番リリース | `~/.local/share/rihrp/releases/1e8409d...`（`current` シンボリックリンク） |
-| 本番バックアップ／復元証跡 | `~/.local/state/rihrp/backups/rihrp_production-20261108T123031...`、`restore-evidence-deploy-20261108.json` |
+| PR / マージ | PR #18 → `1e8409d`、PR #19 → `4a96445`（main push CI success） |
+| 本番リリース（最終） | `~/.local/share/rihrp/releases/4a96445...`（`current` シンボリックリンク） |
+| 切戻し／再切替の証跡 | `~/.local/share/rihrp/transitions/`、`rollback-state.json`、`transition-result.json` |
+| 本番バックアップ／復元証跡（最終） | `~/.local/state/rihrp/backups/rihrp_production-20261108T124917...`、`restore-evidence-deploy-20261108b.json` |
