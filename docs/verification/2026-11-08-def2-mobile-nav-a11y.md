@@ -1,7 +1,7 @@
 # DEF-2（モバイル幅でナビリンクが無名）修正・検証記録（2026-11-08）
 
-- 対象: RIHRP Research Studio（`main` = `98995ce` / PR #21、リリース候補 = `98995ce`）
-- 位置づけ: **修正と検証の実行証拠**。リリース承認・本番切替ではない。
+- 対象: RIHRP Research Studio（`main` = `bfe717d` / PR #21・#22、**本番リリース = `bfe717d`**）
+- 位置づけ: **修正・検証・本番反映の実行証拠**。リリース承認はテスト責任者が行った（§8）。
 - 関連: [品質ゲート実行記録](2026-11-08-gate-execution.md) の DEF-2。修正前の証跡は
   `tmp/gate-20261108/mobile-a11y.json`（ローカル、git 管理外）。
 
@@ -88,5 +88,30 @@
 | Studio の label 欠落（既存・別件） | `tmp/gate-20261108/studio-labels-98995ce.json` |
 | 追加 E2E の JUnit | `tmp/gate-20261108/a11y-def2-junit.xml` |
 | PR / マージ | PR #21 → `98995ce`（squash、必須 Check 3 件 success） |
-| リリースビルド | `~/.local/share/rihrp/releases/98995ce…/`（manifest `0213e48…`） |
+| リリースビルド | `~/.local/share/rihrp/releases/bfe717d…/`（manifest `ce34c59…`） |
 | 修正ファイル | `apps/web/src/styles.css`、`apps/web/e2e/a11y-mobile.spec.ts`、`apps/web/e2e/gate-extra.spec.ts` |
+
+## 8. 本番反映（2026-11-09 05:20 JST）
+
+- テスト責任者 kensan が QA ワークベンチのリリースゲート `gate_mw83qr6o_15a0b484` を
+  2026-11-09 05:18 JST に承認した（AI は decide していない）。
+- 最新バックアップ（2026-11-09 03:30 JST の日次、sha256 `1d49f34f…`）を
+  `rihrp_restore_check` へ実復元し、11 表の件数一致を確認した
+  （`restore-evidence-deploy-20261109b.json`）。
+- `tools/release_activate.py activate --expect-sha bfe717d…` を実行し、
+  `current` を `bfe717d` へ更新した（`previous` は `4a96445`）。
+- 配備後の実測:
+  - `/healthz`・`/readyz` = release sha `bfe717d…` / manifest `ce34c59…`、migration `0004_research_documents`
+  - `/`・`/studio`・`/login` は 200、`/api/auth/me` は 401
+  - `/dashboard` が `index-Bmdaog8l.css` を配信し、配信 CSS の SHA-256 が
+    release 内ファイルと一致（`4c8ad867…`）。CSS に visually hidden 規則を含むことを確認
+  - `journalctl -u rihrp.service -p err` にエラーなし
+  - 公開 URL `https://research.mirai-dx-platform.com/` は未認証 302（Access）
+- 切替記録: `~/.local/share/rihrp/transitions/20261108T202004226165-92f78ad1.json`
+- QA ワークベンチ: DEF-2 を `closed` に更新（本番反映済み）。
+
+### 残課題（本番反映後）
+
+- DEF-3（`bug_mw83qr73_1db974fe`、`/studio` の label 未関連付け）は未修正・次回パッチ。
+- 実機 iOS / Android + VoiceOver / TalkBack の確認（RISK-04）は引き続き人間が実施。
+- 2026-11-09 09:00 JST 以降の週次 dependency-audit 発火確認（RISK-02）。
