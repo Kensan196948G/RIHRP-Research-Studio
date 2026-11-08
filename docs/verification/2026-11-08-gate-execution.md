@@ -1,6 +1,6 @@
 # 品質ゲート「未完了のテスト実行」実行記録（2026-11-08）
 
-- 対象: RIHRP Research Studio（`main` = `543e94b`、作業ツリーはテスト資産のみ未追跡）
+- 対象: RIHRP Research Studio（`main` = `1e8409d` / PR #18、本番リリース = `1e8409d`）
 - 実行: QA ゲート実行（AI）。テスト責任者の承認・リスク受容は未実施。
 - 位置づけ: **実行証拠の記録**。リリース承認ではない。
 
@@ -112,8 +112,9 @@
 - 検証: 一時ビルド（`/tmp/rihrp-gate-dist`、`RIHRP_WEB_DIST` で配信）に対して
   Playwright 8 件を実行し、ダッシュボード 3 ケース（テーマ検索・最近の活動・
   loading / empty / error）を含めて全 pass。
-- 本番 `apps/web/dist` は再ビルド・配備していない。本番反映は通常のリリース手順
-  （ビルド→リリース→切替）で行う必要がある。
+- 本番反映: 2026-11-08 21:30 JST に不変リリース `1e8409d` をビルドし、本番バックアップ＋
+  隔離復元証跡を前提に activate した。`/healthz`・`/readyz` が release SHA `1e8409d` を返し、
+  `/dashboard` は新ビルド `index-DIKL1po7.js` を配信している。
 - 証跡: `tmp/gate-20261108/playwright-dashboard.xml`。
 
 ### CASE-1（テストケースの期待値不整合）: 出典削除 API の有無
@@ -173,8 +174,8 @@
   1. 未実行 2 件（リリース切替は人間承認、draft 初版はケース整理）。
   2. RISK-01〜07・ISS-01〜05 のリスク受容が人間により記録されていない。
   3. レポート／リリースのゲート承認はテスト責任者の人手判断（AI は代行不可）。
-- ダッシュボード修正（DEF-1）はソースと一時ビルドで検証済みだが、**本番 `dist` は未反映**。
-  本番反映には通常のリリース手順（ビルド→リリース→切替）が必要。
+- ダッシュボード修正（DEF-1）は PR #18 → main `1e8409d` → 不変リリース `1e8409d` として
+  本番反映済み。`/healthz`・`/readyz` の release SHA と `/dashboard` の配信を実測確認した。
 - 実行証拠は `tmp/gate-20261108/` と本記録に揃っている。残り 2 件の扱いを決めれば、
   テスト責任者の判断材料としては十分な状態である。
 
@@ -195,3 +196,6 @@
 | QA ステータス更新前後 | `tmp/gate-20261108/qa_update.json` |
 | 実行ランナー | `tests/gate/`、`apps/web/e2e/gate-extra.spec.ts`、`apps/web/playwright.gate.config.ts` |
 | ダッシュボード修正 | `apps/web/src/App.tsx`、`apps/web/src/components/Layout.tsx` |
+| PR / マージ | PR #18 → `1e8409d`（main push CI success） |
+| 本番リリース | `~/.local/share/rihrp/releases/1e8409d...`（`current` シンボリックリンク） |
+| 本番バックアップ／復元証跡 | `~/.local/state/rihrp/backups/rihrp_production-20261108T123031...`、`restore-evidence-deploy-20261108.json` |
