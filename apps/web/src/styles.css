@@ -361,7 +361,13 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
 }
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 68px minmax(0, 1fr); }
-  .brand-name, .brand-sub, .nav-link span.nav-label, .user-meta { display: none; }
+  .brand-name, .brand-sub, .user-meta { display: none; }
+  /* アイコンレールでもナビの読み上げ名を保つ。display: none はアクセシビリティツリーから消えるため、
+     ラベルは視覚的に隠すだけ（visually hidden）にする（DEF-2）。 */
+  .nav-link span.nav-label {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+  }
   .sidebar { padding: 14px 8px; align-items: center; }
   .nav-link { justify-content: center; padding: 9px; border-left: none; border-radius: 8px; }
   .nav-link.is-active { border-left: none; box-shadow: inset 0 0 0 1px var(--accent-line); }

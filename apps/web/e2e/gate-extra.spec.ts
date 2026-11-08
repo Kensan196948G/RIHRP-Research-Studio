@@ -295,6 +295,11 @@ test("tc_mw7pjyc4（部分）900px で横スクロールなし・アイコンレ
   expect(layout.scrollWidth).toBeLessThanOrEqual(900);
   expect(contentWidth).toBeLessThanOrEqual(900);
 
-  // 実装は 900px 以下でラベルを隠したアイコンレールになる（ケースの「横スクロール」とは表示形式が異なる）
-  await expect(page.locator(".sidebar .nav-label").first()).toBeHidden();
+  // 実装は 900px 以下でラベルを視覚的に隠したアイコンレールになる（ケースの「横スクロール」とは表示形式が異なる）。
+  // ラベルは display: none ではなく visually hidden で DOM に残し、読み上げ名を維持する（DEF-2）。
+  const navLabel = page.locator(".sidebar .nav-label").first();
+  const labelBox = await navLabel.boundingBox();
+  expect(labelBox?.width ?? 0).toBeLessThanOrEqual(1);
+  expect(labelBox?.height ?? 0).toBeLessThanOrEqual(1);
+  await expect(page.locator(".sidebar nav a.nav-link").first()).toHaveAccessibleName("ダッシュボード");
 });
