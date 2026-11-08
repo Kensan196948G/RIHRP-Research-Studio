@@ -117,6 +117,13 @@
   `/dashboard` は新ビルド `index-DIKL1po7.js` を配信している。
 - 証跡: `tmp/gate-20261108/playwright-dashboard.xml`。
 
+### DEF-2（a11y）: モバイル幅でナビリンクが無名 → 修正・検証済み（別記録）
+
+- 900px 以下のサイドバーはアイコンレールになるが、`.nav-label` を `display: none` に
+  していたため `a.nav-link` 4 件がアクセシビリティツリーで無名になっていた。
+- PR #21（`98995ce`）で visually hidden に変更し、Playwright 全 40 件と AX 実測で確認。
+- 詳細: [DEF-2 修正・検証記録](2026-11-08-def2-mobile-nav-a11y.md)。
+
 ### CASE-1（テストケースの期待値不整合）: 出典削除 API の有無
 
 - `tc_mw7pi021_defecae4` 手順 5 は「出典の更新・削除 API が存在しない（404/405）」を期待する。
