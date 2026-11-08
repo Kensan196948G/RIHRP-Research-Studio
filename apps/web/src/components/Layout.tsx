@@ -38,7 +38,7 @@ export function Layout() {
         </div>
 
         <nav className="nav" aria-label="メインナビゲーション">
-          <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
+          <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? "is-active" : ""}`}>
             <NavIcon name="home" />
             <span className="nav-label">ダッシュボード</span>
           </NavLink>

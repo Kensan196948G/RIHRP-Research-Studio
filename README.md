@@ -35,7 +35,7 @@ RIHRP Research Studio は、**根拠スナップショット（内容アドレ�
 
 ### 画面
 
-| ログイン | ダッシュボード |
+| ログイン | ダッシュボード（`/dashboard`） |
 |---|---|
 | ![login](docs/assets/screenshots/01-login.png) | ![dashboard](docs/assets/screenshots/02-dashboard.png) |
 
@@ -217,7 +217,7 @@ npx playwright test          # 26 passed（Chromium）
 | OpenDesign 設計参照との比較 | 実施済み | `docs/design/01-webui-design.md` 第 8 章 |
 | Markdown エクスポート | 実装済み | pytest、API 実測 |
 | 監査ログ（append-only） | 実装済み | pytest |
-| ダッシュボード / 検証結果 / 監査 / 利用者管理 | 実装済み | UI 実測（スクリーンショット） |
+| ダッシュボード（`/dashboard`） / 検証結果 / 監査 / 利用者管理 | 実装済み | UI 実測（スクリーンショット）。ログイン後の既定画面は `/studio` |
 | systemd 配備 / health check | 実装済み | 実測（第 10 章） |
 | GitHub Actions CI | 実装済み | run `41513750337` success（API / Web / Secret scan） |
 | 依存脆弱性の自動監査（週次 / PR paths / 手動） | 実装済み | `.github/workflows/dependency-audit.yml`（PR #16）。run `42374269050` success（Python / Node）。`docs/verification/2026-11-07-dependency-audit.md` |
