@@ -114,4 +114,8 @@
 
 - DEF-3（`bug_mw83qr73_1db974fe`、`/studio` の label 未関連付け）は未修正・次回パッチ。
 - 実機 iOS / Android + VoiceOver / TalkBack の確認（RISK-04）は引き続き人間が実施。
-- 2026-11-09 09:00 JST 以降の週次 dependency-audit 発火確認（RISK-02）。
+- RISK-02（週次 dependency-audit）: **2026-11-09 09:27:51 JST に初回発火を確認**
+  （cron 09:00 JST から約 27 分遅延、GitHub の schedule 遅延）。run `42540311340` は
+  `event=schedule`・headSha `b4b6688`・**success**。Node は prod / all とも
+  `found 0 vulnerabilities`、Python（runtime + dev extras）は
+  `No known vulnerabilities found`。通知先未設定の既存決定は維持。
