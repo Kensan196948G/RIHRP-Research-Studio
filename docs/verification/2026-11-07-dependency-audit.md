@@ -208,8 +208,6 @@ cd apps/web && npm audit --omit=dev --audit-level=high && npm audit --audit-leve
 - 実際の脆弱性検知時の挙動（現在の依存は 0 件のため、失敗経路は未検証）。
   なお `npm audit` の終了コードと `--audit-level` の関係、`pip-audit --strict` の
   失敗条件については、上記 §5・§6 で**失敗方向の挙動**は実測済みである。
-- `schedule`（週次）の実発火。cron は `0 0 * * 1` = 月曜 09:00 JST の設定で、
-  次回発火は 2026-11-09（月）09:00 JST の見込み。
 
 ## 10. GitHub Actions での実行結果（2026-11-07）
 
@@ -244,3 +242,25 @@ cd apps/web && npm audit --omit=dev --audit-level=high && npm audit --audit-leve
 - `The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026.`
 
 actions v7 への横断更新（別 PR）とランナー移行の継続監視が必要。
+
+## 11. 週次 schedule の初回実行（2026-11-09）
+
+cron `0 0 * * 1`（月曜 00:00 UTC = 09:00 JST）による初回の定期実行を実測した。
+
+| 項目 | 実測 |
+|---|---|
+| run | `42540311340`（event=`schedule`） |
+| 実行日時 | 2026-11-09 09:27:51 JST 開始（cron 予定 09:00 から**約 28 分の遅延**） |
+| head | `b4b6688`（当時の main） |
+| 結論 | **success** |
+| Python ジョブ | 31s / success（31s = 00:27:53 → 00:28:24 UTC） |
+| Node ジョブ | 15s / success（00:27:53 → 00:28:08 UTC） |
+
+ログ（抜粋）:
+
+- Python 本番固定: `No known vulnerabilities found`（34 パッケージ）
+- Python runtime + dev extras: `No known vulnerabilities found`
+- Node 本番: `found 0 vulnerabilities` / Node 全依存: `found 0 vulnerabilities`
+
+これにより「週次 schedule が実際に発火し、監査が実行される」ことを確認した。
+GitHub の schedule は負荷により遅延し得るため、確認は予定時刻の 30 分後を目安にする。
