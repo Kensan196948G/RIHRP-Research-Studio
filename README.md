@@ -231,7 +231,7 @@ npx playwright test          # 26 passed（Chromium）
 
 1. **Cloudflare Access の認証後画面は人間の確認が必要**: 未認証 302 と Access 設定（アプリ・policy・DNS）は実測済みだが、OTP/SSO を通した画面確認は AI では実施できない（`docs/verification/2026-11-03.md` 第 6 章）。
 2. **OpenDesign Studio の run は `failed` 表示**: 再実行で成果物（8 画面のプロトタイプ）は生成されたが、run の状態は `failed`（`od_next_next_run_claim_failed`、daemon journal に `SQLITE_BUSY_SNAPSHOT`）。成果物は `docs/design/opendesign/` に保存し、実装との差異を [docs/design/01-webui-design.md](docs/design/01-webui-design.md) 第 8 章に記載した。
-3. **CI の依存脆弱性監査を追加（週次 schedule は初回発火待ち）**: `.github/workflows/dependency-audit.yml` を 2026-11-07 に追加（PR #16、main `f868ec7`）。`workflow_dispatch` の初回実行（run `42374269050`）で Python / Node 両ジョブの緑を確認した。週次 `schedule`（月曜 09:00 JST）は設定済みだが**初回発火は未確認**（次回 2026-11-09 見込み）。**未設定**: `.github/dependabot.yml`（依存更新 PR の自動化）、失敗時の通知先、required checks への追加。`.github/workflows/**` は self-evolution ポリシーで DEPLOY（critical）扱いのため AI は書き込めず、適用は人間が行った（2026-11-07 実測）。詳細は [docs/ci/dependency-audit.md](docs/ci/dependency-audit.md) と [検証記録](docs/verification/2026-11-07-dependency-audit.md)。
+3. **CI の依存脆弱性監査を追加（週次 schedule も稼働確認済み）**: `.github/workflows/dependency-audit.yml` を 2026-11-07 に追加（PR #16、main `f868ec7`）。`workflow_dispatch` の初回実行（run `42374269050`）で Python / Node 両ジョブの緑を確認した。週次 `schedule`（月曜 09:00 JST）は **2026-11-09 09:27 JST に初回発火を確認**（run `42540311340` success、cron 予定から約 28 分遅延）。**未設定**: `.github/dependabot.yml`（依存更新 PR の自動化）、失敗時の通知先、required checks への追加。`.github/workflows/**` は self-evolution ポリシーで DEPLOY（critical）扱いのため AI は書き込めず、適用は人間が行った（2026-11-07 実測）。詳細は [docs/ci/dependency-audit.md](docs/ci/dependency-audit.md) と [検証記録](docs/verification/2026-11-07-dependency-audit.md)。
 4. **マージ方法**: PR #1 は人間の操作で **merge commit**（`5e3f410`）としてマージされた。以後の通常 PR は `claude-automerge merge`（`--auto --squash`）を使う。`feat/mvp` リモートブランチは残存（AI は `git push --delete` 不可）。
 5. **外部 URL の自動取得なし**: URL は識別子として保存し、本文は貼付を正とする（改竄検出の単純化）。
 6. **モバイル実機・スクリーンリーダーの検証未実施**（CSS / ARIA の実装のみ）。
@@ -249,6 +249,8 @@ npx playwright test          # 26 passed（Chromium）
 - 実 CI 検証: PR 上 run `42373686405`、main 初回 run `42374269050` がいずれも success。
   CI ログで Python 本番 34 パッケージの監査を確認（dev extras 46 パッケージは同一 lockfile に対する
   ローカル実測）、Node 本番・全依存とも 0 vulnerabilities。
+- 週次 `schedule` の初回発火: 2026-11-09 09:27 JST / run `42540311340` success
+  （cron 予定 09:00 から約 28 分遅延、Python 31s / Node 15s）。
 - 適用理由・設計判断は [docs/ci/dependency-audit.md](docs/ci/dependency-audit.md)、
   証跡は [docs/verification/2026-11-07-dependency-audit.md](docs/verification/2026-11-07-dependency-audit.md)。
 

@@ -200,7 +200,9 @@ actionlint 1.7.12 / shellcheck 0.9.0
    main CI run `42374211728` は 3/3 success。
 4. **初回手動実行**: `gh workflow run dependency-audit.yml --ref main` → run `42374269050` success
    （`workflow_dispatch` / head `f868ec7`）。
-5. **未実施（任意・別途）**: required checks への追加、失敗時の通知先
+5. **週次 schedule の初回発火**: 2026-11-09 09:27:51 JST に run `42540311340` が success
+   （cron 予定 09:00 から約 28 分の遅延。§4.1 / 検証記録 §11）。
+6. **未実施（任意・別途）**: required checks への追加、失敗時の通知先
    （Issue 自動作成・Webhook 等）、`schedule` の時刻変更。
 
 ### 4.1 実 CI の実行結果
@@ -209,6 +211,7 @@ actionlint 1.7.12 / shellcheck 0.9.0
 |---|---|---|---|---|
 | 適用 PR #16（head `eb74d5b`） | `pull_request` | `42373686405` | 35s / success | 11s / success |
 | main 初回（head `f868ec7`） | `workflow_dispatch` | `42374269050` | 26s / success | 14s / success |
+| 週次 schedule 初回（head `b4b6688`） | `schedule` | `42540311340` | 31s / success | 15s / success |
 
 実 CI のログで確認した出力:
 
@@ -280,8 +283,10 @@ Python ジョブが必ず赤になる**（§2.1 の実測どおり）。主な�
 - **paths 限定による取りこぼし**: `pull_request` トリガは依存ファイル変更時にしか走らない
   ため、依存を変更しない PR では監査されない。**週次の `schedule` 実行がこれを補完する**
   設計だが、依存変更 PR の検出遅れは残る。
-- **実 CI の初回実行は完了**: PR #16（run `42373686405`）と main の `workflow_dispatch`
-  （run `42374269050`）で両ジョブの緑を確認した（§4.1）。継続監視の対象は、`ubuntu-latest` の
+- **実 CI の実行は完了**: PR #16（run `42373686405`）、main の `workflow_dispatch`
+  （run `42374269050`）、週次 `schedule` の初回（run `42540311340` / 2026-11-09）で
+  両ジョブの緑を確認した（§4.1）。継続監視の対象は、`ubuntu-latest` の
   Ubuntu 26 移行（2026-10-19 以降）と `actions/*@v4/v5` の非推奨警告である。
+  schedule は実測で予定時刻から約 28 分遅れて発火した（GitHub の遅延仕様）。
 - **通知先は未設定**: 失敗時に誰がどう気づくかは未定。必要なら Issue 自動起票や
   Slack/Webhook 通知を別途追加する。
