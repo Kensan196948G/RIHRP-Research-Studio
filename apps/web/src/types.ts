@@ -158,3 +158,17 @@ export interface AuditEvent {
   details: Record<string, unknown>;
   created_at: string | null;
 }
+
+export interface AiCandidate {
+  claim: string;
+  quote: string;
+  valid: boolean;
+  reason: string | null;
+}
+
+export interface AiDraftMeta {
+  model: string;
+  latency_ms: number;
+  candidates: number;
+  valid: number;
+}

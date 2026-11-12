@@ -1,5 +1,17 @@
 components:
   schemas:
+    AiDraftIn:
+      description: AI 下書きの対象出典。
+      properties:
+        source_id:
+          maxLength: 36
+          minLength: 1
+          title: Source Id
+          type: string
+      required:
+      - source_id
+      title: AiDraftIn
+      type: object
     ClaimIn:
       properties:
         text:
@@ -832,6 +844,41 @@ paths:
       summary: Update Project
       tags:
       - projects
+  /api/projects/{project_id}/ai/draft-claims:
+    post:
+      operationId: draft_claims_api_projects__project_id__ai_draft_claims_post
+      parameters:
+      - in: path
+        name: project_id
+        required: true
+        schema:
+          title: Project Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiDraftIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Draft Claims Api Projects  Project Id  Ai Draft Claims
+                  Post
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Draft Claims
+      tags:
+      - ai
   /api/projects/{project_id}/claims:
     get:
       operationId: list_claims_api_projects__project_id__claims_get

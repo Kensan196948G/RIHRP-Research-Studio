@@ -38,7 +38,19 @@ class Settings(BaseSettings):
     cf_access_provision: bool = False
     cf_access_default_role: str = "viewer"
     audit_retention_days: int = 365
+    # AI 下書き（ADR-0006）。鍵が空なら機能だけ 503 で無効化する（fail closed）。
+    llm_base_url: str = ""
+    llm_model: str = ""
+    llm_api_key: str = ""
+    llm_timeout_seconds: float = 30.0
+    llm_max_claims: int = 8
+    llm_max_source_chars: int = 12000
+    llm_rate_limit: int = 5
     web_dist: Path = REPO_ROOT / "apps/web/dist"
+
+    @property
+    def llm_configured(self) -> bool:
+        return bool(self.llm_base_url and self.llm_model and self.llm_api_key)
 
     @property
     def is_production(self) -> bool:
