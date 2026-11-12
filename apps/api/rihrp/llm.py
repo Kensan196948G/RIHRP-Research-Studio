@@ -123,8 +123,8 @@ def draft_claims(source_text: str, *, max_claims: int) -> tuple[list[dict], dict
         payload = {
             "model": settings.llm_model,
             # adaptive thinking が常時オンのため、思考分を含めて余裕を持たせる。
-            "max_tokens": 4096,
-            "temperature": 0,
+            # temperature は Opus 5.5 で非推奨（400 invalid_request_error）のため送らない。
+            "max_tokens": 8192,
             "system": system_message,
             "messages": [{"role": "user", "content": prompt}],
         }
