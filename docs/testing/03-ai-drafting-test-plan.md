@@ -2,7 +2,7 @@
 
 - 版: v1.0（2026-11-12）
 - 対象: `POST /api/projects/{id}/ai/draft-claims` と画面の「AI で下書き」
-- 関連: [ADR-0006](../adr/0006-ai-drafting.md) / [実AI検証](../verification/2026-11-12-real-ai-verification.md)
+- 関連: [ADR-0006](../adr/0006-ai-drafting.md) / [実AI検証](../verification/2026-11-12-real-ai-verification.md) / [AI機能の変更フロー](04-ai-feature-workflow.md)
 
 ## 方針
 
