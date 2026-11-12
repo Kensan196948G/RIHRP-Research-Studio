@@ -1,0 +1,44 @@
+{
+  "captured_at": "2026-11-12T21:44:08+0900",
+  "environment": "restored copy of rihrp_production (rihrp_restore_aismoke); release e3f59c6; production env file",
+  "release": {
+    "sha": "e3f59c6af47a9f2625123944b8b925e9a2e9a1b2",
+    "manifest_sha256": "e25004a6a49463fe5d4ad41344a2e74e193b514fa46f4a7d263153575002a44b"
+  },
+  "ready": {
+    "status": "ready",
+    "migration": "0005_reports_ai_assisted"
+  },
+  "http_status": 200,
+  "latency_ms": 4942,
+  "meta": {
+    "provider": "anthropic",
+    "model": "claude-opus-5-5",
+    "latency_ms": 4883,
+    "candidates": 2,
+    "valid": 2
+  },
+  "error": null,
+  "candidates": [
+    {
+      "claim": "2026年の観測値は42.5%であった。",
+      "quote": "2026年の観測値は 42.5% であった。",
+      "valid": true,
+      "reason": null
+    },
+    {
+      "claim": "対象期間は2019年から2023年である。",
+      "quote": "対象期間は 2019年から 2023年 である。",
+      "valid": true,
+      "reason": null
+    }
+  ],
+  "audit_action": "ai.draft_requested",
+  "audit_details": {
+    "model": "claude-opus-5-5",
+    "valid": 2,
+    "provider": "anthropic",
+    "candidates": 2,
+    "latency_ms": 4883
+  }
+}
