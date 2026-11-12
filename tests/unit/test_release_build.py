@@ -23,7 +23,7 @@ from tools import release_build
 
 SHA = "a" * 40
 OTHER_SHA = "b" * 40
-MIGRATION = "0004_research_documents"
+MIGRATION = "0005_reports_ai_assisted"
 BUILT_AT = datetime(2026, 11, 3, 12, 0, 0, tzinfo=UTC)
 BUILT_AT_TEXT = "2026-11-03T12:00:00.000000Z"
 VERIFY_MIGRATION_CONTRACT = release_build.verify_migration_contract
@@ -73,8 +73,8 @@ def _valid_entries() -> list[Entry]:
         Entry("apps/web/package-lock.json", b"{}\n"),
         Entry("apps/api/rihrp/main.py", b"app = object()\n"),
         Entry(
-            "infra/migrations/versions/0004_research_documents.py",
-            b"revision = '0004_research_documents'\n",
+            "infra/migrations/versions/0005_reports_ai_assisted.py",
+            b"revision = '0005_reports_ai_assisted'\n",
         ),
     ]
 
@@ -96,8 +96,8 @@ def release_tree(tmp_path: Path) -> Path:
     _write(release / "apps/api/rihrp/main.py", b"app = object()\n")
     _write(release / "apps/api/__pycache__/main.cpython-312.pyc", b"cache\n")
     _write(
-        release / "infra/migrations/versions/0004_research_documents.py",
-        b"revision = '0004_research_documents'\n",
+        release / "infra/migrations/versions/0005_reports_ai_assisted.py",
+        b"revision = '0005_reports_ai_assisted'\n",
     )
     _write(release / "infra/migrations/__pycache__/0004.cpython-312.pyc", b"cache\n")
     _write(release / "apps/web/dist/index.html", b"<html>release</html>\n")
@@ -114,7 +114,7 @@ def test_known_migration_contract_accepts_current_and_rejects_edit(tmp_path):
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
     )
     VERIFY_MIGRATION_CONTRACT(tmp_path)
-    target = versions / "0004_research_documents.py"
+    target = versions / "0005_reports_ai_assisted.py"
     target.write_text(target.read_text() + "\n# unauthorized edit\n")
     with pytest.raises(release_build.BuildError, match="migration contents differ"):
         VERIFY_MIGRATION_CONTRACT(tmp_path)
@@ -200,7 +200,7 @@ def test_validate_source_archive_rejects_duplicate_paths() -> None:
     [
         ("pyproject.toml", "missing required files"),
         ("apps/api/rihrp/main.py", "missing the API tree"),
-        ("infra/migrations/versions/0004_research_documents.py", "missing the migrations tree"),
+        ("infra/migrations/versions/0005_reports_ai_assisted.py", "missing the migrations tree"),
     ],
 )
 def test_validate_source_archive_rejects_incomplete_tree(missing: str, message: str) -> None:
@@ -499,7 +499,7 @@ def test_build_release_publishes_manifest_after_all_artifacts(
     assert manifest["built_at"] == BUILT_AT_TEXT
     assert manifest["files"]["uv.lock"] == _sha256(b"lock\n")
     assert "apps/api/rihrp/main.py" in manifest["files"]
-    assert "infra/migrations/versions/0004_research_documents.py" in manifest["files"]
+    assert "infra/migrations/versions/0005_reports_ai_assisted.py" in manifest["files"]
     assert "apps/web/dist/index.html" in manifest["files"]
 
     git_calls = [call for call in runner.calls if call.argv[0] == "git"]

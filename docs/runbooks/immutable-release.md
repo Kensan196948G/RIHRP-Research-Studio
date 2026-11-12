@@ -3,7 +3,8 @@
 > **2026-11-03 22:24 JSTに本番切替・技術受入済み（CONDITIONAL GO）**。実行releaseは `82e664867479cd8c9b6ecdabab4529457342c958`。
 > 実build、同じuvicornラッパーでの隔離E2E29件、専用unitの実失敗/復旧、直前backup実復元を確認した。
 > 証跡と残条件は[本番受入記録](../verification/2026-11-03-production-acceptance.md)。
-> この版はDB migration `0004_research_documents` のままの配備に限定し、DB更新/downgradeをしない。
+> この版はDB migration `0005_reports_ai_assisted`（`reports.ai_assisted` の追加のみ）に対応する。
+downgradeは行わない。切戻し時も追加列は残す（旧コードは無視する）。
 
 ## 配置と信頼境界
 
@@ -33,7 +34,7 @@ venvのshebangに絶対パスが入るため、ビルド後にreleaseディレ�
 従来の開発/テストでは両変数未指定に限り互換動作する。認証/Access処理のテスト用バイパスは追加しない。
 
 - `/healthz` / `/readyz` の `release.sha` と `manifest_sha256` を確認。
-- migration0004・asset本文hash・認証前401・主要業務E2Eを検証。
+- migration0005・asset本文hash・認証前401・主要業務E2Eを検証。
 - fake Operationsの正常/失敗/rollbackテストに加え、実systemd切替前に隔離環境で受入する。
 
 ## 3. Backupと復元証跡
@@ -45,7 +46,7 @@ venvのshebangに絶対パスが入るため、ビルド後にreleaseディレ�
 {
   "source_db": "rihrp_production",
   "backup_sha256": "<dumpのSHA-256>",
-  "migration": "0004_research_documents",
+  "migration": "0005_reports_ai_assisted",
   "restored": true,
   "restored_at": "<UTCのRFC3339時刻>"
 }
@@ -70,7 +71,7 @@ python3 tools/release_activate.py activate --expect-sha <対象の40桁SHA> \
 
 ## 5. Rollback
 
-新方式間では `rollback --expect-sha <previousのSHA>` を使う。保持済みprevious成果物の整合性・同じ0004 migrationを確認する。
+新方式間では `rollback --expect-sha <previousのSHA>` を使う。保持済みprevious成果物の整合性・同じ0005 migrationを確認する。
 DBを変更しないアプリ切戻しを妨げないため、rollbackにbackup鮮度/restore証跡/CI/mainのゲートは要求しない。
 新規activateでは従来どおり最新backup/restore証跡を必須とする。
 旧unitへの初回移行中の例外失敗は自動復旧する。電源断/強制終了はpending markerを残し、再実行を拒否して手動調査へ回す（自動resumeしない）。
