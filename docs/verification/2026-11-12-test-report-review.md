@@ -34,9 +34,9 @@
 | 自然引用 0/6・逐語 6/6 | S4 `free_results.json` | aligned | なし |
 | 改竄 2/2 | S4 `tamper_results.json` | aligned | なし |
 | 丸め 6/6 unverified | S4 `rounding_results.json` | aligned | なし |
-| Anthropic 200 / 3.9 秒 / 3 候補 | 会話ログのみ（S2 に保存証跡なし） | **unsupported** | 条件 C2 |
-| 本番AI 200 / 4.4 秒 / 2 候補 | 会話ログのみ | **unsupported** | 条件 C2 |
-| migration 0005 適用・列追加 | 会話ログのみ（psql 出力未保存） | **unsupported** | 条件 C2 |
+| Anthropic 200 / 3.9 秒 / 3 候補 | 会話ログ。再実行の保存証跡 `production_ai_smoke.json`（200 / 4.9 秒 / 2 候補） | **aligned（再実行で確認。元値はログ由来）** | 条件 C2 を解消 |
+| 本番AI 200 / 4.4 秒 / 2 候補 | 同上（再実行 4.9 秒 / 2 候補、監査 `ai.draft_requested` 付き） | **aligned（再実行で確認）** | 条件 C2 を解消 |
+| migration 0005 適用・列追加 | `migration_0005_check.json`（読み取り専用 psql） | **aligned** | 解消済み |
 | readyz 503 25 分・5 回通知 | S6 `alerts.log`（20:21/20:26/20:31/20:37/20:42） | aligned | なし |
 | httpx 欠落が原因 | S6 journal（ModuleNotFoundError） | aligned | なし |
 | CI green | S5 | aligned | なし |
@@ -65,7 +65,7 @@
 | ID | 条件 | 状態 | 終了条件 |
 |---|---|---|---|
 | C1 | 本番ブラウザ受入が未実施 | **open** | 本番で「AI で下書き」が成功し、監査に `ai.draft_requested` が残る（証跡: 画面/監査） |
-| C2 | スモーク数値・migration 確認が会話ログのみ | **open** | 実行時の応答/DB 出力を JSON で保存し、文書から参照する |
+| C2 | スモーク数値・migration 確認が会話ログのみ | **closed** | `production_ai_smoke.json` と `migration_0005_check.json` を保存（2026-11-12 21:44） |
 | C3 | 「24/24」の定義が曖昧 | **closed** | 本レビューで表現を修正（`18/18` を併記） |
 | C4 | 切替停止時間が未計測 | **closed** | journal から 5 秒/4 秒を実測し追記 |
 
@@ -86,15 +86,15 @@
 | ID | 対象 | 内容 | owner | 終了条件 | 状態 |
 |---|---|---|---|---|---|
 | A1 | C1 | 本番ブラウザ受入 | オーナー | 受入成功＋監査記録 | open |
-| A2 | C2 | スモーク/migration 証跡の保存 | AI | JSON をコミットし文書から参照 | open |
+| A2 | C2 | スモーク/migration 証跡の保存 | AI | JSON をコミットし文書から参照 | **closed** |
 | A3 | 残リスク | 費用・quota の日次上限と警報 | 未定 | 設定と実測 | open（任意） |
 | A4 | 残リスク | 外部通知の追加 | 未定 | 通知到達の実測 | open（任意） |
 
 ## 9. Recommendation Basis and Limitations
 
 - 実行証跡・欠陥証跡ともに存在し、主要な結論（本番稼働・AI 実動作・切戻し可能性）は支持される。
-- ブロッカーは無い。C1（人間受入）と C2（証跡保存）は限定的で、閉鎖条件と証跡が定義できるため **conditional_pass**。
-- 限界: 記録作成者とレビュアーが同一。C2 の数値は会話ログ由来で、独立した保存証跡ではない。
+- ブロッカーは無い。C2（証跡保存）は再実行の保存証跡で閉鎖した。残る条件は C1（人間受入）のみで、閉鎖条件と証跡が定義できるため **conditional_pass**。
+- 限界: 記録作成者とレビュアーが同一。C2 は再実行の保存証跡で閉鎖したが、**元の 3.9 秒/4.4 秒は会話ログ由来**で、再実行値（4.9 秒）とは別。
 - 本書は**承認ではない**。`human_final_decision: pending`。
 
 ## 10. Human Decision Questions

@@ -40,6 +40,9 @@ Anthropic `GET /v1/models` は **200**、一覧に `claude-opus-5-5` が存在�
 同一内容の直接呼び出しで `usage = {input_tokens: 80, output_tokens: 166（うち thinking 112）}`。
 実運用の 12,000 文字入力では入力が数千トークン規模になる。単価は $4/MTok（入力）・$20/MTok（出力）。
 
+再実行の保存証跡: `docs/verification/2026-11-12-real-ai/production_ai_smoke.json`
+（本番複製 DB・本番リリース・本番設定。200 / 4.9 秒 / 2 候補）。初回 3.9 秒は会話ログ由来。
+
 ## 4. 判定
 
 - サーバー側 AI 下書きは **Anthropic Opus 5.5 で実動作**する。

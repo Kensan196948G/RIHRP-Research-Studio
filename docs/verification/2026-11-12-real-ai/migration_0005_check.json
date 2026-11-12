@@ -1,0 +1,14 @@
+{
+  "captured_at": "2026-11-12T21:44:16+0900",
+  "database": "rihrp_production",
+  "read_only": true,
+  "alembic_version": "0005_reports_ai_assisted",
+  "reports_ai_assisted": {
+    "exists": true,
+    "data_type": "boolean",
+    "default": "false",
+    "nullable": "NO"
+  },
+  "reports_rows": 0,
+  "table_owner": "rihrp_prod_owner"
+}
