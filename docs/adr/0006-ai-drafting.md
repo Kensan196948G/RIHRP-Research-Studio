@@ -16,6 +16,8 @@
 - サーバー側に LLM クライアントを置く。プロバイダは `openai`（OpenAI 互換 /chat/completions）と
   `anthropic`（/messages、`x-api-key` と `anthropic-version`）を切り替えられる。
 - 追加する API は **生成のみ**。検証（`verify_claim`）は決定論のまま変更しない（ADR-0002 維持）。
+- Anthropic の Opus 5.5 は `temperature` が非推奨（400）のため送らない。adaptive thinking 常時オンのため
+  `max_tokens` は 8192 とし、思考分を含めて余裕を持たせる。
 - 生成結果は**保存しない**。候補を返し、利用者が採用したものだけを既存の
   `POST /claims/{id}/evidence` 経路で登録する。
 - モデルが返した引用は**サーバー側で原文照合**し、一致しない候補は `valid=false` として返す（採用不可）。
