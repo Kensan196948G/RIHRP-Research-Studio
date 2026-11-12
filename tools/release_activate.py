@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Final, Protocol
 
 TARGET_DB: Final = "rihrp_production"
-EXPECTED_MIGRATION: Final = "0004_research_documents"
+EXPECTED_MIGRATION: Final = "0005_reports_ai_assisted"
 SERVICE_NAME: Final = "rihrp.service"
 SERVICE_PORT: Final = 18110
 SHA_RE: Final = re.compile(r"[0-9a-f]{40}")
@@ -272,7 +272,7 @@ def inspect_database():
     return (
         len(rows) == 1
         and str(rows[0][0]).lower() == "on"
-        and rows[0][1] == "0004_research_documents"
+        and rows[0][1] == "0005_reports_ai_assisted"
     )
 
 

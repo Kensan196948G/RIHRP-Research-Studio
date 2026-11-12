@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 MANIFEST_NAME: Final = "manifest.json"
 EXPECTED_SCHEMA: Final = 1
-EXPECTED_MIGRATION: Final = "0004_research_documents"
+EXPECTED_MIGRATION: Final = "0005_reports_ai_assisted"
 _MIGRATION_IDS: Final = frozenset({EXPECTED_MIGRATION})
 _SHA_RE: Final = re.compile(r"[0-9a-f]{40}")
 _HASH_RE: Final = re.compile(r"[0-9a-f]{64}")

@@ -24,7 +24,7 @@ from pathlib import Path, PurePosixPath
 from typing import Final, Protocol, TypedDict
 
 SHA_RE: Final = re.compile(r"[0-9a-f]{40}")
-MIGRATION: Final = "0004_research_documents"
+MIGRATION: Final = "0005_reports_ai_assisted"
 MANIFEST_SCHEMA: Final = 1
 MANIFEST_NAME: Final = "manifest.json"
 SOURCE_REQUIRED: Final = (

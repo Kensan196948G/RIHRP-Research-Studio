@@ -51,7 +51,7 @@ RELEASE_FILES: Final = {
     "apps/api/rihrp/__init__.py": b"",
     "apps/api/rihrp/main.py": b"from fastapi import FastAPI\n",
     "infra/migrations/env.py": b"# migration environment\n",
-    "infra/migrations/versions/0004_research_documents.py": b"# revision 0004\n",
+    "infra/migrations/versions/0005_reports_ai_assisted.py": b"# revision 0004\n",
     "apps/web/dist/index.html": b"<!doctype html>\n",
     "apps/web/dist/assets/app.js": b"console.log('rihrp');\n",
     "uv.lock": b"version = 1\n",

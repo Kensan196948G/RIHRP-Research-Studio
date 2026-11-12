@@ -20,7 +20,7 @@ from rihrp.routers import health
 
 SHA = "a" * 40
 OTHER_SHA = "b" * 40
-MIGRATION = "0004_research_documents"
+MIGRATION = "0005_reports_ai_assisted"
 BUILT_AT = "2026-11-03T12:00:00.000000Z"
 
 
@@ -41,8 +41,8 @@ def release_dir(tmp_path: Path) -> Path:
     _write(root / "apps/api/rihrp/__init__.py", b'__version__ = "0.1.0"\n')
     _write(root / "apps/api/rihrp/main.py", b"app = object()\n")
     _write(
-        root / "infra/migrations/versions/0004_research_documents.py",
-        b'revision = "0004_research_documents"\n',
+        root / "infra/migrations/versions/0005_reports_ai_assisted.py",
+        b'revision = "0005_reports_ai_assisted"\n',
     )
     _write(root / "apps/web/dist/index.html", b"<html>release</html>\n")
     _write(root / "apps/web/dist/assets/app.js", b"console.log('release');\n")
@@ -103,7 +103,7 @@ def test_fixture_manifest_covers_required_inventory(release_dir: Path) -> None:
         "apps/web/package-lock.json",
         "apps/web/package.json",
         "apps/api/rihrp/main.py",
-        "infra/migrations/versions/0004_research_documents.py",
+        "infra/migrations/versions/0005_reports_ai_assisted.py",
         "apps/web/dist/index.html",
         "apps/web/dist/assets/app.js",
     } <= set(files)
