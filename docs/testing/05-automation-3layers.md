@@ -43,6 +43,16 @@ plugin メッセージを追加できる（既存 `harness/plugins/memory-recall
   `./start.sh compatibility` PASS、Required Checks 5/5 pass。
 - **既定 OFF**。有効化は `DSH_AUTO_SKILL=1` と `--patch`（またはプロファイル登録）。
 
+### 誤検知の修正（2026-11-12）
+
+- Phase 2 PoC の実測中に、`agent/pre-step` が実ユーザー発話の後ろへ追加する
+  skill catalog を発話として読んでいたため、**無関係な発話でも Skill が注入される**
+  ことを確認した（「今日の天気を教えて」で `ai-feature-testing` /
+  `llm-hallucination-testing` を注入）。
+- 修正: `source.kind=user` の実ユーザー発話だけを判定対象にした（PR #147、`833edd5`）。
+- 実測: 無関係発話→注入なし / 「AI機能のテスト設計」→2 Skill 注入。
+- 本節の受入（「キーワードを含む発話で注入」）は、修正後に成立する。
+
 ### 受入
 
 - キーワードを含む発話で、対象 Skill の本文が1回だけ注入される。
@@ -82,6 +92,34 @@ plugin メッセージを追加できる（既存 `harness/plugins/memory-recall
 **自動化の境界（正直な制約）**: `spawn_teammate` は**モデルが呼ぶツール**であり、
 プラグインから直接起動できない。したがって Phase 2 の「自動」は
 **プレイブック注入による誘導**まで。完全自動 spawn には harness 側の新ツールが必要（別承認）。
+
+### PoC 実測（2026-11-12）
+
+- DSH の worktree ブランチ `auto/auto-team` に実装（PR #146）。
+- 単体テスト **7 件 pass**（純関数 3・ハンドラ 4）。
+  - 1セッション1回・無効時/不一致/中断時の素通しを確認。
+  - `agent/pre-step` が実発話の後ろに追加する context メッセージではなく、
+    実ユーザー発話（`source.kind=user`）だけで判定する。
+  - 追記メッセージにだけトリガー語がある場合は注入しない（回帰テスト）。
+- `npm test`: 776 tests / pass 743 / fail 0 / skip 33。`npm run validate` OK。
+- 隔離 `DSH_HOME` + `--patch`: `--dump-config` で alias `auto-team` の登録を確認。
+- **実ホーム + 一時 patch（プロファイル非変更）**で headless を1回実行:
+  - セッションログに `source.kind: plugin:auto-team` と `<!-- auto-team -->` の
+    plugin メッセージを確認（注入成立）。
+- 残（canary）: headless プロファイルは Agent Team ツール（`team_task_*` /
+  `spawn_teammate`）を持たないため、「2件以上の team_task と1名以上の spawn」の
+  行動受容は web プロファイルで確認する。
+- 環境注記: headless のツール実行時に
+  `Cannot read properties of undefined (reading 'prepare')` が出るが、
+  **patch なしでも再現**する環境側の事象で、本 plugin の欠陥ではない。
+
+### 実装完了（2026-11-12）
+
+- DSH 本体へマージ済み: PR #146（`28e3f09`）。
+- テストは `tests/node/` にあり `npm test` の対象（CI 回帰）。
+- 検証: `npm test` 776 / pass 743 / fail 0 / skip 33、`npm run validate` OK、
+  Required Checks 5/5 pass。
+- **既定 OFF**。有効化は `DSH_AUTO_TEAM=1` と `--patch`（またはプロファイル登録）。
 
 ### 受入
 
