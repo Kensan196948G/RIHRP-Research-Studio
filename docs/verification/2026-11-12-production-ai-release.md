@@ -3,6 +3,7 @@
 - 実行: 2026-11-12 20:15〜20:45 JST
 - 結果: 本番 `e3f59c6` / migration `0005_reports_ai_assisted` で稼働。ready 200・公開 302。
 - 承認: 利用者選択 `1`（A〜F 実施）
+- レビュー: [テスト検証記録のレビュー](2026-11-12-test-report-review.md)（`test-report-review` を事後適用、conditional_pass / human pending）
 
 ## 1. 事前状態
 
@@ -71,4 +72,4 @@ DB を 0005 に上げた後、**0004 リリース（`bfe717d`）へ戻すと rea
 
 - これにより previous が **0005 対応**になった。以後の通常 rollback は 0005 内で完結する。
 - **0004 リリース（`bfe717d`）への切戻しは引き続き不可**（readyz 503）。必要な場合は DB バックアップ復元を伴う。
-- 訓練中の停止は各切替の数秒（activate / rollback の再起動のみ）。
+- 訓練中の停止は実測 **activate 5 秒**（20:52:07→20:52:12）/ **rollback 4 秒**（20:52:21→20:52:25）。
