@@ -45,6 +45,7 @@ def draft_claims(
         entity_id=source.id,
         project_id=project_id,
         details={
+            "provider": meta["provider"],
             "model": meta["model"],
             "candidates": meta["candidates"],
             "valid": meta["valid"],

@@ -39,7 +39,12 @@ class StubProvider:
                 length = int(self.headers.get("Content-Length", "0"))
                 body = json.loads(self.rfile.read(length) or b"{}")
                 stub.requests.append(
-                    {"authorization": self.headers.get("Authorization"), "body": body}
+                    {
+                        "path": self.path,
+                        "authorization": self.headers.get("Authorization"),
+                        "x_api_key": self.headers.get("x-api-key"),
+                        "body": body,
+                    }
                 )
                 if stub.mode == "timeout":
                     time.sleep(1.2)
@@ -49,7 +54,7 @@ class StubProvider:
                 if stub.mode == "invalid":
                     stub._send_raw(self, 200, "not-json")
                     return
-                content = json.dumps(
+                content_text = json.dumps(
                     {
                         "claims": [
                             {
@@ -64,10 +69,17 @@ class StubProvider:
                     },
                     ensure_ascii=False,
                 )
+                if self.path.endswith("/messages"):
+                    stub._send(
+                        self,
+                        200,
+                        {"content": [{"type": "text", "text": content_text}]},
+                    )
+                    return
                 stub._send(
                     self,
                     200,
-                    {"choices": [{"message": {"content": content}}]},
+                    {"choices": [{"message": {"content": content_text}}]},
                 )
 
             def log_message(self, *args: Any) -> None:  # noqa: A003
@@ -259,3 +271,37 @@ def test_draft_is_audited_without_prompt_or_key(
     serialized = json.dumps(matches, ensure_ascii=False)
     assert API_KEY not in serialized
     assert "SOURCE:" not in serialized
+
+
+def test_anthropic_provider_uses_messages_api(
+    editor_client: TestClient, stub: StubProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("RIHRP_LLM_PROVIDER", "anthropic")
+    monkeypatch.setenv("RIHRP_LLM_API_KEY", "sk-ant-test-value")
+    get_settings.cache_clear()
+    llm.reset_draft_rate()
+    project, source = _project_with_source(editor_client)
+    response = editor_client.post(
+        f"/api/projects/{project['id']}/ai/draft-claims", json={"source_id": source["id"]}
+    )
+    get_settings.cache_clear()
+    assert response.status_code == 200, response.text
+    assert response.json()["meta"]["provider"] == "anthropic"
+    last = stub.requests[-1]
+    assert last["path"] == "/v1/messages"
+    assert last["x_api_key"] == "sk-ant-test-value"
+    assert last["authorization"] is None
+
+
+def test_unknown_provider_is_not_configured(
+    editor_client: TestClient, stub: StubProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("RIHRP_LLM_PROVIDER", "other")
+    get_settings.cache_clear()
+    llm.reset_draft_rate()
+    project, source = _project_with_source(editor_client)
+    response = editor_client.post(
+        f"/api/projects/{project['id']}/ai/draft-claims", json={"source_id": source["id"]}
+    )
+    get_settings.cache_clear()
+    assert response.status_code == 503, response.text
