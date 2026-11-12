@@ -74,7 +74,8 @@ python3 tools/release_activate.py activate --expect-sha <対象の40桁SHA> \
 新方式間では `rollback --expect-sha <previousのSHA>` を使う。保持済みprevious成果物の整合性・同じ0005 migrationを確認する。
 DBを変更しないアプリ切戻しを妨げないため、rollbackにbackup鮮度/restore証跡/CI/mainのゲートは要求しない。
 新規activateでは従来どおり最新backup/restore証跡を必須とする。
-旧unitへの初回移行中の例外失敗は自動復旧する。電源断/強制終了はpending markerを残し、再実行を拒否して手動調査へ回す（自動resumeしない）。
+旧unitへの初回移行中の例外失敗は自動復旧する。
+**0005 へ上げた後に 0004 リリースへ戻すと readyz は `migration_pending` で 503 になる**（旧コードの期待 migration と DB が不一致）。切戻しは 0005 対応リリースへの再 activate か、DB バックアップ復元を伴うものに限る。電源断/強制終了はpending markerを残し、再実行を拒否して手動調査へ回す（自動resumeしない）。
 `transitions/` に毎回の旧unit/pointerを保持する。`transition-pending.json` がある場合は保存stateと実unit/pointer/processを照合して復旧し、再受入後にpendingを解除する。
 初回の成功後は `previous` に旧checkout版が存在しないため、
 旧方式へ手動復旧する場合は保存したunit bytesと当時のcheckout/venv/distの状態を別途確認する。
