@@ -32,6 +32,9 @@ from typing import Final, Protocol
 
 TARGET_DB: Final = "rihrp_production"
 EXPECTED_MIGRATION: Final = "0005_reports_ai_assisted"
+# 切替前の current/previous は旧 migration のまま存在する。topology 検証では既知の
+# migration を許容し、切替対象（activate）だけ EXPECTED_MIGRATION を要求する。
+KNOWN_MIGRATIONS: Final = frozenset({EXPECTED_MIGRATION, "0004_research_documents"})
 SERVICE_NAME: Final = "rihrp.service"
 SERVICE_PORT: Final = 18110
 SHA_RE: Final = re.compile(r"[0-9a-f]{40}")
@@ -626,7 +629,11 @@ def _valid_relative_inventory_key(value: str) -> bool:
     return all(part not in {"", ".", ".."} for part in parts)
 
 
-def _load_release(config: ActivationConfig) -> Release:
+def _migration_allowed(value: object, *, require_current: bool) -> bool:
+    return value == EXPECTED_MIGRATION if require_current else value in KNOWN_MIGRATIONS
+
+
+def _load_release(config: ActivationConfig, *, require_current_migration: bool = True) -> Release:
     _require_owned_directory(config.release_root, "release root")
     releases = config.release_root / "releases"
     _require_owned_directory(releases, "releases directory")
@@ -644,7 +651,9 @@ def _load_release(config: ActivationConfig) -> Release:
         type(manifest.get("schema")) is not int
         or manifest.get("schema") != 1
         or manifest.get("sha") != config.expect_sha
-        or manifest.get("migration") != EXPECTED_MIGRATION
+        or not _migration_allowed(
+            manifest.get("migration"), require_current=require_current_migration
+        )
     ):
         raise ActivationError("release manifest schema, SHA, or migration is invalid")
 
@@ -725,7 +734,8 @@ def _release_for_sha(config: ActivationConfig, sha: str) -> Release:
             backup_manifest=config.backup_manifest,
             restore_evidence=config.restore_evidence,
             unit_path=config.unit_path,
-        )
+        ),
+        require_current_migration=False,
     )
 
 
@@ -1200,7 +1210,9 @@ def execute(
 
     with _release_lock(config.release_root):
         _reject_interrupted_transition(config)
-        release = _load_release(config)
+        release = _load_release(
+            config, require_current_migration=config.action == "activate"
+        )
         current, previous = _inspect_topology(config)
         old_unit, old_unit_mode = _read_unit(config.unit_path)
 

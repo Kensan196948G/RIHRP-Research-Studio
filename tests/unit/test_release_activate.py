@@ -1019,3 +1019,18 @@ def test_backup_requires_latest_fresh_intact_backup_and_restore_evidence(
         "production backup manifest is invalid or stale",
         label="dump_name",
     )
+
+
+def test_previous_migration_is_allowed_only_for_topology() -> None:
+    assert release_activate._migration_allowed(  # noqa: SLF001
+        "0004_research_documents", require_current=False
+    )
+    assert not release_activate._migration_allowed(  # noqa: SLF001
+        "0004_research_documents", require_current=True
+    )
+    assert release_activate._migration_allowed(  # noqa: SLF001
+        "0005_reports_ai_assisted", require_current=True
+    )
+    assert not release_activate._migration_allowed(  # noqa: SLF001
+        "unknown", require_current=False
+    )
