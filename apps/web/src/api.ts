@@ -135,8 +135,11 @@ export const api = {
       `/api/reports/${id}/verify`,
       { method: "POST" },
     ),
-  submitReport: (id: string) =>
-    request<{ report: import("./types").Report }>(`/api/reports/${id}/submit`, { method: "POST" }),
+  submitReport: (id: string, aiAssisted = false) =>
+    request<{ report: import("./types").Report }>(`/api/reports/${id}/submit`, {
+      method: "POST",
+      body: JSON.stringify({ ai_assisted: aiAssisted }),
+    }),
   reviewReport: (id: string, decision: "approved" | "changes_requested", comment: string) =>
     request<{ report: import("./types").Report }>(`/api/reports/${id}/review`, {
       method: "POST",

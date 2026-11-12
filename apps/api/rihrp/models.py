@@ -190,6 +190,10 @@ class Report(Base):
     content: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="draft")
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # AI 支援（LLM 生成の主張を含む）レポートの自己申告。提出時に一度だけ立てる。
+    ai_assisted: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     submitted_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

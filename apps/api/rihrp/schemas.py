@@ -163,6 +163,12 @@ class ReportUpdate(BaseModel):
         return None if value is None else _require_nonempty(value)
 
 
+class ReportSubmitIn(BaseModel):
+    """提出時の申告。ai_assisted=True なら承認条件に insufficient=0 を加える。"""
+
+    ai_assisted: bool = False
+
+
 class ReviewIn(BaseModel):
     decision: Literal["approved", "changes_requested"]
     comment: str = Field(default="", max_length=5000)

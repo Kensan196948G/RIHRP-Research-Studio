@@ -11,7 +11,14 @@ from ..auth import Principal, get_principal, require_editor, require_reviewer, r
 from ..db import get_db
 from ..errors import ApiError
 from ..models import Claim, Report, ReportVerification, ReportVersion, Review, User, new_id
-from ..schemas import ReportContentIn, ReportIn, ReportUpdate, ReviewIn, content_to_dict
+from ..schemas import (
+    ReportContentIn,
+    ReportIn,
+    ReportSubmitIn,
+    ReportUpdate,
+    ReviewIn,
+    content_to_dict,
+)
 from ..services import (
     collect_report_claim_ids,
     get_project_or_404,
@@ -238,6 +245,7 @@ def verify_report(
 @router.post("/reports/{report_id}/submit")
 def submit_report(
     report_id: str,
+    payload: ReportSubmitIn | None = None,
     principal: Principal = Depends(require_editor),
     db: OrmSession = Depends(get_db),
 ) -> dict:
@@ -246,6 +254,9 @@ def submit_report(
     report = get_report_for_update(db, report_id)
     if report.status not in {"draft", "changes_requested"}:
         raise ApiError(409, "invalid_state", "下書きまたは差し戻し状態のレポートだけ提出できます。")
+    # AI 支援の申告は下げられない（一度でも AI 生成を含むと申告したら厳格側に固定する）。
+    if payload is not None and payload.ai_assisted:
+        report.ai_assisted = True
     claim_ids = collect_report_claim_ids(report.content or {})
     if claim_ids:
         known = set(
@@ -280,7 +291,7 @@ def submit_report(
         entity_type="report",
         entity_id=report.id,
         project_id=report.project_id,
-        details={"version": report.version},
+        details={"version": report.version, "ai_assisted": report.ai_assisted},
     )
     db.commit()
     return _report_full(db, report)
@@ -303,18 +314,30 @@ def review_report(
         if report.submitted_by == principal.user_id:
             raise ApiError(403, "forbidden", "自分が提出したレポートは承認できません。")
         summary = verify_report_row(db, report, actor_id=principal.user_id)
-        if summary["contradicted"] > 0 or summary["missing_claim_ids"]:
+        ai_insufficient = report.ai_assisted and summary["insufficient"] > 0
+        if summary["contradicted"] > 0 or summary["missing_claim_ids"] or ai_insufficient:
             # 承認は拒否するが、検証結果（claim の判定・監査）は事実として残す。
             # ロールバックすると画面の判定が古いままになり、再検証の証跡も消える。
             db.commit()
             raise ApiError(
                 409,
                 "approval_blocked",
-                "矛盾または欠落した参照主張があるレポートは承認できません。",
+                (
+                    "AI 支援レポートに根拠不足の主張があるため承認できません。"
+                    if ai_insufficient and summary["contradicted"] == 0
+                    else "矛盾または欠落した参照主張があるレポートは承認できません。"
+                ),
                 {
                     "contradicted": summary["contradicted"],
+                    "insufficient": summary["insufficient"],
+                    "ai_assisted": report.ai_assisted,
                     "missing_claim_ids": summary["missing_claim_ids"],
-                    "issues": [i for i in summary["issues"] if i["verdict"] == "contradicted"],
+                    "issues": [
+                        i
+                        for i in summary["issues"]
+                        if i["verdict"] == "contradicted"
+                        or (report.ai_assisted and i["verdict"] == "insufficient")
+                    ],
                 },
             )
         report.status = "approved"

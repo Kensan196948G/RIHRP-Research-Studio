@@ -1,0 +1,34 @@
+[
+  {
+    "id": "T1",
+    "stage": "before_tamper",
+    "verdict": "verified",
+    "reasons": [
+      "quote_verified"
+    ]
+  },
+  {
+    "id": "T2",
+    "stage": "before_tamper",
+    "verdict": "verified",
+    "reasons": [
+      "quote_verified"
+    ]
+  },
+  {
+    "id": "T1",
+    "stage": "after_tamper",
+    "verdict": "contradicted",
+    "reasons": [
+      "evidence_tampered"
+    ]
+  },
+  {
+    "id": "T2",
+    "stage": "after_tamper",
+    "verdict": "contradicted",
+    "reasons": [
+      "quote_not_found"
+    ]
+  }
+]
