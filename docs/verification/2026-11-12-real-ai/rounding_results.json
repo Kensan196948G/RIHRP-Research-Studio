@@ -1,0 +1,68 @@
+[
+  {
+    "source": "JMA",
+    "claim": "日本の年平均気温は100年あたり約1.4℃の割合で上昇している。",
+    "verdict": "unverified",
+    "reasons": [
+      "number_not_found"
+    ],
+    "missing": [
+      "1.4"
+    ]
+  },
+  {
+    "source": "JMA",
+    "claim": "2025年の偏差は約1.2℃で、統計開始以降3番目に高い。",
+    "verdict": "unverified",
+    "reasons": [
+      "number_not_found"
+    ],
+    "missing": [
+      "1.2"
+    ]
+  },
+  {
+    "source": "STAT",
+    "claim": "2026年10月の総人口は約1億2300万人である。",
+    "verdict": "unverified",
+    "reasons": [
+      "number_not_found"
+    ],
+    "missing": [
+      "2300"
+    ]
+  },
+  {
+    "source": "STAT",
+    "claim": "15歳未満人口は約1330万人である。",
+    "verdict": "unverified",
+    "reasons": [
+      "number_not_found"
+    ],
+    "missing": [
+      "1330"
+    ]
+  },
+  {
+    "source": "STAT",
+    "claim": "65歳以上人口は約3620万人である。",
+    "verdict": "unverified",
+    "reasons": [
+      "number_not_found"
+    ],
+    "missing": [
+      "3620"
+    ]
+  },
+  {
+    "source": "JMA",
+    "claim": "正偏差が大きかった年の2番目は2023年である。",
+    "verdict": "unverified",
+    "reasons": [
+      "number_not_found"
+    ],
+    "missing": [
+      "2"
+    ]
+  }
+]

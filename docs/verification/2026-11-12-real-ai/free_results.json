@@ -1,0 +1,164 @@
+{
+  "model": "DeepSeek (DeepSeek Harness agent)",
+  "groups": [
+    {
+      "id": "FREE",
+      "style": "natural",
+      "total": 6,
+      "accepted": 0,
+      "rows": [
+        {
+          "id": "FREE-01",
+          "source": "JMA",
+          "quote_verbatim": false,
+          "evidence_accepted": false,
+          "verdict": "insufficient",
+          "claim": "2025年の日本の年平均気温は、基準値（1991〜2020年の30年平均値）からの偏差が+1.23℃となり、1898年の統計開始以来3番目に高い値となった。",
+          "quote": "2025年の平均気温偏差は基準値（1991〜2020年の30年平均値）から+1.23℃で、統計開始の1898年以降3番目に高い値となりました。",
+          "missing_numbers": null
+        },
+        {
+          "id": "FREE-02",
+          "source": "JMA",
+          "quote_verbatim": false,
+          "evidence_accepted": false,
+          "verdict": "insufficient",
+          "claim": "日本の年平均気温は長期的に100年あたり1.44℃の割合で上昇しており、特に1990年代以降は高温となる年が頻出している。",
+          "quote": "長期的には100年あたり1.44℃の割合で上昇しており、1990年代以降、高温となる年が頻出しています。",
+          "missing_numbers": null
+        },
+        {
+          "id": "FREE-03",
+          "source": "STAT",
+          "quote_verbatim": false,
+          "evidence_accepted": false,
+          "verdict": "insufficient",
+          "claim": "2026年10月1日現在の概算値で、総人口は1億2269万人となり、前年同月に比べて53万人（0.43％）減少した。",
+          "quote": "2026年10月1日現在（概算値）の総人口は1億2269万人で、前年同月に比べ53万人減少（0.43％）。",
+          "missing_numbers": null
+        },
+        {
+          "id": "FREE-04",
+          "source": "STAT",
+          "quote_verbatim": false,
+          "evidence_accepted": false,
+          "verdict": "insufficient",
+          "claim": "65歳以上人口は3622万7千人で前年同月より2万4千人（0.07％）増加し、そのうち75歳以上人口は2156万4千人で47万6千人（2.26％）増加した。",
+          "quote": "65歳以上人口は3622万7千人で前年同月に比べ2万4千人増（0.07％）、うち75歳以上人口は2156万4千人で47万6千人増（2.26％）。",
+          "missing_numbers": null
+        },
+        {
+          "id": "FREE-05",
+          "source": "ARXIV",
+          "quote_verbatim": false,
+          "evidence_accepted": false,
+          "verdict": "insufficient",
+          "claim": "GPT-3 is applied without any gradient updates or fine-tuning; tasks and few-shot demonstrations are specified purely through text interaction with the model.",
+          "quote": "GPT-3 is applied … without any gradient updates or fine-tuning, with tasks and few-shot demonstrations specified purely via text interaction with the model.",
+          "missing_numbers": null
+        },
+        {
+          "id": "FREE-06",
+          "source": "ARXIV",
+          "quote_verbatim": false,
+          "evidence_accepted": false,
+          "verdict": "insufficient",
+          "claim": "GPT-3 can generate news articles that human evaluators have difficulty distinguishing from articles written by humans.",
+          "quote": "GPT-3 can generate news articles which human evaluators have difficulty distinguishing from articles written by humans.",
+          "missing_numbers": null
+        }
+      ]
+    },
+    {
+      "id": "VERBATIM",
+      "style": "exact",
+      "total": 6,
+      "accepted": 6,
+      "rows": [
+        {
+          "id": "VERBATIM-01",
+          "source": "JMA",
+          "quote_verbatim": true,
+          "evidence_accepted": true,
+          "verdict": "unverified",
+          "claim": "正偏差が大きかった年の1位は2024年（+1.48℃）、2位は2023年（+1.29℃）である。",
+          "quote": "①2024年（+1.48℃）、②2023年（+1.29℃）",
+          "missing_numbers": [
+            "2"
+          ]
+        },
+        {
+          "id": "VERBATIM-02",
+          "source": "JMA",
+          "quote_verbatim": true,
+          "evidence_accepted": true,
+          "verdict": "verified",
+          "claim": "日本の年平均気温偏差の経年変化の図が対象とする期間は1898〜2025年である。",
+          "quote": "日本の年平均気温偏差の経年変化（1898〜2025年）",
+          "missing_numbers": null
+        },
+        {
+          "id": "VERBATIM-03",
+          "source": "STAT",
+          "quote_verbatim": true,
+          "evidence_accepted": true,
+          "verdict": "verified",
+          "claim": "15歳未満人口は1326万3千人で、前年同月に比べ減少した。",
+          "quote": "1326万3千人で、前年同月に比べ減少",
+          "missing_numbers": null
+        },
+        {
+          "id": "VERBATIM-04",
+          "source": "STAT",
+          "quote_verbatim": true,
+          "evidence_accepted": true,
+          "verdict": "verified",
+          "claim": "75歳以上人口は2156万4千人で、前年同月に比べ増加した。",
+          "quote": "2156万4千人で、前年同月に比べ増加",
+          "missing_numbers": null
+        },
+        {
+          "id": "VERBATIM-05",
+          "source": "ARXIV",
+          "quote_verbatim": true,
+          "evidence_accepted": true,
+          "verdict": "verified",
+          "claim": "GPT-3 is an autoregressive language model with 175 billion parameters, 10x more than any previous non-sparse language model.",
+          "quote": "an autoregressive language model with 175 billion parameters, 10x more than any previous non-sparse language model",
+          "missing_numbers": null
+        },
+        {
+          "id": "VERBATIM-06",
+          "source": "ARXIV",
+          "quote_verbatim": true,
+          "evidence_accepted": true,
+          "verdict": "verified",
+          "claim": "The arXiv-issued DOI for this paper is 10.48550/arXiv.2005.14165.",
+          "quote": "https://doi.org/10.48550/arXiv.2005.14165",
+          "missing_numbers": null
+        }
+      ]
+    }
+  ],
+  "gate": {
+    "R1": {
+      "claims": 16,
+      "http": 200,
+      "status": "approved",
+      "error": null
+    },
+    "R2": {
+      "claims": 4,
+      "http": 409,
+      "status": null,
+      "error": null
+    }
+  },
+  "r1_integrity": {
+    "verified": 4,
+    "unverified": 4,
+    "contradicted": 0,
+    "insufficient": 8,
+    "unchecked": 0
+  }
+}

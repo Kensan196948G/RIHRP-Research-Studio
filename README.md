@@ -58,6 +58,8 @@ RIHRP Research Studio は、**根拠スナップショット（内容アドレ�
 
 承認（`approved`）は **`contradicted = 0`** が条件。承認時に検証を再実行する。
 未検証・根拠不足は承認を止めないが、件数を UI とエクスポートに残す（[ADR-0003](docs/adr/0003-approval-rule.md)）。
+**AI 支援**（LLM 生成の主張を含む）として提出したレポートは、これに加えて **`insufficient = 0`** も条件になる
+（捏造引用は登録時に弾かれ `insufficient` として現れるため。実測は[実AI検証](docs/verification/2026-11-12-real-ai-verification.md)）。
 
 ## 03. 構成
 

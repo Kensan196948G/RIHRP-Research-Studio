@@ -1,0 +1,173 @@
+{
+  "model": "deepseek-v4",
+  "items": [
+    {
+      "id": "A-01",
+      "source": "JMA",
+      "type": "verified",
+      "claim": "2025年の日本の平均気温の基準値からの偏差は+1.23℃で、1898年の統計開始以降で3番目に高い値となった。",
+      "quote": "2025年の日本の平均気温の基準値（1991～2020年の30年平均値）からの偏差は+1.23℃で、1898年の統計開始以降、3番目に高い値となりました。"
+    },
+    {
+      "id": "A-02",
+      "source": "JMA",
+      "type": "verified",
+      "claim": "日本の年平均気温は長期的に100年あたり1.44℃の割合で上昇している。",
+      "quote": "長期的には100年あたり1.44℃の割合で上昇しています"
+    },
+    {
+      "id": "A-03",
+      "source": "JMA",
+      "type": "verified",
+      "claim": "正偏差が大きかった上位3か年は2024年（+1.48℃）、2023年（+1.29℃）、2025年（+1.23℃）である。",
+      "quote": "①2024年（+1.48℃）、②2023年（+1.29℃）、③2025年（+1.23℃）"
+    },
+    {
+      "id": "B-01",
+      "source": "STAT",
+      "type": "verified",
+      "claim": "2026年10月1日現在の総人口は1億2269万人で、前年同月に比べ減少した。",
+      "quote": "＜総人口＞ 1億2269万人で、前年同月に比べ減少"
+    },
+    {
+      "id": "B-02",
+      "source": "STAT",
+      "type": "verified",
+      "claim": "15歳未満人口は1326万3千人で、前年同月に比べ減少した。",
+      "quote": "15歳未満人口は 1326万3千人で、前年同月に比べ減少"
+    },
+    {
+      "id": "B-03",
+      "source": "STAT",
+      "type": "verified",
+      "claim": "65歳以上人口は3622万7千人で、前年同月に比べ増加した。",
+      "quote": "65歳以上人口は 3622万7千人で、前年同月に比べ増加"
+    },
+    {
+      "id": "C-01",
+      "source": "ARXIV",
+      "type": "verified",
+      "claim": "GPT-3 is an autoregressive language model with 175 billion parameters, 10x more than any previous non-sparse language model.",
+      "quote": "we train GPT-3, an autoregressive language model with 175 billion parameters, 10x more than any previous non-sparse language model"
+    },
+    {
+      "id": "C-02",
+      "source": "ARXIV",
+      "type": "verified",
+      "claim": "GPT-3 achieves strong performance on many NLP datasets, including translation, question-answering, cloze tasks, and 3-digit arithmetic.",
+      "quote": "GPT-3 achieves strong performance on many NLP datasets"
+    },
+    {
+      "id": "A-04",
+      "source": "JMA",
+      "type": "wrong_number",
+      "claim": "2025年の日本の平均気温の基準値からの偏差は+1.24℃で、1898年の統計開始以降で3番目に高い値となった。",
+      "quote": "2025年の日本の平均気温の基準値（1991～2020年の30年平均値）からの偏差は+1.23℃で、1898年の統計開始以降、3番目に高い値となりました。"
+    },
+    {
+      "id": "A-05",
+      "source": "JMA",
+      "type": "wrong_number",
+      "claim": "日本の年平均気温は長期的に100年あたり1.45℃の割合で上昇している。",
+      "quote": "長期的には100年あたり1.44℃の割合で上昇しています"
+    },
+    {
+      "id": "B-04",
+      "source": "STAT",
+      "type": "wrong_number",
+      "claim": "2026年10月1日現在の総人口は1億2268万人で、前年同月に比べ減少した。",
+      "quote": "＜総人口＞ 1億2269万人で、前年同月に比べ減少"
+    },
+    {
+      "id": "B-05",
+      "source": "STAT",
+      "type": "wrong_number",
+      "claim": "65歳以上人口は3623万7千人で、前年同月に比べ増加した。",
+      "quote": "65歳以上人口は 3622万7千人で、前年同月に比べ増加"
+    },
+    {
+      "id": "C-03",
+      "source": "ARXIV",
+      "type": "wrong_number",
+      "claim": "GPT-3 is an autoregressive language model with 176 billion parameters, 10x more than any previous non-sparse language model.",
+      "quote": "we train GPT-3, an autoregressive language model with 175 billion parameters, 10x more than any previous non-sparse language model"
+    },
+    {
+      "id": "C-04",
+      "source": "ARXIV",
+      "type": "wrong_number",
+      "claim": "GPT-3 achieves strong performance on many NLP datasets, including translation, question-answering, cloze tasks, and 12-digit arithmetic.",
+      "quote": "GPT-3 achieves strong performance on many NLP datasets"
+    },
+    {
+      "id": "A-06",
+      "source": "JMA",
+      "type": "fake_quote",
+      "claim": "2025年の日本の年平均気温は統計開始以来の最高記録を更新したと報告されている。",
+      "quote": "2025年の日本の年平均気温は統計開始以来、過去最高を記録しました。"
+    },
+    {
+      "id": "A-07",
+      "source": "JMA",
+      "type": "fake_quote",
+      "claim": "日本近海の海面水温も、長期傾向として100年あたり1.15℃の割合で上昇していると述べられている。",
+      "quote": "日本近海の海面水温は100年あたり1.15℃の割合で上昇しています。"
+    },
+    {
+      "id": "B-06",
+      "source": "STAT",
+      "type": "fake_quote",
+      "claim": "2026年10月1日現在の総人口は1億2300万人を下回ったとされる。",
+      "quote": "2026年10月1日現在の総人口は1億2300万人を下回りました。"
+    },
+    {
+      "id": "B-07",
+      "source": "STAT",
+      "type": "fake_quote",
+      "claim": "15歳未満人口は前年同月比で3.10％の減少となった。",
+      "quote": "15歳未満人口の減少率は前年同月比で3.10％となりました。"
+    },
+    {
+      "id": "C-05",
+      "source": "ARXIV",
+      "type": "fake_quote",
+      "claim": "The paper states that GPT-3 was trained on a corpus of 500 billion tokens collected from the web.",
+      "quote": "GPT-3 was trained on a corpus of 500 billion tokens collected from the web."
+    },
+    {
+      "id": "C-06",
+      "source": "ARXIV",
+      "type": "fake_quote",
+      "claim": "The paper claims that GPT-3 outperforms fine-tuned models on every benchmark the authors evaluated.",
+      "quote": "GPT-3 outperforms fine-tuned models on every benchmark we evaluated."
+    },
+    {
+      "id": "N-01",
+      "source": "JMA",
+      "type": "no_anchor",
+      "claim": "日本の年平均気温は長期的に上昇を続けており、特に近年は高温となる年が頻出している。",
+      "quote": ""
+    },
+    {
+      "id": "N-02",
+      "source": "STAT",
+      "type": "no_anchor",
+      "claim": "日本の総人口は前年同月と比べて減少が続いている。",
+      "quote": ""
+    },
+    {
+      "id": "N-03",
+      "source": "ARXIV",
+      "type": "no_anchor",
+      "claim": "言語モデルの規模を拡大すると、タスク非依存の少数例学習の性能が大きく向上する。",
+      "quote": ""
+    },
+    {
+      "id": "N-04",
+      "source": "JMA",
+      "type": "no_anchor",
+      "claim": "日本の年平均気温の上昇は、さまざまな変動を繰り返しながら長期的に続いている。",
+      "quote": ""
+    }
+  ]
+}

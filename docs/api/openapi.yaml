@@ -166,6 +166,15 @@ components:
       - title
       title: ReportIn
       type: object
+    ReportSubmitIn:
+      description: 提出時の申告。ai_assisted=True なら承認条件に insufficient=0 を加える。
+      properties:
+        ai_assisted:
+          default: false
+          title: Ai Assisted
+          type: boolean
+      title: ReportSubmitIn
+      type: object
     ReportUpdate:
       properties:
         content:
@@ -1258,6 +1267,14 @@ paths:
         schema:
           title: Report Id
           type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+              - $ref: '#/components/schemas/ReportSubmitIn'
+              - type: 'null'
+              title: Payload
       responses:
         '200':
           content:

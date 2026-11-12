@@ -34,6 +34,7 @@ export function ReportEditorPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [versions, setVersions] = useState<{ version: number; seal_sha256: string; note: string; created_at: string | null; created_by: string | null }[] | null>(null);
   const [versionsLoading, setVersionsLoading] = useState(false);
+  const [aiAssisted, setAiAssisted] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -44,6 +45,7 @@ export function ReportEditorPage() {
       setTitle(result.report.title);
       setDraft(result.report.content);
       setSummary(result.report.latest_verification?.summary ?? null);
+      setAiAssisted(result.report.ai_assisted ?? false);
       setDirty(false);
       const claimResult = await api.claims(result.report.project_id);
       setClaims(claimResult.claims);
@@ -244,7 +246,7 @@ export function ReportEditorPage() {
     if (!window.confirm("この内容でレビューに提出しますか？提出後は承認まで編集できません。")) return;
     setBusy("submit");
     try {
-      const result = await api.submitReport(report.id);
+      const result = await api.submitReport(report.id, aiAssisted);
       setReport(result.report);
       toast("レビューに提出しました。");
     } catch (err) {
@@ -362,6 +364,9 @@ export function ReportEditorPage() {
         ) : null}
         {editable ? (
           <>
+            <label className="small muted" title="AI が生成した主張を含む場合は、根拠不足が 1 件でもあると承認されません。">
+              <input type="checkbox" checked={aiAssisted} onChange={(event) => setAiAssisted(event.target.checked)} disabled={busy !== null} /> AI 支援
+            </label>
             <button type="button" className="btn btn-sm" onClick={() => void onSave()} disabled={busy !== null || !dirty}>
               {busy === "save" ? "保存中…" : "保存"}
             </button>
@@ -372,6 +377,11 @@ export function ReportEditorPage() {
         ) : null}
       </div>
 
+      {report.ai_assisted ? (
+        <div className="notice">
+          AI 支援レポートとして提出されています。根拠不足（insufficient）が 1 件でもあると承認されません。
+        </div>
+      ) : null}
       {locked ? (
         <div className="notice">
           {report.status === "approved"

@@ -203,6 +203,7 @@ def report_to_dict(
         "content": report.content or {"sections": []},
         "status": report.status,
         "version": report.version,
+        "ai_assisted": report.ai_assisted,
         "submitted_by": report.submitted_by,
         "submitted_by_name": submitted_by_name,
         "submitted_at": iso(report.submitted_at),
@@ -518,6 +519,7 @@ def render_markdown(db: Session, report: Report) -> str:
     lines.append("")
     lines.append(f"- テーマ: {project.title if project else report.project_id}")
     lines.append(f"- 状態: {report.status} / 版: {report.version}")
+    lines.append(f"- AI 支援: {'あり（根拠不足は承認不可）' if report.ai_assisted else 'なし'}")
     lines.append(f"- 生成: {iso(utcnow())}")
     lines.append(f"- 内容シール: {seal_content(report.content or {'sections': []})}")
     lines.append("")
