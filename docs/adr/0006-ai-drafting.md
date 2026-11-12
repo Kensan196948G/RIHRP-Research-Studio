@@ -13,7 +13,8 @@
 
 ## 決定
 
-- サーバー側に OpenAI 互換の chat completions クライアントを置く（DeepSeek / OpenAI / ローカル互換）。
+- サーバー側に LLM クライアントを置く。プロバイダは `openai`（OpenAI 互換 /chat/completions）と
+  `anthropic`（/messages、`x-api-key` と `anthropic-version`）を切り替えられる。
 - 追加する API は **生成のみ**。検証（`verify_claim`）は決定論のまま変更しない（ADR-0002 維持）。
 - 生成結果は**保存しない**。候補を返し、利用者が採用したものだけを既存の
   `POST /claims/{id}/evidence` 経路で登録する。
@@ -31,7 +32,8 @@
 
 ## 影響
 
-- 新規設定: `RIHRP_LLM_BASE_URL` / `RIHRP_LLM_MODEL` / `RIHRP_LLM_API_KEY`（+ 任意の上限値）。
+- 新規設定: `RIHRP_LLM_PROVIDER`（openai|anthropic） / `RIHRP_LLM_BASE_URL` / `RIHRP_LLM_MODEL` /
+  `RIHRP_LLM_API_KEY`（+ 任意の上限値）。`BASE_URL` が空ならプロバイダ既定を使う。
 - キー未設定の環境では UI に「AI 下書きは未設定」と表示し、既存機能は不変。
 - 本番のキー投入は人間の判断（別承認）。投入しない限り外部通信は発生しない。
 

@@ -39,7 +39,9 @@ class Settings(BaseSettings):
     cf_access_default_role: str = "viewer"
     audit_retention_days: int = 365
     # AI 下書き（ADR-0006）。鍵が空なら機能だけ 503 で無効化する（fail closed）。
-    llm_base_url: str = ""
+    # openai（OpenAI 互換 /chat/completions）または anthropic（/messages）。
+    llm_provider: str = "openai"
+    llm_base_url: str = ""  # 空ならプロバイダ既定（anthropic は https://api.anthropic.com/v1）
     llm_model: str = ""
     llm_api_key: str = ""
     llm_timeout_seconds: float = 30.0
@@ -49,8 +51,18 @@ class Settings(BaseSettings):
     web_dist: Path = REPO_ROOT / "apps/web/dist"
 
     @property
+    def llm_base(self) -> str:
+        if self.llm_base_url:
+            return self.llm_base_url.rstrip("/")
+        if self.llm_provider == "anthropic":
+            return "https://api.anthropic.com/v1"
+        return "https://api.openai.com/v1"
+
+    @property
     def llm_configured(self) -> bool:
-        return bool(self.llm_base_url and self.llm_model and self.llm_api_key)
+        return bool(
+            self.llm_model and self.llm_api_key and self.llm_provider in {"openai", "anthropic"}
+        )
 
     @property
     def is_production(self) -> bool:

@@ -29,6 +29,8 @@
 | AI-08 | 上流が JSON でない/壊れている | 502 `ai_invalid_output` |
 | AI-09 | 入力が上限超 | 413 `source_too_large` |
 | AI-10 | 連続実行 | 429 `rate_limited` |
+| AI-18 | provider=anthropic | `/messages` へ `x-api-key` で送信し、`content[].text` を解釈する |
+| AI-19 | provider が未知の値 | 503 `ai_not_configured`（設定ミスを fail closed） |
 
 ## 3. セキュリティ・漏洩
 
