@@ -122,7 +122,8 @@ def draft_claims(source_text: str, *, max_claims: int) -> tuple[list[dict], dict
         }
         payload = {
             "model": settings.llm_model,
-            "max_tokens": 1500,
+            # adaptive thinking が常時オンのため、思考分を含めて余裕を持たせる。
+            "max_tokens": 4096,
             "temperature": 0,
             "system": system_message,
             "messages": [{"role": "user", "content": prompt}],
