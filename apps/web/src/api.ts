@@ -89,6 +89,11 @@ export const api = {
 
   claims: (projectId: string) => request<{ claims: import("./types").Claim[] }>(`/api/projects/${projectId}/claims`),
   claim: (id: string) => request<{ claim: import("./types").Claim }>(`/api/claims/${id}`),
+  draftClaims: (projectId: string, sourceId: string) =>
+    request<{ candidates: import("./types").AiCandidate[]; meta: import("./types").AiDraftMeta }>(
+      `/api/projects/${projectId}/ai/draft-claims`,
+      { method: "POST", body: JSON.stringify({ source_id: sourceId }) },
+    ),
   createClaim: (projectId: string, text: string) =>
     request<{ claim: import("./types").Claim }>(`/api/projects/${projectId}/claims`, {
       method: "POST",

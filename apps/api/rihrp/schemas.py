@@ -169,6 +169,12 @@ class ReportSubmitIn(BaseModel):
     ai_assisted: bool = False
 
 
+class AiDraftIn(BaseModel):
+    """AI 下書きの対象出典。"""
+
+    source_id: str = Field(min_length=1, max_length=36)
+
+
 class ReviewIn(BaseModel):
     decision: Literal["approved", "changes_requested"]
     comment: str = Field(default="", max_length=5000)

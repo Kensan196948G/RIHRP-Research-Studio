@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import type { Claim, Project, Source } from "../types";
+import type { AiCandidate, AiDraftMeta, Claim, Project, Source } from "../types";
 import { canEdit, canReview, claimCode, countUnresolved, formatShortDate, shortHash, VERDICT_HINT, VERDICT_LABEL } from "../utils";
 import { EmptyState, ErrorBanner, Loading, Modal, ReportStatusBadge, useToast, VerdictBadge } from "../components/ui";
 
@@ -43,6 +43,12 @@ export function ProjectPage() {
   const [claimFilter, setClaimFilter] = useState("all");
   const [claimQuery, setClaimQuery] = useState("");
   const [busy, setBusy] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiSourceId, setAiSourceId] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiCandidates, setAiCandidates] = useState<AiCandidate[]>([]);
+  const [aiMeta, setAiMeta] = useState<AiDraftMeta | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!projectId) return;
@@ -132,6 +138,39 @@ export function ProjectPage() {
       toast(err instanceof Error ? err.message : "主張の作成に失敗しました。", "error");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const runAiDraft = async () => {
+    if (!aiSourceId) {
+      toast("出典を選んでください。", "error");
+      return;
+    }
+    setAiLoading(true);
+    setAiError(null);
+    setAiCandidates([]);
+    setAiMeta(null);
+    try {
+      const result = await api.draftClaims(projectId, aiSourceId);
+      setAiCandidates(result.candidates);
+      setAiMeta(result.meta);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "AI 下書きに失敗しました。");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const adoptAiCandidate = async (candidate: AiCandidate) => {
+    if (!candidate.valid) return;
+    try {
+      const created = await api.createClaim(projectId, candidate.claim);
+      await api.addEvidence(created.claim.id, { source_id: aiSourceId, quote: candidate.quote, note: "AI 下書きから採用" });
+      toast("主張を追加しました（根拠付き）。");
+      setAiCandidates((current) => current.filter((item) => item !== candidate));
+      await load();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "採用に失敗しました。", "error");
     }
   };
 
@@ -275,6 +314,7 @@ export function ProjectPage() {
         {editable ? (
           <>
             <button type="button" className="btn" onClick={() => setProjectModal(true)}>編集</button>
+            <button type="button" className="btn" onClick={() => setAiOpen(true)}>AI で下書き</button>
             <button type="button" className="btn" onClick={() => setClaimModal(true)}>+ 主張</button>
             <button type="button" className="btn btn-primary" onClick={() => setSourceModal(true)}>+ 出典</button>
           </>
@@ -577,6 +617,58 @@ export function ProjectPage() {
       ) : null}
 
       {sourceModal ? <SourceModal busy={busy} onClose={() => setSourceModal(false)} onSubmit={createSource} /> : null}
+      {aiOpen ? (
+        <Modal
+          title="AI で下書き"
+          onClose={() => setAiOpen(false)}
+          footer={
+            <>
+              <button type="button" className="btn" onClick={() => setAiOpen(false)}>閉じる</button>
+              <button type="button" className="btn btn-primary" onClick={() => void runAiDraft()} disabled={aiLoading || !aiSourceId}>
+                {aiLoading ? "生成中…" : "生成"}
+              </button>
+            </>
+          }
+        >
+          <p className="muted small">
+            出典の本文から、主張と逐語引用の候補を作ります。候補は保存されません。採用したものだけが主張として登録されます。
+            {aiMeta ? `（${aiMeta.model} / ${(aiMeta.latency_ms / 1000).toFixed(1)} 秒 / 有効 ${aiMeta.valid} 件）` : ""}
+          </p>
+          <div className="row" style={{ marginBottom: 10 }}>
+            <select
+              className="select"
+              aria-label="下書きの対象出典"
+              value={aiSourceId}
+              onChange={(event) => setAiSourceId(event.target.value)}
+            >
+              <option value="">出典を選択</option>
+              {sources.map((source) => (
+                <option key={source.id} value={source.id}>{source.title}</option>
+              ))}
+            </select>
+          </div>
+          {aiError ? <div className="error-banner" role="alert">{aiError}</div> : null}
+          {aiCandidates.length === 0 && !aiLoading ? (
+            <p className="muted small">まだ候補はありません。出典を選んで「生成」を押してください。</p>
+          ) : null}
+          {aiCandidates.map((candidate, index) => (
+            <div key={`${candidate.claim}-${index}`} className="card" style={{ marginBottom: 8 }}>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <strong>{candidate.claim}</strong>
+                <span className={`badge ${candidate.valid ? "badge-ok" : "badge-warn"}`}>
+                  {candidate.valid ? "引用一致" : "引用が見つかりません"}
+                </span>
+              </div>
+              <div className="muted small">「{candidate.quote}」</div>
+              <div className="row" style={{ marginTop: 8 }}>
+                <button type="button" className="btn btn-sm" disabled={!candidate.valid} onClick={() => void adoptAiCandidate(candidate)}>
+                  採用して主張に追加
+                </button>
+              </div>
+            </div>
+          ))}
+        </Modal>
+      ) : null}
       {claimModal ? <ClaimModal busy={busy} onClose={() => setClaimModal(false)} onSubmit={createClaim} /> : null}
       {evidenceClaim ? (
         <EvidenceModal
