@@ -6,7 +6,7 @@
 **研究職の技術者・建設土木分野の大学院生へ。**  
 仮説を整理し、反対意見も確かめ、研究の過程を説明できる報告書へ。
 
-![研究の流れ：問いを立てる、根拠を集める、反証を考える、報告する](https://readme-typing-svg.demolab.com?font=Fira+Code&size=22&duration=2600&pause=1200&color=0F766E&center=true&vCenter=true&width=780&height=64&lines=Ask+a+question.+Build+a+hypothesis.;Explore+evidence.+Consider+counterarguments.;Compare+ideas.+Explain+your+research.)
+![研究の流れ：問いを立てる、根拠を集める、反証を考える、報告する](docs/assets/animations/research-overview.gif)
 
 ![対象：研究者](https://img.shields.io/badge/For-Researchers-0f766e?style=for-the-badge)
 ![対象：大学院生](https://img.shields.io/badge/For-Graduate_Students-2563eb?style=for-the-badge)
@@ -79,7 +79,7 @@ Web版はサーバーへの接続が必要です。画面に「Offline Demo」�
 
 <div align="center">
 
-![研究の進め方：仮説、タスク、討論、根拠、比較、報告](https://readme-typing-svg.demolab.com?font=Fira+Code&size=20&duration=2300&pause=1000&color=2563EB&center=true&vCenter=true&width=780&height=58&lines=01+Hypothesis+%E2%86%92+02+Tasks+%E2%86%92+03+Discussion;04+Evidence+%E2%86%92+05+Comparison+%E2%86%92+06+Report)
+![研究の進め方：仮説、タスク、討論、根拠、比較、報告](docs/assets/animations/research-six-steps.gif)
 
 </div>
 
@@ -203,7 +203,7 @@ flowchart TD
 
 <div align="center">
 
-![研究の過程を残す：確認、修正、報告](https://readme-typing-svg.demolab.com?font=Fira+Code&size=20&duration=2400&pause=1100&color=7C3AED&center=true&vCenter=true&width=780&height=58&lines=Review+the+evidence.+Revise+the+hypothesis.;Keep+your+reasoning.+Share+your+report.)
+![研究の過程を残す：確認、修正、報告](docs/assets/animations/research-report.gif)
 
 </div>
 
@@ -447,6 +447,6 @@ tools/ci.sh --no-install
 | 変更履歴 | [CHANGELOG](CHANGELOG.md) / [v0.1.0](docs/releases/2026-11-03-v0.1.0.md) |
 | E2Eワークフロー案 | [E2E CI提案](docs/ci/e2e-workflow.md) |
 
-READMEの動的表現には外部のタイピングアニメーションSVGを3か所使用しています。GitHubのREADMEではJavaScriptや独自CSSを実行できないため、画像・Mermaid・折りたたみ表示で構成しています。外部画像が表示されない環境でも、日本語の本文・表だけで内容を読めます。アニメーション画像は操作デモではありません。バッジもライセンス・対象分野の表示であり、本番稼働やCI成功の保証には使っていません。
+READMEの動的表現には、リポジトリ内の `docs/assets/animations/` に保存した日本語のアニメーションGIFを3か所使用しています。外部のアニメーション配信サービスには依存しません。GitHubのREADMEではJavaScriptや独自CSSを実行できないため、GIF・Mermaid・折りたたみ表示で構成しています。画像が表示されない場合やアニメーションを停止する設定でも、日本語の本文・表だけで内容を読めます。GIFは流れを説明する図であり、実際の画面操作の録画や処理状況の表示ではありません。バッジもライセンス・対象分野の表示であり、本番稼働やCI成功の保証には使っていません。
 
 </details>
