@@ -131,6 +131,7 @@ export interface Report {
   content: ReportContent;
   status: "draft" | "in_review" | "changes_requested" | "approved";
   version: number;
+  ai_assisted: boolean;
   submitted_by: string | null;
   submitted_by_name: string | null;
   submitted_at: string | null;

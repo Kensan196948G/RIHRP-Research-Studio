@@ -1,0 +1,50 @@
+{
+  "R3_ai_assisted": {
+    "http": 409,
+    "code": "approval_blocked",
+    "details": {
+      "contradicted": 0,
+      "insufficient": 4,
+      "ai_assisted": true,
+      "missing_claim_ids": [],
+      "issues": [
+        {
+          "claim_id": "061239c266fd468880ac5f142b338c4d",
+          "verdict": "insufficient",
+          "reasons": [
+            "no_evidence"
+          ],
+          "text": "15歳未満人口は前年同月比で3.10％の減少となった。"
+        },
+        {
+          "claim_id": "124283e8527d464d9c4f0d9c6fbb867f",
+          "verdict": "insufficient",
+          "reasons": [
+            "no_evidence"
+          ],
+          "text": "2025年の日本の年平均気温は統計開始以来の最高記録を更新したと報告されている。"
+        },
+        {
+          "claim_id": "f864eb70395d461aae405f529bb3d49a",
+          "verdict": "insufficient",
+          "reasons": [
+            "no_evidence"
+          ],
+          "text": "日本近海の海面水温も、長期傾向として100年あたり1.15℃の割合で上昇していると述べられている。"
+        },
+        {
+          "claim_id": "d0e7b5d10f8849f3a5cc10fef8d3ae61",
+          "verdict": "insufficient",
+          "reasons": [
+            "no_evidence"
+          ],
+          "text": "2026年10月1日現在の総人口は1億2300万人を下回ったとされる。"
+        }
+      ]
+    }
+  },
+  "R4_default": {
+    "http": 200,
+    "status": "approved"
+  }
+}
