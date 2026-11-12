@@ -121,6 +121,20 @@ plugin メッセージを追加できる（既存 `harness/plugins/memory-recall
   Required Checks 5/5 pass。
 - **既定 OFF**。有効化は `DSH_AUTO_TEAM=1` と `--patch`（またはプロファイル登録）。
 
+### canary 試行（2026-11-13）
+
+- 目的: プレイブック注入後に **2件以上の team_task と1名以上の spawn** が行われるか。
+- 環境: 実ホームの headless プロファイルに、Agent Team の plugin 群（agent-team / tool-agent-team）を
+  一時 patch で追加（既存プロファイル設定は変更せず）。`DSH_AUTO_TEAM=1`。
+- 結果: 注入は成立（session `0f71feb6` のログに `source.kind: plugin:auto-team`）。
+  モデルは `list_agents` 等のツール呼び出しを開始したが、ツール実行が
+  `Cannot read properties of undefined (reading 'prepare')` で中断した。
+- 切り分け: 同じエラーは **patch なしの `bash` 呼び出しでも再現**する（headless 実行環境の欠陥）。
+  Agent Team plugin / auto-team plugin 固有の失敗ではない。
+- 判定: **行動受容（team_task 2件以上 + spawn 1名以上）は未確認**。web プロファイルでの canary が必要。
+- 制約: 別 web インスタンスの起動は秘密ファイルの読取・ネットワーク待受の承認が必要で、
+  本セッションでは実行できなかった（次回の承認事項）。
+
 ### 受入
 
 - プレイブック注入後、定型タスクで **2件以上の team_task と1名以上の spawn** が行われる。
@@ -134,7 +148,7 @@ plugin メッセージを追加できる（既存 `harness/plugins/memory-recall
 | 案 | 内容 | 判断 |
 |---|---|---|
 | A. 自動実行 | 01〜06 をワンクリックで通す（UI のみ） | **採用・実装**（本節） |
-| B. AI 化 | ルールベースを LLM に置換 | 未着手。コスト・非決定・オフライン前提の変更を伴うため別承認 |
+| B. AI 化 | ルールベースを LLM に置換 | 設計済み（[03-studio-llm-replacement-plan.md](../design/03-studio-llm-replacement-plan.md)）。実装は別承認 |
 
 ### 実装（A案）
 
@@ -162,7 +176,8 @@ plugin メッセージを追加できる（既存 `harness/plugins/memory-recall
 - 全体: `npx playwright test` **43 passed / 1 skipped / 0 failed**（スタジオ spec 28 件を含む）、
   `npm run build` OK、vitest **10 件 PASS**。
 - 詳細: [02-detailed-test-spec.md](02-detailed-test-spec.md) §14。
-- 残: B案（LLM 置換）は未着手（別承認）。
+- 残: B案（LLM 置換）は設計まで完了（[03-studio-llm-replacement-plan.md](../design/03-studio-llm-replacement-plan.md)）。
+  実装は Q1〜Q6（範囲・保存・費用・データ越境・品質基準）の決定と別承認が必要。
 
 ## リスク
 
