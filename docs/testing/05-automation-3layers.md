@@ -21,11 +21,19 @@ plugin メッセージを追加できる（既存 `harness/plugins/memory-recall
 - 注入は `<!-- auto-skill:<name> -->` マーカー付きで、重複注入を防ぐ。
 - 監査: セッションログに plugin メッセージとして残る（モデル可視＝記録）。
 
-### PoC（2026-11-12）
+### PoC 実測（2026-11-12）
 
-- DSH の worktree ブランチ `auto/auto-skill`（commit `952ec62`）に実装。
-- 単体テスト **9 件 pass**（規則5・ハンドラ4）。既定 OFF。
-- **未インストール・未実機**。次段: 隔離 DSH_HOME で有効化し、実セッションで1回注入を確認。
+- DSH の worktree ブランチ `auto/auto-skill`（commit `952ec62`）に実装。既定 OFF。
+- 単体テスト **9 件 pass**（規則5・ハンドラ4）。
+- 隔離 `DSH_HOME` + `--patch`: `--dump-config` で plugin 登録を確認。
+- 隔離 `headless`: **MISSING_CREDENTIAL** で停止（plugin ではなく、headless の provider 資格情報が
+  隔離ホームへ移植できないため）。plugin の欠陥ではない。
+- **実ホーム + 一時 patch（プロファイル非変更）**で headless を1回実行:
+  - セッションログ（zstd 解凍）に `auto-skill:ai-feature-testing` と
+    `AUTO-SKILL] llm-hallucination-testing` を**各1回**確認。
+  - 出力は Skill の内容を参照した回答になった。
+- 受入: 「1セッション1回」「ログから再構成」「無効/失敗時の素通し」を確認。
+- 残: 隔離ホームでの実測は、API キーまたは grant の移植を前提とする（別手順）。
 
 ### 受入
 
