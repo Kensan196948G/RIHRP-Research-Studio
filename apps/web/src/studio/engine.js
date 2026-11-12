@@ -255,7 +255,7 @@ const SAMPLES=[
 const STORE_KEY='rihrp_offline_studio_v1';
 let DB={version:1,projects:[],currentId:null,settings:{speed:1}};
 let P=null;
-const RT={view:'register',running:false,timer:null,resumeOnApprove:false,playing:false,playTimer:null,typing:null,draft:'',showAddEv:false,editing:null,cmpSel:null,saveT:null};
+const RT={view:'register',running:false,timer:null,resumeOnApprove:false,playing:false,playTimer:null,typing:null,draft:'',showAddEv:false,editing:null,cmpSel:null,saveT:null,tour:false,tourStage:null,tourTimer:null,tourEnteredAt:0};
 
 function newProject(src){
  const s=src||{title:'新しい研究テーマ',field:'auto',hypothesis:'',background:'',conditions:'',constraints:{budget:'標準',period:'標準',safety:false}};
@@ -837,6 +837,55 @@ function startFlow(){
  if(changed||P.stale||P.tasks.every(t=>t.status==='done'))resetAll(true);
  P.stale=false;go('tasks');startOrch();
 }
+// ---------- one-click tour (01 -> 06) ----------
+// 承認は自動化しない。承認待ちでは 02 に留まり、研究者の承認後に同じ段階から再開する。
+function stopTourTimer(){if(RT.tourTimer){clearInterval(RT.tourTimer);RT.tourTimer=null}}
+function startTour(){
+ if(!P.hypothesis.trim()){toast('研究仮説を入力してください');return}
+ const changed=recordRevision('仮説・条件を修正');
+ if(changed||P.stale||P.tasks.every(t=>t.status==='done'))resetAll(true);
+ P.stale=false;RT.tour=true;RT.tourStage='tasks';RT.tourEnteredAt=Date.now();
+ log('▶ ワンクリック実行（01〜06）を開始');
+ go('tasks',{tour:true});startOrch();
+ // タスク実行とは独立に進める（全タスクが再生より先に完了しても止まらない）
+ stopTourTimer();RT.tourTimer=setInterval(tourTick,300);
+ if(RT.tour)toast('01〜06 を自動で進めます（承認待ちの間は停止します）');
+}
+function stopTour(msg){
+ if(!RT.tour)return;
+ RT.tour=false;RT.tourStage=null;RT.tourEnteredAt=0;stopTourTimer();
+ if(RT.running)stopOrch('⏸ ワンクリック実行を停止');
+ log(msg||'■ ワンクリック実行を停止');
+ render();toast('ワンクリック実行を停止しました');
+}
+function tourNextStage(){
+ const d=k=>task(P,k).status==='done';
+ const st=RT.tourStage||'tasks';
+ if(st==='tasks')return P.debate.length?'debate':'tasks';
+ if(st==='debate')return (P.debate.length&&!RT.playing&&P.debateShown>=P.debate.length&&d('critic'))?'evidence':'debate';
+ if(st==='evidence')return (P.candidates&&d('evaluate'))?'compare':'evidence';
+ if(st==='compare')return d('report')?'report':'compare';
+ return'report';
+}
+function tourTick(){
+ if(!RT.tour||destroyed)return;
+ // 承認待ちは 02 の承認バナーを見せて待つ（自動承認しない）
+ if(P.tasks.some(t=>t.status==='approval')){if(RT.view!=='tasks'){go('tasks',{tour:true});RT.tourEnteredAt=Date.now()}return}
+ // 各ステップを最低 0.9 秒表示してから次へ進む（早送りで見落とさない）
+ if(Date.now()-(RT.tourEnteredAt||0)<900)return;
+ const next=tourNextStage();
+ if(next==='report'&&task(P,'report').status==='done'){
+  RT.tour=false;RT.tourStage=null;RT.tourEnteredAt=0;stopTourTimer();stopOrch('■ 01〜06 の自動進行が完了しました');
+  go('report',{tour:true});toast('01〜06 を自動進行しました。06で報告書を確認できます');return;
+ }
+ if(next!==RT.tourStage||next!==RT.view){RT.tourStage=next;RT.tourEnteredAt=Date.now();go(next,{tour:true})}
+}
+function tourBar(){
+ const idx=Math.max(0,VIEWS.findIndex(v=>v.k===RT.view));
+ const approval=P.tasks.some(t=>t.status==='approval');
+ return `<div class="banner info tourbar no-print"><span><b>ワンクリック実行</b>　STEP ${pad(idx+1)}/06 ${esc(VIEWS[idx].t)}${approval?'　— 承認待ちのため一時停止中（承認すると再開します）':''}</span><span class="acts"><button class="btn sm" data-act="tourStop">停止</button></span></div>`;
+}
+
 function recordRevision(note){
  const last=P.revisions[P.revisions.length-1];
  if(last&&last.hypothesis===P.hypothesis&&last.conditions===P.conditions)return false;
@@ -927,7 +976,10 @@ const VIEWS=[
  {k:'register',n:'01',t:'研究仮説登録'},{k:'tasks',n:'02',t:'AIタスク管理'},{k:'debate',n:'03',t:'複数AI討論'},
  {k:'evidence',n:'04',t:'根拠・反証'},{k:'compare',n:'05',t:'新仮説比較'},{k:'report',n:'06',t:'研究報告書'}
 ];
-function go(v){RT.view=v;RT.editing=null;if(v!=='debate')stopPlay();render();window.scrollTo(0,0);if(v==='debate'&&P.debateShown<P.debate.length)later(playDebate,250)}
+function go(v,opts){
+ if(RT.tour&&!(opts&&opts.tour)){RT.tour=false;RT.tourStage=null;RT.tourEnteredAt=0;stopTourTimer();log('■ ワンクリック実行を解除（手動で移動）');toast('自動進行を解除しました（タスクは継続中）')}
+ RT.view=v;RT.editing=null;if(v!=='debate')stopPlay();render();window.scrollTo(0,0);if(v==='debate'&&P.debateShown<P.debate.length)later(playDebate,250)
+}
 function navStatus(k){
  const done=P.tasks.filter(t=>t.status==='done').length;
  switch(k){
@@ -948,7 +1000,7 @@ function renderHeader(){
  updateGlobal();
 }
 function updateGlobal(){const g=overall(P);$('#gbar').style.width=g+'%';$('#gpct').textContent=g+'%'}
-function render(){if(destroyed)return;renderNav();renderHeader();const f={register:viewRegister,tasks:viewTasks,debate:viewDebate,evidence:viewEvidence,compare:viewCompare,report:viewReport}[RT.view];$('#main').innerHTML=f();afterRender()}
+function render(){if(destroyed)return;renderNav();renderHeader();const f={register:viewRegister,tasks:viewTasks,debate:viewDebate,evidence:viewEvidence,compare:viewCompare,report:viewReport}[RT.view];$('#main').innerHTML=(RT.tour?tourBar():'')+f();afterRender()}
 function afterRender(){if(RT.view==='debate'){const c=$('#chat');if(c)c.scrollTop=c.scrollHeight}}
 function updateLive(){
  updateGlobal();
@@ -988,7 +1040,7 @@ function viewRegister(){
  const fieldOpts=[['auto','自動判定']].concat(FIELD_KEYS.map(k=>[k,FIELDS[k].name])).map(([v,t])=>`<option value="${v}"${P.field===v?' selected':''}>${t}</option>`).join('');
  const sel=(bind,opts,val)=>`<select class="in" data-bind="${bind}">${opts.map(o=>`<option${o===val?' selected':''}>${o}</option>`).join('')}</select>`;
  return pageHead('01','研究仮説登録','研究テーマと仮説を登録します。入力内容は右側でリアルタイムに構造チェックされ、「研究フローを開始」で02〜06の工程が自動で進行します。',
-  `<button class="btn" data-act="saveRev">改訂として記録</button><button class="btn pri" data-act="startFlow">研究フローを開始 →</button>`)+staleBanner()+
+  `<button class="btn" data-act="saveRev">改訂として記録</button><button class="btn" data-act="startFlow">研究フローを開始 →</button><button class="btn pri" data-act="tour">▶ ワンクリックで 01〜06 を実行</button>`)+staleBanner()+
  `<div class="grid2"><div>
   <section class="card"><h2>研究テーマ</h2>
    <label class="f">研究テーマ名</label><input type="text" data-bind="title" value="${esc(P.title)}" maxlength="80">
@@ -1049,6 +1101,7 @@ function viewTasks(){
  const spd=DB.settings.speed||1;
  const ctrls=`<div class="ctrls">
   ${RT.running?`<button class="btn" data-act="pause">⏸ 一時停止</button>`:`<button class="btn pri" data-act="run">▶ 実行開始</button>`}
+  ${RT.tour?'':`<button class="btn" data-act="tour">▶ 01〜06 を自動実行</button>`}
   <button class="btn" data-act="step">⏭ ステップ実行</button>
   <button class="btn" data-act="resetRun">↻ 全体を再実行</button>
   <select id="speedSel" aria-label="実行速度">${[0.5,1,2,4].map(s=>`<option value="${s}"${s===spd?' selected':''}>速度 ×${s}</option>`).join('')}</select></div>`;
@@ -1273,6 +1326,8 @@ root.addEventListener('click',async e=>{
   case'saveRev':if(!P.hypothesis.trim()){toast('研究仮説を入力してください');return}if(recordRevision('研究者による修正')){P.stale=P.tasks.some(t=>t.status!=='blocked'&&t.status!=='ready');toast('改訂 r'+P.revision+' を記録しました');render()}else toast('前回の改訂から変更はありません');break;
   case'restoreRev':{const r=P.revisions.find(x=>x.rev===+el.dataset.i);if(r&&confirm(`r${r.rev} の仮説と前提条件を復元します。よろしいですか？`)){P.hypothesis=r.hypothesis;P.conditions=r.conditions;P.stale=true;touch();render();toast('r'+r.rev+' を復元しました')}break}
   case'startFlow':startFlow();break;
+  case'tour':startTour();break;
+  case'tourStop':stopTour();break;
   case'run':startOrch();break;
   case'pause':stopOrch('⏸ 研究者が一時停止');touch();render();break;
   case'step':stepOnce();break;
@@ -1348,7 +1403,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  const api={
   async start(){ const ok=await load(); if(aborted()||!ok)return; render(); },
   flush(){ return flush(); },
-  destroy(){ destroyed=true; ac.abort(); clearInterval(RT.timer); clearTimeout(RT.playTimer); timers.forEach(t=>clearTimeout(t)); timers.clear(); void flush(true); root.innerHTML=''; },
+  destroy(){ destroyed=true; ac.abort(); clearInterval(RT.timer); clearInterval(RT.tourTimer); clearTimeout(RT.playTimer); timers.forEach(t=>clearTimeout(t)); timers.clear(); void flush(true); root.innerHTML=''; },
  };
  return api;
 }

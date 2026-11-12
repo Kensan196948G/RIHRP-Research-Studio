@@ -750,3 +750,83 @@ test("ネットワーク遮断時は保存失敗を表示し、復帰後に再�
     await putDocument(page, id, { hypothesis: originalHypothesis });
   }
 });
+
+test("P3-01 ワンクリック実行が 01〜06 を通り、承認待ちで停止・承認後に再開する", async ({ page }) => {
+  await openStudio(page);
+
+  // 単独実行でも成立するよう、研究テーマと仮説を用意する（既にあれば同一値）
+  await page.locator('input[data-bind="title"]').fill(TITLE);
+  await page.locator('textarea[data-bind="hypothesis"]').fill(HYPOTHESIS);
+  await page.waitForTimeout(300);
+
+  // 速度 ×4（ツアーの待ち時間を短縮）
+  await page.locator('#nav .navitem[data-v="tasks"]').click();
+  await page.selectOption("#speedSel", "4");
+
+  // 01 の「ワンクリックで 01〜06 を実行」から開始
+  await page.locator('#nav .navitem[data-v="register"]').click();
+  await page.getByRole("button", { name: "▶ ワンクリックで 01〜06 を実行" }).click();
+
+  const seenSteps = new Set<string>();
+  const approvalKinds = new Set<string>();
+  let sawApprovalPause = false;
+  const deadline = Date.now() + 150_000;
+
+  while (Date.now() < deadline) {
+    const bar = page.locator("#main .tourbar");
+    if (await bar.count()) {
+      const text = (await bar.innerText()).replace(/\s+/g, " ");
+      const match = text.match(/STEP (\d{2})\/06/);
+      if (match) seenSteps.add(match[1]);
+      if (text.includes("承認待ちのため一時停止中")) sawApprovalPause = true;
+    }
+
+    const warn = page.locator("#main .banner.warn");
+    if (await warn.count()) {
+      const text = await warn.first().innerText();
+      if (text.includes("根拠の信頼性検証")) approvalKinds.add("verify");
+      if (text.includes("統合評価・仮説比較")) approvalKinds.add("evaluate");
+    }
+
+    const approve = page.getByRole("button", { name: "承認する" });
+    if (await approve.isVisible().catch(() => false)) {
+      await approve.click();
+      await page.waitForTimeout(400);
+    }
+
+    if (!(await page.locator("#main .tourbar").count())) {
+      const main = await page.locator("#main").innerText();
+      if (main.includes("STEP 06")) break;
+    }
+    await page.waitForTimeout(150);
+  }
+
+  // 承認は自動化されず、承認待ちでツアーが一時停止する
+  expect(sawApprovalPause).toBe(true);
+  expect(approvalKinds.has("verify")).toBe(true);
+  expect(approvalKinds.has("evaluate")).toBe(true);
+
+  // 01 から開始し、02〜05 を順に通る（06 はツアー終了時に遷移し、ツアーバーは消える）
+  for (const step of ["02", "03", "04", "05"]) {
+    expect(seenSteps.has(step)).toBe(true);
+  }
+  await expect(page.locator("#main")).toContainText("STEP 06");
+  await expect(page.locator("#main")).toContainText("研究報告書");
+  await expect(page.locator("#main .tourbar")).toHaveCount(0);
+  await expect(page.locator("#nav .navitem[data-v=\"report\"] .st")).toHaveText("ドラフト作成済み");
+});
+
+test("P3-02 ワンクリック実行は停止でき、タスクは実行中のまま残らない", async ({ page }) => {
+  await openStudio(page);
+  await page.locator('#nav .navitem[data-v="register"]').click();
+  await page.getByRole("button", { name: "▶ ワンクリックで 01〜06 を実行" }).click();
+
+  const bar = page.locator("#main .tourbar");
+  await expect(bar).toBeVisible();
+  await bar.getByRole("button", { name: "停止" }).click();
+
+  await expect(page.locator("#main .tourbar")).toHaveCount(0);
+  await page.locator('#nav .navitem[data-v="tasks"]').click();
+  await expect(page.locator(".stats")).toContainText("停止中");
+  await expect(page.getByRole("button", { name: "▶ 実行開始" })).toBeVisible();
+});
