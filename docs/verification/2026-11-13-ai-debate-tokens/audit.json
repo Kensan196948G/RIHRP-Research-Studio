@@ -1,0 +1,25 @@
+{
+  "events": [
+    {
+      "id": "9d8c63911ca84075a99f0e94d6754ead",
+      "actor_id": "720979e1834b47e6970f5e1bc64dd04a",
+      "actor_name": "E2E Admin",
+      "action": "ai.debate_requested",
+      "entity_type": "project",
+      "entity_id": "02b82a60cd2b489a9655958b1b1b0998",
+      "project_id": "02b82a60cd2b489a9655958b1b1b0998",
+      "details": {
+        "model": "claude-opus-5-5",
+        "tokens": {
+          "input": 517,
+          "output": 1699
+        },
+        "messages": 9,
+        "provider": "anthropic",
+        "latency_ms": 18529,
+        "prompt_version": "studio-debate-v1"
+      },
+      "created_at": "2026-11-13T15:43:13.514337+09:00"
+    }
+  ]
+}
