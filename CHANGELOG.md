@@ -9,6 +9,8 @@
 
 - スタジオのワンクリック実行（01〜06 の自動進行）。承認待ちでは自動承認せず停止し、承認後に再開する。
   プロトタイプ HTML は変更せず、`apps/web` の UI のみの追加。
+- スタジオ 03 討論の AI 支援（PoC・既定 OFF）。プレビュー→採用時のみ保存し、引用は既存 evidence ID に限定。
+  API は `POST /api/projects/{id}/ai/debate`、判断は ADR-0007。
 - 監査ログの保持期間削除（`python -m rihrp.maintenance purge-audit`、dry-run 既定・
   所有者ロール・承認後にタイマー有効化。ADR-0006）。
 

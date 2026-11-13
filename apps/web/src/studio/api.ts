@@ -9,6 +9,24 @@ export type ResearchDoc = {
 
 export type ProjectSummary = { id: string; title: string };
 
+export type DebateMessage = {
+  agent: string;
+  kind: string;
+  text: string;
+  evidenceIds?: string[];
+};
+
+export type DebateResult = {
+  messages: DebateMessage[];
+  meta: {
+    provider: string;
+    model: string;
+    prompt_version: string;
+    latency_ms: number;
+    messages: number;
+  };
+};
+
 export class StudioApiError extends Error {
   code: string;
   status: number;
@@ -92,5 +110,13 @@ export const studioHost = {
 
   async deleteProject(id: string, signal?: AbortSignal): Promise<void> {
     await request(`/api/projects/${encodeURIComponent(id)}`, { method: "DELETE", signal });
+  },
+
+  /** 03 討論の AI 支援（Phase 3 B PoC）。生成のみ・保存はしない。 */
+  async generateDebate(id: string, signal?: AbortSignal): Promise<DebateResult> {
+    return request<DebateResult>(`/api/projects/${encodeURIComponent(id)}/ai/debate`, {
+      method: "POST",
+      signal,
+    });
   },
 };
