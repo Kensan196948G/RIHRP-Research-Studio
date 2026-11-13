@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import socket
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -19,6 +20,32 @@ if not TEST_DB_URL.rsplit("/", 1)[-1].startswith("rihrp_test"):
     raise RuntimeError("テストは rihrp_test* の DB でのみ実行できます")
 # ローカルでは app が所有者でもよい。CI/本番では owner ロールで migration と後始末を行う。
 MIGRATION_DB_URL = os.environ.get("RIHRP_MIGRATION_DATABASE_URL", TEST_DB_URL)
+
+
+def _e2e_server_port() -> int | None:
+    """E2E の webServer が起動中ならそのポートを返す。
+
+    E2E と pytest は同じ rihrp_test DB を共有する。E2E 実行中に pytest が
+    テーブルを初期化すると、E2E 側のセッション・利用者が消えて 401 や
+    ログイン失敗になる（2026-11-13 に実際に発生）。同時実行を早期に止める。
+    """
+    port = int(os.environ.get("RIHRP_E2E_PORT", "18112"))
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(0.2)
+            busy = sock.connect_ex(("127.0.0.1", port)) == 0
+    except OSError:
+        return None
+    return port if busy else None
+
+
+_e2e_port = _e2e_server_port()
+if _e2e_port is not None:
+    raise RuntimeError(
+        f"E2E のサーバーが 127.0.0.1:{_e2e_port} で稼働中です。"
+        "E2E と pytest は同じ rihrp_test DB を共有するため同時実行できません。"
+        "E2E の完了後に pytest を実行してください。"
+    )
 
 os.environ.update(
     RIHRP_ENV="test",
