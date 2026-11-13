@@ -55,4 +55,4 @@
 ## 実キー canary（2026-11-13）
 
 隔離 DB・3 リクエストで実施し、G1（捏造引用 0・注入拒否）/ G2（検証前後一致）/ G4（監査に本文・鍵なし）を PASS。
-G5 は 1 名評定で全次元「十分」（2 名目待ち）。詳細: [canary 記録](../verification/2026-11-13-ai-debate-canary.md)。
+G5 は 2 名評定（2 名目は AI 再評定・独立性限定的）で全次元「十分」、Q6 は既定案で確定。詳細: [canary 記録](../verification/2026-11-13-ai-debate-canary.md)。
