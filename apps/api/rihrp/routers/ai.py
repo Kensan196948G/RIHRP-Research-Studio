@@ -18,6 +18,14 @@ from ..services import get_project_or_404, get_source_or_404
 router = APIRouter(prefix="/api", tags=["ai"])
 
 
+def _ensure_ai_allowed(project_id: str) -> None:
+    """限定パイロット用のプロジェクト allowlist（空なら制限なし）。"""
+    settings = get_settings()
+    allowed = {item.strip() for item in settings.llm_allowed_projects.split(",") if item.strip()}
+    if allowed and project_id not in allowed:
+        raise ApiError(403, "ai_not_allowed", "このプロジェクトでは AI 支援が許可されていません。")
+
+
 @router.post("/projects/{project_id}/ai/draft-claims")
 def draft_claims(
     project_id: str,
@@ -66,6 +74,7 @@ def debate(
 ) -> dict:
     """研究文書から討論の発言候補を作る（保存しない。採用は利用者）。"""
     project = get_project_or_404(db, project_id)
+    _ensure_ai_allowed(project_id)
     doc = db.get(ResearchDocument, project.id)
     data = doc.payload if doc is not None and isinstance(doc.payload, dict) else {}
     if not isinstance(data.get("hypothesis"), str) or not data["hypothesis"].strip():
@@ -100,6 +109,7 @@ def critiques(
 ) -> dict:
     """04 の批判候補を作る（保存しない。重要度は人間が決める）。"""
     project = get_project_or_404(db, project_id)
+    _ensure_ai_allowed(project_id)
     doc = db.get(ResearchDocument, project.id)
     data = doc.payload if doc is not None and isinstance(doc.payload, dict) else {}
     if not isinstance(data.get("hypothesis"), str) or not data["hypothesis"].strip():
@@ -134,6 +144,7 @@ def candidates(
 ) -> dict:
     """05 の候補を作る（保存しない。採点は採用後に既存ロジックで行う）。"""
     project = get_project_or_404(db, project_id)
+    _ensure_ai_allowed(project_id)
     doc = db.get(ResearchDocument, project.id)
     data = doc.payload if doc is not None and isinstance(doc.payload, dict) else {}
     if not isinstance(data.get("hypothesis"), str) or not data["hypothesis"].strip():

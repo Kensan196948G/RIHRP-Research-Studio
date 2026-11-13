@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     llm_max_claims: int = 8
     llm_max_source_chars: int = 12000
     llm_rate_limit: int = 5
+    # カンマ区切りのプロジェクトID。空なら制限なし（既定）。限定パイロット用。
+    llm_allowed_projects: str = ""
     web_dist: Path = REPO_ROOT / "apps/web/dist"
 
     @property

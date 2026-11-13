@@ -238,6 +238,25 @@ def test_debate_returns_messages_without_saving(
     assert after["payload"] == payload
 
 
+def test_debate_respects_project_allowlist(
+    editor_client: TestClient, stub: StubProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project, _ = _project_with_research(editor_client)
+    monkeypatch.setenv("RIHRP_LLM_ALLOWED_PROJECTS", "another-project")
+    get_settings.cache_clear()
+    try:
+        response = editor_client.post(f"/api/projects/{project['id']}/ai/debate")
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "ai_not_allowed"
+
+        monkeypatch.setenv("RIHRP_LLM_ALLOWED_PROJECTS", project["id"])
+        get_settings.cache_clear()
+        response = editor_client.post(f"/api/projects/{project['id']}/ai/debate")
+        assert response.status_code == 200, response.text
+    finally:
+        get_settings.cache_clear()
+
+
 def test_debate_is_editor_only(editor_client: TestClient, viewer_client: TestClient) -> None:
     project, _ = _project_with_research(editor_client)
     response = viewer_client.post(f"/api/projects/{project['id']}/ai/debate")

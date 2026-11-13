@@ -375,6 +375,29 @@ def test_candidates_are_capped_at_five(editor_client: TestClient, stub: AssistSt
 # ---------------------------------------------------------------- 共通の境界
 
 
+def test_assist_respects_project_allowlist(
+    editor_client: TestClient, stub: AssistStub, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project, _ = _project_with_research(editor_client, analysis=_analysis_payload())
+    stub.payload = {
+        "items": [{"cat": "妥当性", "text": "許可リスト確認用の批判です。", "evidenceIds": []}]
+    }
+    monkeypatch.setenv("RIHRP_LLM_ALLOWED_PROJECTS", "another-project")
+    get_settings.cache_clear()
+    try:
+        for kind in ("critiques", "candidates"):
+            response = _post(editor_client, project, kind)
+            assert response.status_code == 403
+            assert response.json()["error"]["code"] == "ai_not_allowed"
+
+        monkeypatch.setenv("RIHRP_LLM_ALLOWED_PROJECTS", project["id"])
+        get_settings.cache_clear()
+        response = _post(editor_client, project, "critiques")
+        assert response.status_code == 200, response.text
+    finally:
+        get_settings.cache_clear()
+
+
 def test_assist_requires_authentication(editor_client: TestClient) -> None:
     project, _ = _project_with_research(editor_client)
     anonymous = TestClient(app)
