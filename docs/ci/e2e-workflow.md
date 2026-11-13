@@ -159,6 +159,12 @@ AI は `.github/workflows/**` を変更できない（self-evolution ポリシ�
         run: npx playwright test
 ```
 
+### 適用前のベースライン（実測）
+
+- 2026-11-13 に現行 `main`（`6690049`）で `workflow_dispatch` を実行: run `43355595567` = **43 passed / 2 skipped（1.7m）**。
+- skip 2 件は「AI 討論（スタブ未設定）」と「AI 下書き（スタブ設定時の未設定経路）」。
+- スタブを配線すると討論 E2E が実行され、**44 passed / 1 skipped** になる見込み（ローカル実測と一致）。
+
 ### 適用後の期待結果と注意
 
 - 期待: `45 tests` 中 **44 passed / 1 skipped**（skip は「AI 下書きは未設定時に案内する」）。
