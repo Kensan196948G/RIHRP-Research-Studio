@@ -36,6 +36,20 @@
   いずれも read-only の実測値。
 - 両 run とも完了時点で稼働中のメンバーは `lead` のみ。**孤児メンバー・未完了タスクなし**。
 
+## 中断テスト（2026-11-13）
+
+- 手順: 1名に `sleep 60` を任せて spawn させ、spawn 後に UI の `Stop generating` で turn を中断。
+  次の turn で `list_agents` / `team_task_list` を実行し、残存状態を確認した。
+- 結果（session `9da0f21c`）:
+  - 中断前: `team_task_create` 1件、`spawn_teammate` 1名（sleeper）、`wait_agent` 実行中。
+  - `turn/end` は `aborted`（reason: user）。
+  - 中断直後: **sleeper は `running` のまま残り**、task-1 も未完了（revision 2）で残った。
+  - 次の turn で `interrupt_agent(sleeper)` → `inactive`、`team_task_update(release)` →
+    task-1 は pending に戻った。**自動ではクリーンアップされない**。
+- 1回目の中断試行（session `3d997df3`）は spawn 前に Stop したため、中断テストとしては不成立。
+- 対策: プレイブックに復旧手順（次の turn で `list_agents` → `interrupt_agent` → `delete`/`release`）を追加
+  （Deep-Seek-Harness-Project PR #148、`90fadce`）。ただし自動クリーンアップではなく、モデルへの誘導。
+
 ## 判明した環境事象
 
 1. **global dsh と profile 依存の不一致**: nvm の global `dsh` で起動すると、ツール実行が
@@ -46,11 +60,11 @@
 3. **DS Bot の誤爆**: 初回に DS Bot アプリへテスト発話が入り、同じ `prepare` エラーで失敗した
    （`session-152703fb…`）。canary では `bot` を無効化して標準 UI を使うこと。
 
-## 未検証
+## 残課題
 
-- **中断時の後始末**（turn を Stop したときに孤児メンバー・未完了タスクが残らないか）。
-  自動化から UI の Stop 操作に到達できず、プロセス停止はメモリ上のチーム状態を失うため
-  中断の再現にならない。手動 canary の残件。
+- **中断時の自動クリーンアップ**は未実装。手動復旧（interrupt_agent + release/delete）は
+  実測済みで、プレイブックに復旧手順を追加した。自動化には harness 側で turn abort 時に
+  teammate を停止する仕組みが必要（別承認・将来課題）。
 - 承認・本番変更・secret 参照は行っていない。
 
 ## 後始末

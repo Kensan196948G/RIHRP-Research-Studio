@@ -142,8 +142,10 @@ plugin メッセージを追加できる（既存 `harness/plugins/memory-recall
     `no-active-peer`、turn は `completed`。
   - run2（session `f37bee37`）: 1タスク・1名（sleeper）を spawn し、完了まで到達。
 - 両 run とも完了時点で稼働中のメンバーは `lead` のみ。孤児メンバー・未完了タスクなし。
-- **中断時の後始末は未検証**: 自動化から UI の Stop 操作に到達できず、プロセス停止は
-  メモリ上のチーム状態を失うため中断の再現にならない。手動 canary の残件とする。
+- **中断時**: spawn 後の turn を `Stop` すると、teammate は `running` のまま残り、
+  未完了タスクも残る（session `9da0f21c`）。次の turn で `list_agents` → `interrupt_agent` →
+  `team_task_update`（release）により復旧できることを実測したが、**自動では行われない**。
+  プレイブックに復旧手順を追加（DSH PR #148、`90fadce`）。自動クリーンアップは将来課題。
 - 一時 canary（3099・一時 patch）は停止・削除済み。既存 3080・本番 DB・secret は不変。
 - 詳細・証跡: [2026-11-13-auto-team-canary.md](../verification/2026-11-13-auto-team-canary.md)。
 
@@ -152,6 +154,8 @@ plugin メッセージを追加できる（既存 `harness/plugins/memory-recall
 - プレイブック注入後、定型タスクで **2件以上の team_task と1名以上の spawn** が行われる。
 - 証跡: セッションイベントと team_task ボードで確認できる。
 - 失敗時・中断時に、孤児メンバーと未完了タスクが残らない。
+  - 実測: 完了時は残らない。中断時は自動では残るため、プレイブックの復旧手順で手動処置する
+    （自動クリーンアップは将来課題）。
 
 ## Phase 3: スタジオ
 
