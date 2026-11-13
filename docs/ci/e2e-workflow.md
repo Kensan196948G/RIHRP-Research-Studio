@@ -161,13 +161,15 @@ AI は `.github/workflows/**` を変更できない（self-evolution ポリシ�
 
 ### 適用前のベースライン（実測）
 
-- 2026-11-13 に現行 `main`（`6690049`）で `workflow_dispatch` を実行: run `43355595567` = **43 passed / 2 skipped（1.7m）**。
-- skip 2 件は「AI 討論（スタブ未設定）」と「AI 下書き（スタブ設定時の未設定経路）」。
-- スタブを配線すると討論 E2E が実行され、**44 passed / 1 skipped** になる見込み（ローカル実測と一致）。
+- 2026-11-13（Phase 3 B 時点・`6690049`・45 tests）: run `43355595567` = **43 passed / 2 skipped（1.7m）**。
+  skip 2 件は「AI 討論（スタブ未設定）」と「AI 下書き（スタブ設定時の未設定経路）」。
+- 2026-11-13（Phase 3 C 追加後・`9263ac7`・47 tests）: run `43362802491` = **43 passed / 4 skipped（1.8m）**。
+  skip 4 件は上記 2 件に「AI 批判」「AI 候補」を加えたもの。
+- スタブを配線すると AI 討論・批判・候補が実行され、**46 passed / 1 skipped** になる見込み（ローカル実測と一致）。
 
 ### 適用後の期待結果と注意
 
-- 期待: `45 tests` 中 **44 passed / 1 skipped**（skip は「AI 下書きは未設定時に案内する」）。
+- 期待: `47 tests` 中 **46 passed / 1 skipped**（skip は「AI 下書きは未設定時に案内する」）。
   スタブを配線すると未設定経路の E2E は skip に変わるが、未設定時の 503 契約は
   API テスト（`test_ai_debate.py` / `test_ai_drafting.py`）で担保済み。
 - スタブは本番キーを使わない。`RIHRP_E2E_LLM_KEY` はダミー。
@@ -200,6 +202,6 @@ git push -u origin ci/e2e-llm-stub
 ```
 
 適用後の確認:
-- `gh run list --workflow=e2e.yml --limit 1` で run を特定し、`44 passed / 1 skipped` を確認する。
-- 討論 E2E（`ai-debate.spec.ts`）が **skip されず実行**されていることをログで確認する。
+- `gh run list --workflow=e2e.yml --limit 1` で run を特定し、`46 passed / 1 skipped` を確認する。
+- AI 討論・批判・候補の E2E（`ai-debate.spec.ts` / `ai-assist.spec.ts`）が **skip されず実行**されていることをログで確認する。
 - run id と結果を [レビュー記録](../verification/2026-11-13-test-report-review-ai-debate.md) の C3 に追記して閉じる。
