@@ -235,7 +235,11 @@ def test_mixed_evidence_ids_keep_only_valid_messages(
     stub.mode = "mixed"
     response = editor_client.post(f"/api/projects/{project['id']}/ai/debate")
     assert response.status_code == 200, response.text
-    assert len(response.json()["messages"]) == 3
+    messages = response.json()["messages"]
+    assert len(messages) == 3
+    # 落とすのは「存在しない ID を引く発言」だけ。有効な発言の欠落・並び替えは許容しない。
+    assert [item["text"] for item in messages] == [item["text"] for item in DEBATE["messages"]]
+    assert all("missing" not in item["evidenceIds"] for item in messages)
 
 
 def test_upstream_401_becomes_502_without_leaking_key(
@@ -288,10 +292,17 @@ def test_debate_is_audited_without_prompt_or_key(
     assert response.status_code == 200, response.text
     admin = login(client, "admin")
     assert admin
-    audit = client.get("/api/audit").json()["events"]
+    audit = client.get(f"/api/audit?project_id={project['id']}").json()["events"]
     matches = [event for event in audit if event["action"] == "ai.debate_requested"]
     assert matches, "生成操作が監査に残っていない"
     serialized = json.dumps(matches, ensure_ascii=False)
     assert API_KEY not in serialized
     assert "EVIDENCE_IDS:" not in serialized
     assert "本日の議題" not in serialized, "生成本文は監査に残してはいけない"
+    # 監査には運用に必要なメタデータだけが残る（欠落すると追跡不能になる）
+    details = matches[0]["details"]
+    assert details["provider"]
+    assert details["model"] == "stub-model"
+    assert details["prompt_version"] == "studio-debate-v1"
+    assert details["messages"] == 3
+    assert isinstance(details["latency_ms"], int) and details["latency_ms"] >= 0
