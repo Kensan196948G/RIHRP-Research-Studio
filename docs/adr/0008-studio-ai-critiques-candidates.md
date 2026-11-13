@@ -54,3 +54,9 @@ AI に採点させると再現性と監査の前提が崩れる。
 
 隔離 DB・3 リクエストで実施。LHT-C4/C5/C6 は PASS（捏造なし・注入拒否・根拠不足の明示）、
 AI の採点値は応答に含まれず、監査/tokens も確認した。評定は 2 名（2 名目は AI 再評定・独立性限定的）で全次元「十分」。詳細: [canary 記録](../verification/2026-11-13-ai-critique-candidate-canary.md)。
+
+## 限定パイロット（2026-11-13）
+
+本番で限定運用する場合、`RIHRP_LLM_ALLOWED_PROJECTS`（カンマ区切りのプロジェクト ID）で
+対象プロジェクトを限定できる。空なら制限なし。AI 下書きは対象外。
+手順: [AI 限定パイロット運用](../operations/ai-pilot-runbook.md)。
