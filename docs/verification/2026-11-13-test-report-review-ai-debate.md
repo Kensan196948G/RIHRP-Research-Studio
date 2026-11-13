@@ -22,10 +22,10 @@ vitest 10 件・既定 OFF・引用ガード・監査）。実行証跡（pytest
 | S1 | 検証記録 | `docs/verification/2026-11-13-ai-debate-poc.md`（`8f90327`） | 検証報告 | あり |
 | S2 | テスト計画 | `docs/testing/06-ai-debate-test-plan.md`（`8fda9aa`） | 範囲・LHT/D ケース | あり |
 | S3 | API テスト | `tests/integration/test_ai_debate.py`（11 tests, `8f90327` + 本レビューで assertion 強化） | 実行・ケース定義 | あり |
-| S4 | E2E 実行証跡 | `docs/verification/2026-11-13-ai-debate-poc/e2e-full.log`（SHA-256 `21475a48…`）、`e2e-ai-debate.log`（`258b17e5…`） | 実行ログ | あり（2026-11-13 09:33 / 09:42〜09:44 JST） |
+| S4 | E2E 実行証跡 | `docs/verification/2026-11-13-ai-debate-poc/e2e-full.txt`（SHA-256 `21475a48…`）、`e2e-ai-debate.txt`（`258b17e5…`）、`e2e-full-failed-1st.txt`（`8822dfa9…`） | 実行ログ | あり（2026-11-13 09:33 / 09:37 / 09:42〜09:44 JST） |
 | S5 | CI | run `43344307954`（`8f90327`, 2026-11-13T01:21Z） | 実行証跡 | あり（3 ジョブ success） |
 | S6 | Web テスト | `npx vitest run` ローカル実行（2026-11-13 10:25 JST） | 実行証跡 | あり（10 passed） |
-| S7 | 欠陥証跡 | — | 欠陥一覧 | **not supplied** |
+| S7 | 欠陥証跡 | `docs/verification/2026-11-13-ai-debate-poc.md`「既知の問題・欠陥」 | 欠陥一覧 | **not supplied → 追補で明示（C2 closed）** |
 | S8 | 実キー評価 | — | 品質・注入・棄権 | **not supplied**（人間承認待ち） |
 | S9 | テスト品質レビュー | [2026-11-13-ai-generated-test-review.md](2026-11-13-ai-generated-test-review.md) | テスト自体の点検 | あり |
 
@@ -35,8 +35,8 @@ vitest 10 件・既定 OFF・引用ガード・監査）。実行証跡（pytest
 |---|---|---|---|
 | API `test_ai_debate.py` 11 passed | S3 ローカル実行 11 passed（10:2x JST）、S5 API ジョブ success | aligned | なし |
 | 既存 AI 下書き 11 passed（回帰） | S3 実行 11 passed、S5 全 pytest success | aligned | なし |
-| 討論 E2E 1 passed（4.0s） | S4 `e2e-ai-debate.log` 4.0s（単体）、`e2e-full.log` 3.8s | aligned（実行ごとの差） | なし |
-| 全 E2E 44 passed / 1 skipped / 2.2 分 | S4 `e2e-full.log`（45 tests / 44 passed / 1 skipped / 2.2m） | aligned | skip はスタブ設定時の未設定経路（意図どおり） |
+| 討論 E2E 1 passed（4.0s） | S4 `e2e-ai-debate.txt` 4.0s（単体）、`e2e-full.txt` 3.8s | aligned（実行ごとの差） | なし |
+| 全 E2E 44 passed / 1 skipped / 2.2 分 | S4 `e2e-full.txt`（45 tests / 44 passed / 1 skipped / 2.2m）。初回は 3 failed（401）→ 再実行で解消（D-02） | aligned | skip はスタブ設定時の未設定経路（意図どおり） |
 | Web build OK / vitest 10 passed | S5 Web ジョブ success、S6 vitest 10 passed | aligned（件数はローカル） | なし |
 | 403 / 503 / 422 / 未知 ID / 混在 / 401 / 不正 JSON / timeout / 429 / 監査 | S3 各テスト。**「401」は上流 401**（利用者認証 401 は未テスト） | **partially aligned（表現の曖昧さ）** | 認証境界の未テストを「401 済み」と誤読しうる → 本文表現を修正 |
 | 引用ガード（未知 ID 破棄・全滅 502） | S3 未知 ID／混在テスト（本レビューで混在の assertion を強化） | aligned | なし |
@@ -44,7 +44,7 @@ vitest 10 件・既定 OFF・引用ガード・監査）。実行証跡（pytest
 | 既定 OFF（キー未設定は 503） | S3 503 テスト | aligned | 外部通信の不在自体は未検証（P2） |
 | 実キーのスモーク未実施 | S8 なし（S1/S2 が明記） | aligned（申告どおり） | 条件 C1 |
 | P0/P1 の実キー検証（LHT-02〜06）未実行 | S2 で `out_of_scope`、S1 で未実施と明記 | aligned（範囲宣言あり） | 条件 C1 |
-| 欠陥 0 件（暗黙） | S7 なし | **missing** | 条件 C2 |
+| 欠陥 0 件（暗黙） | S7 なし（レビュー時）→ 追補で「既知の問題・欠陥」を明示 | **missing → aligned（追補）** | C2 closed |
 
 ## 4. Tested and Untested Scope
 
@@ -75,7 +75,7 @@ vitest 10 件・既定 OFF・引用ガード・監査）。実行証跡（pytest
 | ID | 条件 | 状態 | owner | 終了条件（証跡） |
 |---|---|---|---|---|
 | C1 | 実キー評価（LHT-02/03/04/05/06・D-13〜16）が未実施 | **open** | オーナー（承認）/ QA / セキュリティ | 実キーでスモーク 1 回＋評定記録＋監査 `ai.debate_requested`。**有効化前に必須** |
-| C2 | 欠陥証跡（欠陥一覧・オープン欠陥の明示）がない | **open** | QA | 検証記録に欠陥一覧（0 件でも明示）を追記 |
+| C2 | 欠陥証跡（欠陥一覧・オープン欠陥の明示）がない | **closed**（2026-11-13 追補） | QA | 検証記録「既知の問題・欠陥」にオープン欠陥 0 件と D-01〜D-03 を明示 |
 | C3 | 討論 E2E が標準 E2E ワークフローで実行されない（スタブ未配線） | **open** | 開発 | `e2e.yml` にスタブ起動＋env を追加し、`workflow_dispatch` の PASS（run id）を記録 |
 
 **Improvements**: 未認証 401・破棄経路・`evidenceIds` 保存・スキーマ破棄・`rate_limited` code のテスト追加（任意）。
@@ -95,7 +95,7 @@ vitest 10 件・既定 OFF・引用ガード・監査）。実行証跡（pytest
 | ID | 対象 | 内容 | owner | 終了条件 | 状態 |
 |---|---|---|---|---|---|
 | A1 | C1 | 実キー評価（承認後） | オーナー / QA | 評定記録＋監査 | open |
-| A2 | C2 | 欠陥一覧の明示 | QA | 記録更新 | open |
+| A2 | C2 | 欠陥一覧の明示 | QA | 記録更新 | **closed**（2026-11-13） |
 | A3 | C3 | E2E スタブ配線 | 開発 | workflow_dispatch PASS | open |
 | A4 | 改善 | 401・破棄・スキーマ等の追加テスト | 開発 | テスト追加 | open（任意） |
 

@@ -33,9 +33,12 @@
 
 - API: `pytest tests/integration/test_ai_debate.py` **11 passed**（2026-11-13 10:29 JST、ローカル）、
   既存 `test_ai_drafting.py` **11 passed**。CI run `43344307954`（`8f90327`）で API / Web / secret scan の 3 ジョブ success。
-- E2E: [e2e-full.log](2026-11-13-ai-debate-poc/e2e-full.log)（45 tests / 44 passed / 1 skipped / 2.2m、
-  SHA-256 `21475a48…`）、[e2e-ai-debate.log](2026-11-13-ai-debate-poc/e2e-ai-debate.log)（討論単体 4.0s、`258b17e5…`）。
+- E2E（成功）: [e2e-full.txt](2026-11-13-ai-debate-poc/e2e-full.txt)（45 tests / 44 passed / 1 skipped / 2.2m、
+  SHA-256 `21475a48…`）、[e2e-ai-debate.txt](2026-11-13-ai-debate-poc/e2e-ai-debate.txt)（討論単体 4.0s、`258b17e5…`）。
   skip 1 件はスタブ設定時の未設定経路（`ai-draft.spec.ts`）で意図どおり。
+- E2E（初回・失敗）: [e2e-full-failed-1st.txt](2026-11-13-ai-debate-poc/e2e-full-failed-1st.txt)
+  （09:37 JST、14 passed / 3 failed / 27 did not run。401 の詳細は「既知の問題・欠陥」）。
+- 証跡は `.gitignore` の `*.log` を避けるため `.txt` で保存している（内容は実行ログのまま）。
 - Web: `npx vitest run` **10 passed**（2026-11-13 10:25 JST）。
 
 ### レビュー
@@ -60,8 +63,22 @@
 - 資料内プロンプトインジェクションへの耐性、根拠不足時の棄権は実キーで未検証（LHT-04/05、P0/P1）。
 - 品質ルーブリックの評定者・閾値は未確定。
 - レビュー条件（[検証記録レビュー](2026-11-13-test-report-review-ai-debate.md)）:
-  C1 実キー評価は**有効化前の必須ゲート**。C2 欠陥一覧の明示、C3 討論 E2E の CI 配線は未対応。
+  C1 実キー評価は**有効化前の必須ゲート**。C3 討論 E2E の CI 配線は未対応（C2 は本文書の「既知の問題・欠陥」で解消）。
 - 討論 E2E は手動 E2E ワークフロー（スタブ未配線）では skip される。CI で常時実行されるのは API テストのみ。
+
+## 既知の問題・欠陥
+
+**オープンな製品欠陥: 0 件**。停止・エスカレーション条件（捏造引用の再現、決定論テストの差分、
+監査への本文・鍵の混入、上限超過の継続）に該当する事象は検証中に発生していない。
+
+| ID | 種別 | 内容 | 状態 | 証跡 |
+|---|---|---|---|---|
+| D-01 | 実装（CI） | `llm.py` の討論プロンプトで E501（行長 110 > 100）。CI の Lint が失敗 | **修正済み**（`8f90327`） | CI run `43339740022` / `43344307954` |
+| D-02 | テスト不安定 | 全 E2E 初回実行で 3 件失敗（J-B / J-C / S-01）。`研究データの取得: HTTP 401` で、ログイン直後のセッション依存 API が 401。再実行では 44 passed / 1 skipped で再現せず | **再現性未特定（P2）**。製品欠陥とは断定しない。テスト基盤の不安定要因として記録し、再現時の調査対象とする | [e2e-full-failed-1st.txt](2026-11-13-ai-debate-poc/e2e-full-failed-1st.txt)（09:37）/ [e2e-full.txt](2026-11-13-ai-debate-poc/e2e-full.txt)（09:42） |
+| D-03 | 記録 | 検証記録の E2E 証跡リンクが `.gitignore`（`*.log`）で未コミットだった | **修正済み**（本追補で `.txt` として保存） | 本文書の実行証跡 |
+
+- D-02 は討論機能に依存しない journey / shell のテストで発生しており、本 PR の変更（AI 討論）との因果は確認されていない。
+- 未実行の実キー評価（LHT-02〜06）は欠陥ではなく**未検証範囲**として §残リスクに記載している。
 
 ## Skill 適用記録
 
