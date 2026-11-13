@@ -106,9 +106,7 @@ plugin メッセージを追加できる（既存 `harness/plugins/memory-recall
 - **実ホーム + 一時 patch（プロファイル非変更）**で headless を1回実行:
   - セッションログに `source.kind: plugin:auto-team` と `<!-- auto-team -->` の
     plugin メッセージを確認（注入成立）。
-- 残（canary）: headless プロファイルは Agent Team ツール（`team_task_*` /
-  `spawn_teammate`）を持たないため、「2件以上の team_task と1名以上の spawn」の
-  行動受容は web プロファイルで確認する。
+- 行動受容: web canary で「2件以上の team_task と1名以上の spawn」を確認済み（下記 canary 実測）。
 - 環境注記: headless のツール実行時に
   `Cannot read properties of undefined (reading 'prepare')` が出るが、
   **patch なしでも再現**する環境側の事象で、本 plugin の欠陥ではない。
@@ -121,19 +119,33 @@ plugin メッセージを追加できる（既存 `harness/plugins/memory-recall
   Required Checks 5/5 pass。
 - **既定 OFF**。有効化は `DSH_AUTO_TEAM=1` と `--patch`（またはプロファイル登録）。
 
-### canary 試行（2026-11-13）
+### canary 実測（2026-11-13）
 
-- 目的: プレイブック注入後に **2件以上の team_task と1名以上の spawn** が行われるか。
-- 環境: 実ホームの headless プロファイルに、Agent Team の plugin 群（agent-team / tool-agent-team）を
-  一時 patch で追加（既存プロファイル設定は変更せず）。`DSH_AUTO_TEAM=1`。
-- 結果: 注入は成立（session `0f71feb6` のログに `source.kind: plugin:auto-team`）。
-  モデルは `list_agents` 等のツール呼び出しを開始したが、ツール実行が
-  `Cannot read properties of undefined (reading 'prepare')` で中断した。
-- 切り分け: 同じエラーは **patch なしの `bash` 呼び出しでも再現**する（headless 実行環境の欠陥）。
-  Agent Team plugin / auto-team plugin 固有の失敗ではない。
-- 判定: **行動受容（team_task 2件以上 + spawn 1名以上）は未確認**。web プロファイルでの canary が必要。
-- 制約: 別 web インスタンスの起動は秘密ファイルの読取・ネットワーク待受の承認が必要で、
-  本セッションでは実行できなかった（次回の承認事項）。
+**目的**: プレイブック注入後に **2件以上の team_task と1名以上の spawn** が行われ、
+完了後に孤児メンバー・未完了タスクが残らないことを確認する。
+
+**試行1（headless + 一時 Agent Team patch）**
+- 実ホームの headless に agent-team plugin 群を一時 patch で追加。注入は成立（session `0f71feb6`）。
+- ツール実行が `Cannot read properties of undefined (reading 'prepare')` で中断。
+- 切り分け: patch なしの `bash` 呼び出しでも再現。headless 環境側の欠陥で、
+  Agent Team / auto-team plugin 固有の失敗ではない。
+
+**試行2（web canary / 別ポート 3099・既存 3080 は停止せず）**
+- 一時 patch で `bot` を無効化し、標準のコーディング UI を使用。
+- 初回は nvm の global `dsh` で起動したため同じ `prepare` エラーが再現。
+  **repo ローカルの `node_modules/.bin/dsh`** に切り替えたところツール実行が正常化した
+  （起動バイナリと profile 依存の不一致が原因。canary ではローカル dsh を使う）。
+- ワークスペース `RIHRP-Research-Studio` で trigger 発話を2回実行:
+  - run1（session `321beeb1`）: 注入 `source.kind: plugin:auto-team` を確認。
+    `team_task_create` **2件**（task-1 / task-2）、`spawn_teammate` **2名**
+    （file-census / disk-free）。タスクは `completed`、最終 `wait_agent` は
+    `no-active-peer`、turn は `completed`。
+  - run2（session `f37bee37`）: 1タスク・1名（sleeper）を spawn し、完了まで到達。
+- 両 run とも完了時点で稼働中のメンバーは `lead` のみ。孤児メンバー・未完了タスクなし。
+- **中断時の後始末は未検証**: 自動化から UI の Stop 操作に到達できず、プロセス停止は
+  メモリ上のチーム状態を失うため中断の再現にならない。手動 canary の残件とする。
+- 一時 canary（3099・一時 patch）は停止・削除済み。既存 3080・本番 DB・secret は不変。
+- 詳細・証跡: [2026-11-13-auto-team-canary.md](../verification/2026-11-13-auto-team-canary.md)。
 
 ### 受入
 
