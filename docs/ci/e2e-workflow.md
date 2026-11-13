@@ -179,3 +179,21 @@ AI は `.github/workflows/**` を変更できない（self-evolution ポリシ�
 - 再発防止として `tests/conftest.py` は、E2E の webServer（既定 127.0.0.1:18112、
   `RIHRP_E2E_PORT` で変更可）が起動中の場合は DB に触る前に `RuntimeError` で停止する。
 - E2E 側から pytest を検知する仕組みはない。**E2E 実行中に pytest を起動しない**こと。
+
+### 適用方法（コピー用パッチ）
+
+上記差分は [e2e-stub-wiring.patch](e2e-stub-wiring.patch) として用意してある（`patch --dry-run` で適用確認済み）。
+
+```bash
+git switch -c ci/e2e-llm-stub
+git apply docs/ci/e2e-stub-wiring.patch
+git add .github/workflows/e2e.yml
+git commit -m "ci: E2E に LLM スタブを配線"
+git push -u origin ci/e2e-llm-stub
+# PR を作成してマージ後、GitHub Actions で「E2E (manual)」を workflow_dispatch
+```
+
+適用後の確認:
+- `gh run list --workflow=e2e.yml --limit 1` で run を特定し、`44 passed / 1 skipped` を確認する。
+- 討論 E2E（`ai-debate.spec.ts`）が **skip されず実行**されていることをログで確認する。
+- run id と結果を [レビュー記録](../verification/2026-11-13-test-report-review-ai-debate.md) の C3 に追記して閉じる。
