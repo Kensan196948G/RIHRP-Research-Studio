@@ -60,3 +60,5 @@ AI の採点値は応答に含まれず、監査/tokens も確認した。評定
 本番で限定運用する場合、`RIHRP_LLM_ALLOWED_PROJECTS`（カンマ区切りのプロジェクト ID）で
 対象プロジェクトを限定できる。空なら制限なし。AI 下書きは対象外。
 手順: [AI 限定パイロット運用](../operations/ai-pilot-runbook.md)。
+2026-11-13 に対象 1 プロジェクト（`68489ee7a6ee4d1999d07719673d81fd`）で適用開始。
+配備記録: [2026-11-13-ai-pilot-deployment.md](../verification/2026-11-13-ai-pilot-deployment.md)。
