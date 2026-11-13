@@ -188,7 +188,7 @@ AI は `.github/workflows/**` を変更できない（self-evolution ポリシ�
   `RIHRP_E2E_PORT` で変更可）が起動中の場合は DB に触る前に `RuntimeError` で停止する。
 - E2E 側から pytest を検知する仕組みはない。**E2E 実行中に pytest を起動しない**こと。
 
-### 適用方法（コピー用パッチ）
+### 適用方法（コピー用パッチ・適用済み）
 
 上記差分は [e2e-stub-wiring.patch](e2e-stub-wiring.patch) として用意してある（`patch --dry-run` で適用確認済み）。
 
@@ -205,3 +205,9 @@ git push -u origin ci/e2e-llm-stub
 - `gh run list --workflow=e2e.yml --limit 1` で run を特定し、`46 passed / 1 skipped` を確認する。
 - AI 討論・批判・候補の E2E（`ai-debate.spec.ts` / `ai-assist.spec.ts`）が **skip されず実行**されていることをログで確認する。
 - run id と結果を [レビュー記録](../verification/2026-11-13-test-report-review-ai-debate.md) の C3 に追記して閉じる。
+
+### 適用結果（2026-11-13）
+
+- PR #58（`dac65d9`）で適用し、`workflow_dispatch` を実行: run `43368903919` = **46 passed / 1 skipped（1.8m）**。
+- `ai-debate.spec.ts` / `ai-assist.spec.ts` の 3 件が **skip されず実行**されたことをログで確認。
+- これにより条件 C3（討論 E2E の CI 配線）は **closed**。

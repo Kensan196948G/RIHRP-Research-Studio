@@ -17,6 +17,11 @@
 - 監査ログの保持期間削除（`python -m rihrp.maintenance purge-audit`、dry-run 既定・
   所有者ロール・承認後にタイマー有効化。ADR-0006）。
 
+### Changed
+
+- 手動 E2E ワークフローに LLM スタブを配線し、討論・批判・候補の E2E を CI で実行可能にした
+  （run `43368903919` = 46 passed / 1 skipped）。
+
 ## [0.1.0] - 2026-11-03
 
 初回の正式リリース。根拠付きリサーチスタジオ（RIHRP）の MVP を本番公開する。
