@@ -70,12 +70,13 @@
 | ブラウザ E2E `ai-assist.spec.ts` | **2 passed**（A-01 2.4s / A-02 2.4s） |
 | 全 E2E（スタブ） | **46 passed / 1 skipped（2.2 分）** |
 | Web build / vitest | build OK / 10 passed |
+| 実キー canary（2026-11-13・3 リクエスト） | **LHT-C4/C5/C6 PASS**（捏造なし・注入拒否・根拠不足の明示）。tokens input 1,666 / output 4,741。記録: [canary](../verification/2026-11-13-ai-critique-candidate-canary.md) |
 
 証跡: [API テストログ](../verification/2026-11-13-ai-critique-candidate/api-tests.txt) /
 [全 E2E ログ](../verification/2026-11-13-ai-critique-candidate/e2e-full.txt)。
 
 ## 6. 未実行・残リスク
 
-- 実キーでの LHT-C4/C5/C6（品質・棄権・注入）と評定は未実施。有効化前のゲートとする。
+- 実キーでの LHT-C4/C5/C6 は 2026-11-13 に実施し PASS（評定 1 名目）。2 名目評定と費用確認が残る。
 - 候補の採点は既存ロジックで再現するが、AI が提案した文面の**意味的な妥当性**は人間レビュー。
 - E2E は 2026-11-13 に LLM スタブを配線済み（run `43368903919` = 46 passed / 1 skipped・C3 closed）。
