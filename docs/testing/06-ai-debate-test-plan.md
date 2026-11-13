@@ -78,8 +78,8 @@
 - E2E: `ai-debate.spec.ts` **1 passed（4.1s）**（スタブ・破棄経路を含む）。
 - Web: `npm run build` OK、vitest **10 passed**。
 - 全 E2E（スタブ、`npx playwright test`）: **44 passed / 1 skipped / 0 failed（2.2 分）**。
-- 実キー canary を 2026-11-13 に実施（3 リクエスト）: G1/G2/G4 PASS、G5 は 1 名評定で全次元「十分」。
-  記録: [2026-11-13-ai-debate-canary.md](../verification/2026-11-13-ai-debate-canary.md)。残: 評定 2 名目・Q6・トークン計測。
+- 実キー canary を 2026-11-13 に実施（3 リクエスト）: G1/G2/G4 PASS、G5 は 2 名評定（2 名目は AI 再評定・独立性限定的）で全次元「十分」、Q6 は既定案で確定。
+  記録: [2026-11-13-ai-debate-canary.md](../verification/2026-11-13-ai-debate-canary.md)。残: 03 討論のトークン計測。
 - 注: 初回の全 E2E で 3 件失敗した原因は、E2E 実行中の pytest 同時実行（同一 `rihrp_test` DB の初期化）と特定した。
   再発防止として `tests/conftest.py` にガードを追加し、手順を [docs/ci/e2e-workflow.md](../ci/e2e-workflow.md) に記載した。
 - 追補（PR #53）: D-17/D-18/D-19 を追加し、全 pytest **421 passed / 1 skipped** を確認。

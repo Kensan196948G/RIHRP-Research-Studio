@@ -53,4 +53,4 @@ AI に採点させると再現性と監査の前提が崩れる。
 ## 実キー canary（2026-11-13）
 
 隔離 DB・3 リクエストで実施。LHT-C4/C5/C6 は PASS（捏造なし・注入拒否・根拠不足の明示）、
-AI の採点値は応答に含まれず、監査/tokens も確認した。詳細: [canary 記録](../verification/2026-11-13-ai-critique-candidate-canary.md)。
+AI の採点値は応答に含まれず、監査/tokens も確認した。評定は 2 名（2 名目は AI 再評定・独立性限定的）で全次元「十分」。詳細: [canary 記録](../verification/2026-11-13-ai-critique-candidate-canary.md)。
