@@ -189,9 +189,9 @@
 | Skill | 適用時点 | 用途 | 状態 |
 |---|---|---|---|
 | `ai-feature-testing` | 設計前（2026-11-13） | リスク・失敗系・利用者影響の洗い出し（§3〜§4） | 適用済み |
-| `llm-hallucination-testing` | テスト設計時 | 幻覚・引用・棄権の検証設計 | 未適用（実装判断後） |
-| `ai-generated-test-review` | 実装後 | AI 生成テストの過信・弱い assertion の点検 | 未適用 |
-| `test-report-review` | 記録作成時 | 証跡整合・未検証範囲のレビュー | 未適用 |
+| `llm-hallucination-testing` | テスト設計時（2026-11-13） | 幻覚・引用・棄権の検証設計（LHT-01〜06、D-13〜D-16） | 適用済み |
+| `ai-generated-test-review` | 実装後（2026-11-13・事後） | AI 生成テストの過信・弱い assertion の点検 | 適用済み（[記録](../verification/2026-11-13-ai-generated-test-review.md)） |
+| `test-report-review` | 記録作成時（2026-11-13・事後） | 証跡整合・未検証範囲のレビュー | 適用済み（[記録](../verification/2026-11-13-test-report-review-ai-debate.md)、`conditional_pass`） |
 
 ## 7. 実装（PoC、2026-11-13）
 

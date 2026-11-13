@@ -1,0 +1,14 @@
+[WebServer] INFO:     Started server process [1366297]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:18112 (Press CTRL+C to quit)
+e2e db ready: admin@e2e.local
+
+Running 1 test using 1 worker
+
+(node:1366952) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 2026-11-13 09:33:17,323 INFO httpx HTTP Request: POST http://127.0.0.1:18130/v1/chat/completions "HTTP/1.1 200 OK"
+  ✓  1 [chromium] › e2e/ai-debate.spec.ts:36:1 › AI 討論を生成し、プレビューから採用できる（採用時のみ保存） (4.0s)
+
+  1 passed (9.5s)

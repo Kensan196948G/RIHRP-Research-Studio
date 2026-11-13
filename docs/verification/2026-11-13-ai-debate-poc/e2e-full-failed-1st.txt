@@ -1,0 +1,189 @@
+[WebServer] INFO:     Started server process [1402238]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:18112 (Press CTRL+C to quit)
+e2e db ready: admin@e2e.local
+
+Running 45 tests using 1 worker
+
+(node:1402770) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › e2e/a11y-mobile.spec.ts:30:3 › モバイル幅のナビゲーション（DEF-2） › 390px / 393px でナビリンク 4 件がアクセシブル名を持つ (1.6s)
+  ✓   2 [chromium] › e2e/a11y-mobile.spec.ts:48:3 › モバイル幅のナビゲーション（DEF-2） › 900px 以下ではラベルが視覚的に隠れる（アイコンレールのまま） (1.1s)
+  ✓   3 [chromium] › e2e/a11y-mobile.spec.ts:64:3 › モバイル幅のナビゲーション（DEF-2） › デスクトップ幅ではラベルが表示される (896ms)
+[WebServer] 2026-11-13 09:35:37,672 INFO httpx HTTP Request: POST http://127.0.0.1:18130/v1/chat/completions "HTTP/1.1 200 OK"
+  ✓   4 [chromium] › e2e/ai-debate.spec.ts:36:1 › AI 討論を生成し、プレビューから採用できる（採用時のみ保存） (3.6s)
+  -   5 [chromium] › e2e/ai-draft.spec.ts:50:1 › AI 下書きは未設定時に案内する
+[WebServer] 2026-11-13 09:35:41,419 INFO httpx HTTP Request: POST http://127.0.0.1:18130/v1/chat/completions "HTTP/1.1 200 OK"
+  ✓   6 [chromium] › e2e/ai-draft.spec.ts:61:1 › AI 下書きの候補を生成し、採用したものだけ登録する (1.6s)
+  ✓   7 [chromium] › e2e/gate-extra.spec.ts:66:1 › ダッシュボード復活: ナビから /dashboard に到達できる (805ms)
+  ✓   8 [chromium] › e2e/gate-extra.spec.ts:78:1 › tc_mw7pqh83 ダッシュボードの loading / empty / error と再試行 (1.3s)
+  ✓   9 [chromium] › e2e/gate-extra.spec.ts:109:1 › tc_mw7pmf4c テーマ検索（1 件 / 0 件 / クリア） (963ms)
+  ✓  10 [chromium] › e2e/gate-extra.spec.ts:130:1 › tc_mw7pmf52 最近の活動は reviewer / admin のみ表示され監査と一致する (3.1s)
+  ✓  11 [chromium] › e2e/gate-extra.spec.ts:165:1 › tc_mw7pmf4n 主張の判定フィルタと本文検索 (1.8s)
+  ✓  12 [chromium] › e2e/gate-extra.spec.ts:199:1 › tc_mw7pqh83（部分）テーマ詳細の loading / empty / error と再試行 (1.6s)
+  ✓  13 [chromium] › e2e/gate-extra.spec.ts:234:1 › tc_mw7pqh9k 複数タブ同時編集で 409 を検知し再読込で復帰 (3.7s)
+  ✓  14 [chromium] › e2e/gate-extra.spec.ts:282:1 › tc_mw7pjyc4（部分）900px で横スクロールなし・アイコンレール (851ms)
+  ✓  15 [chromium] › e2e/journey.spec.ts:515:1 › J-A 標準シナリオ（河川・構造） (13.6s)
+  ✘  16 [chromium] › e2e/journey.spec.ts:525:1 › J-B 反証重視シナリオ（建設安全・倫理） (16.5s)
+(node:1412732) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  17 [chromium] › e2e/journey.spec.ts:535:1 › J-C 改訂・候補操作シナリオ（環境・データ） (20.7s)
+(node:1417902) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  18 [chromium] › e2e/studio.spec.ts:60:1 › S-01/S-02/S-09/S-10 シェル（トップバー・警告ノート・6ステップナビ） (20.7s)
+  -  19 [chromium] › e2e/studio.spec.ts:88:1 › R-02/R-04/S-07 仮説のライブチェックとサーバー自動保存
+  -  20 [chromium] › e2e/studio.spec.ts:109:1 › X-01 再読込してもサーバーから復元される
+  -  21 [chromium] › e2e/studio.spec.ts:118:1 › S-04/R-13 新規研究の作成と削除（confirm）
+  -  22 [chromium] › e2e/studio.spec.ts:135:1 › T-03/T-04/T-07/T-08/T-13 タスク実行・承認・完了
+  -  23 [chromium] › e2e/studio.spec.ts:190:1 › D-02/D-05/D-08 討論の表示・全件表示・研究者の発言
+  -  24 [chromium] › e2e/studio.spec.ts:213:1 › E-02/E-05/E-08 根拠の表示・立場の修正・手動追加
+  -  25 [chromium] › e2e/studio.spec.ts:235:1 › C-02/C-04/C-06 新仮説比較（候補・重み・採択）
+  -  26 [chromium] › e2e/studio.spec.ts:260:1 › P-01/P-04/P-09 研究報告書の章構成と HTML 保存
+  -  27 [chromium] › e2e/studio.spec.ts:279:1 › A-04 390px で横スクロールしない（ナビは横スクロール）
+  -  28 [chromium] › e2e/studio.spec.ts:291:1 › S-15 印刷時にシェル（トップバー・ナビ）を出さない
+  -  29 [chromium] › e2e/studio.spec.ts:301:1 › S-13 ダークモードのトークンが適用される
+  -  30 [chromium] › e2e/studio.spec.ts:311:1 › G-01/G-02/G-03 ログイン・管理導線・ログアウト
+  -  31 [chromium] › e2e/studio.spec.ts:338:1 › R-08/R-09 改訂の記録と復元
+  -  32 [chromium] › e2e/studio.spec.ts:365:1 › R-11 架空の研究事例を追加できる
+  -  33 [chromium] › e2e/studio.spec.ts:379:1 › E-06 根拠から除外すると淡色化し、含め直せる
+  -  34 [chromium] › e2e/studio.spec.ts:396:1 › P-05/P-06 テキスト保存と JSON 保存
+  -  35 [chromium] › e2e/studio.spec.ts:414:1 › 保存待ちの編集はテーマ切替で失われない（flush）
+  -  36 [chromium] › e2e/studio.spec.ts:452:1 › 保存待ちの編集はログアウトでも失われない（flush）
+  -  37 [chromium] › e2e/studio.spec.ts:477:1 › 保存済みデータ由来の XSS が成立しない
+  -  38 [chromium] › e2e/studio.spec.ts:543:1 › S-05/S-06 JSON 保存と読込
+  -  39 [chromium] › e2e/studio.spec.ts:558:1 › 作成応答の保留中に画面遷移しても孤児プロジェクトが残らない
+  -  40 [chromium] › e2e/studio.spec.ts:598:1 › A-04b 320px で横スクロールしない（長いタイトルでも）
+  -  41 [chromium] › e2e/studio.spec.ts:642:1 › キーボードでナビを操作できる（Tab・フォーカス可視・Enter）
+  -  42 [chromium] › e2e/studio.spec.ts:677:1 › 候補が空配列のとき比較ナビは「未生成」表示
+  -  43 [chromium] › e2e/studio.spec.ts:730:1 › ネットワーク遮断時は保存失敗を表示し、復帰後に再保存できる
+  -  44 [chromium] › e2e/studio.spec.ts:754:1 › P3-01 ワンクリック実行が 01〜06 を通り、承認待ちで停止・承認後に再開する
+  -  45 [chromium] › e2e/studio.spec.ts:819:1 › P3-02 ワンクリック実行は停止でき、タスクは実行中のまま残らない
+
+
+  1) [chromium] › e2e/journey.spec.ts:525:1 › J-B 反証重視シナリオ（建設安全・倫理） ────────────────────────────────
+
+    Error: 研究データの取得: HTTP 401
+
+    expect(received).toBeTruthy()
+
+    Received: false
+
+      93 | async function getDoc(page: Page, id: string): Promise<ResearchDoc> {
+      94 |   const response = await page.request.get(`/api/projects/${id}/research`);
+    > 95 |   expect(response.ok(), `研究データの取得: HTTP ${response.status()}`).toBeTruthy();
+         |                                                                ^
+      96 |   return (await response.json()) as ResearchDoc;
+      97 | }
+      98 |
+        at getDoc (/home/kensan/Projects/Business-Project/RIHRP-Research-Studio/apps/web/e2e/journey.spec.ts:95:64)
+        at /home/kensan/Projects/Business-Project/RIHRP-Research-Studio/apps/web/e2e/journey.spec.ts:477:19
+        at step (/home/kensan/Projects/Business-Project/RIHRP-Research-Studio/apps/web/e2e/journey.spec.ts:284:22)
+        at runScenario (/home/kensan/Projects/Business-Project/RIHRP-Research-Studio/apps/web/e2e/journey.spec.ts:473:5)
+        at /home/kensan/Projects/Business-Project/RIHRP-Research-Studio/apps/web/e2e/journey.spec.ts:526:3
+
+    attachment #1: research-report (text/html) ─────────────────────────────────────────────────────
+    test-results/journey-J-B-反証重視シナリオ（建設安全・倫理）-chromium/attachments/research-report-dceda324ea9ecb56ceeaee773157cd9efae62d14.html
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/journey-J-B-反証重視シナリオ（建設安全・倫理）-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/journey-J-B-反証重視シナリオ（建設安全・倫理）-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/journey-J-B-反証重視シナリオ（建設安全・倫理）-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/journey-J-B-反証重視シナリオ（建設安全・倫理）-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › e2e/journey.spec.ts:535:1 › J-C 改訂・候補操作シナリオ（環境・データ） ──────────────────────────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.topbar')
+    Expected: visible
+    Timeout: 20000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.topbar') with timeout 20000ms
+      - waiting for locator('.topbar')
+
+
+      73 |   await page.getByLabel("パスワード").fill(PASSWORD);
+      74 |   await page.getByRole("button", { name: "サインイン", exact: true }).click();
+    > 75 |   await expect(page.locator(".topbar")).toBeVisible();
+         |                                         ^
+      76 | }
+      77 |
+      78 | async function openStudio(page: Page): Promise<void> {
+        at login (/home/kensan/Projects/Business-Project/RIHRP-Research-Studio/apps/web/e2e/journey.spec.ts:75:41)
+        at openStudio (/home/kensan/Projects/Business-Project/RIHRP-Research-Studio/apps/web/e2e/journey.spec.ts:79:3)
+        at createProject (/home/kensan/Projects/Business-Project/RIHRP-Research-Studio/apps/web/e2e/journey.spec.ts:113:3)
+        at runScenario (/home/kensan/Projects/Business-Project/RIHRP-Research-Studio/apps/web/e2e/journey.spec.ts:293:16)
+        at /home/kensan/Projects/Business-Project/RIHRP-Research-Studio/apps/web/e2e/journey.spec.ts:536:3
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/journey-J-C-改訂・候補操作シナリオ（環境・データ）-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/journey-J-C-改訂・候補操作シナリオ（環境・データ）-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/journey-J-C-改訂・候補操作シナリオ（環境・データ）-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/journey-J-C-改訂・候補操作シナリオ（環境・データ）-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › e2e/studio.spec.ts:60:1 › S-01/S-02/S-09/S-10 シェル（トップバー・警告ノート・6ステップナビ） ───────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.topbar')
+    Expected: visible
+    Timeout: 20000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.topbar') with timeout 20000ms
+      - waiting for locator('.topbar')
+
+
+      12 |   await page.getByLabel("パスワード").fill(PASSWORD);
+      13 |   await page.getByRole("button", { name: "サインイン", exact: true }).click();
+    > 14 |   await expect(page.locator(".topbar")).toBeVisible();
+         |                                         ^
+      15 | }
+      16 |
+      17 | async function openStudio(page: Page): Promise<void> {
+        at login (/home/kensan/Projects/Business-Project/RIHRP-Research-Studio/apps/web/e2e/studio.spec.ts:14:41)
+        at openStudio (/home/kensan/Projects/Business-Project/RIHRP-Research-Studio/apps/web/e2e/studio.spec.ts:18:3)
+        at /home/kensan/Projects/Business-Project/RIHRP-Research-Studio/apps/web/e2e/studio.spec.ts:61:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/studio-S-01-S-02-S-09-S-10-シェル（トップバー・警告ノート・6ステップナビ）-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/studio-S-01-S-02-S-09-S-10-シェル（トップバー・警告ノート・6ステップナビ）-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/studio-S-01-S-02-S-09-S-10-シェル（トップバー・警告ノート・6ステップナビ）-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/studio-S-01-S-02-S-09-S-10-シェル（トップバー・警告ノート・6ステップナビ）-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [chromium] › e2e/journey.spec.ts:525:1 › J-B 反証重視シナリオ（建設安全・倫理） ─────────────────────────────────
+    [chromium] › e2e/journey.spec.ts:535:1 › J-C 改訂・候補操作シナリオ（環境・データ） ───────────────────────────────
+    [chromium] › e2e/studio.spec.ts:60:1 › S-01/S-02/S-09/S-10 シェル（トップバー・警告ノート・6ステップナビ） ────────────
+  1 skipped
+  27 did not run
+  14 passed (1.7m)
