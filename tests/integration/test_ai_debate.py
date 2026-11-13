@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from rihrp import llm
 from rihrp.config import get_settings
+from rihrp.main import app
 from tests.conftest import login
 from tests.integration.test_flow_integrity import create_project
 
@@ -91,6 +92,35 @@ class StubProvider:
                                 "text": "存在しない資料を引用します。",
                                 "evidenceIds": ["missing"],
                             }
+                        ]
+                    }
+                if stub.mode == "schema":
+                    payload = {
+                        "messages": [
+                            {
+                                "agent": "lit",
+                                "kind": "根拠",
+                                "text": "有効な発言です（スキーマ確認用）。",
+                                "evidenceIds": ["ev-1"],
+                            },
+                            {
+                                "agent": "bogus",
+                                "kind": "根拠",
+                                "text": "不正なエージェント名の発言です。",
+                                "evidenceIds": ["ev-1"],
+                            },
+                            {
+                                "agent": "lit",
+                                "kind": "根拠",
+                                "text": "短い",
+                                "evidenceIds": ["ev-1"],
+                            },
+                            {
+                                "agent": "lit",
+                                "kind": "根拠",
+                                "text": "evidenceIds が配列でない発言です。",
+                                "evidenceIds": "ev-1",
+                            },
                         ]
                     }
                 content_text = json.dumps(payload, ensure_ascii=False)
@@ -199,6 +229,14 @@ def test_debate_is_editor_only(editor_client: TestClient, viewer_client: TestCli
     assert response.status_code == 403
 
 
+def test_debate_requires_authentication(editor_client: TestClient) -> None:
+    project, _ = _project_with_research(editor_client)
+    anonymous = TestClient(app)
+    response = anonymous.post(f"/api/projects/{project['id']}/ai/debate")
+    assert response.status_code == 401, response.text
+    assert response.json()["error"]["code"] == "unauthorized"
+
+
 def test_debate_without_key_fails_closed(
     editor_client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -242,6 +280,17 @@ def test_mixed_evidence_ids_keep_only_valid_messages(
     assert all("missing" not in item["evidenceIds"] for item in messages)
 
 
+def test_invalid_message_schema_is_dropped(editor_client: TestClient, stub: StubProvider) -> None:
+    project, _ = _project_with_research(editor_client)
+    stub.mode = "schema"
+    response = editor_client.post(f"/api/projects/{project['id']}/ai/debate")
+    assert response.status_code == 200, response.text
+    messages = response.json()["messages"]
+    # 未知 agent・短すぎる本文・evidenceIds が配列でない発言は破棄され、有効な 1 件だけが残る。
+    assert len(messages) == 1
+    assert messages[0]["text"] == "有効な発言です（スキーマ確認用）。"
+
+
 def test_upstream_401_becomes_502_without_leaking_key(
     editor_client: TestClient, stub: StubProvider
 ) -> None:
@@ -282,6 +331,7 @@ def test_rate_limit_is_enforced(
     get_settings.cache_clear()
     assert first.status_code == 200, first.text
     assert second.status_code == 429, second.text
+    assert second.json()["error"]["code"] == "rate_limited"
 
 
 def test_debate_is_audited_without_prompt_or_key(
