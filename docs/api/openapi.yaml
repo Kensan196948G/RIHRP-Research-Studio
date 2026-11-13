@@ -844,6 +844,35 @@ paths:
       summary: Update Project
       tags:
       - projects
+  /api/projects/{project_id}/ai/debate:
+    post:
+      description: 研究文書から討論の発言候補を作る（保存しない。採用は利用者）。
+      operationId: debate_api_projects__project_id__ai_debate_post
+      parameters:
+      - in: path
+        name: project_id
+        required: true
+        schema:
+          title: Project Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Debate Api Projects  Project Id  Ai Debate Post
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Debate
+      tags:
+      - ai
   /api/projects/{project_id}/ai/draft-claims:
     post:
       operationId: draft_claims_api_projects__project_id__ai_draft_claims_post

@@ -220,9 +220,7 @@ def test_debate_without_hypothesis_is_rejected(
     assert response.json()["error"]["code"] == "validation_error"
 
 
-def test_unknown_evidence_ids_are_rejected(
-    editor_client: TestClient, stub: StubProvider
-) -> None:
+def test_unknown_evidence_ids_are_rejected(editor_client: TestClient, stub: StubProvider) -> None:
     project, _ = _project_with_research(editor_client)
     stub.mode = "unknown"
     response = editor_client.post(f"/api/projects/{project['id']}/ai/debate")
