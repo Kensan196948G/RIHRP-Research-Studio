@@ -93,7 +93,7 @@ def _candidates(raw: object, source_text: str, max_claims: int) -> list[dict]:
     return candidates
 
 
-def _complete(prompt: str, system_message: str, *, max_tokens: int) -> tuple[str, int]:
+def _complete(prompt: str, system_message: str, *, max_tokens: int) -> tuple[str, int, dict]:
     """プロバイダ差分を吸収して 1 回だけ補完する。鍵・本文は応答に含めない。"""
     settings = get_settings()
     if settings.llm_provider == "anthropic":
@@ -145,13 +145,23 @@ def _complete(prompt: str, system_message: str, *, max_tokens: int) -> tuple[str
         if settings.llm_provider == "anthropic":
             blocks = body["content"]
             content = "".join(block.get("text", "") for block in blocks if isinstance(block, dict))
+            usage = body.get("usage") or {}
+            input_tokens = usage.get("input_tokens")
+            output_tokens = usage.get("output_tokens")
         else:
             content = body["choices"][0]["message"]["content"]
+            usage = body.get("usage") or {}
+            input_tokens = usage.get("prompt_tokens")
+            output_tokens = usage.get("completion_tokens")
     except (ValueError, KeyError, IndexError, TypeError):
         raise ApiError(502, "ai_invalid_output", "AI の応答形式が不正です。") from None
     if not isinstance(content, str) or not content.strip():
         raise ApiError(502, "ai_invalid_output", "AI の応答が空です。")
-    return content, int((time.monotonic() - started) * 1000)
+    tokens = {
+        "input": input_tokens if isinstance(input_tokens, int) else None,
+        "output": output_tokens if isinstance(output_tokens, int) else None,
+    }
+    return content, int((time.monotonic() - started) * 1000), tokens
 
 
 def draft_claims(source_text: str, *, max_claims: int) -> tuple[list[dict], dict]:
@@ -175,13 +185,14 @@ def draft_claims(source_text: str, *, max_claims: int) -> tuple[list[dict], dict
         f"SOURCE:\n{source_text}"
     )
     system_message = "You are a careful research assistant. Output JSON only."
-    content, latency_ms = _complete(prompt, system_message, max_tokens=1200)
+    content, latency_ms, tokens = _complete(prompt, system_message, max_tokens=1200)
 
     candidates = _candidates(_extract_payload(content), source_text, max_claims)
     return candidates, {
         "provider": settings.llm_provider,
         "model": settings.llm_model,
         "latency_ms": latency_ms,
+        "tokens": tokens,
         "candidates": len(candidates),
         "valid": sum(1 for candidate in candidates if candidate["valid"]),
     }
@@ -299,13 +310,14 @@ def generate_debate(
         f"DATA:\n{json.dumps(data, ensure_ascii=False)}"
     )
     system_message = "You are a careful research assistant. Output JSON only."
-    content, latency_ms = _complete(prompt, system_message, max_tokens=4000)
+    content, latency_ms, tokens = _complete(prompt, system_message, max_tokens=4000)
     messages = _debate_messages(_extract_payload(content), evidence_ids)
     return messages, {
         "provider": settings.llm_provider,
         "model": settings.llm_model,
         "prompt_version": DEBATE_PROMPT_VERSION,
         "latency_ms": latency_ms,
+        "tokens": tokens,
         "messages": len(messages),
     }
 
@@ -484,13 +496,14 @@ def generate_critiques(payload: dict) -> tuple[list[dict], dict]:
         f"DATA:\n{json.dumps(data, ensure_ascii=False)}"
     )
     system_message = "You are a careful research assistant. Output JSON only."
-    content, latency_ms = _complete(prompt, system_message, max_tokens=2000)
+    content, latency_ms, tokens = _complete(prompt, system_message, max_tokens=2000)
     items = _critique_items(_extract_payload(content), evidence_ids)
     return items, {
         "provider": settings.llm_provider,
         "model": settings.llm_model,
         "prompt_version": CRITIQUE_PROMPT_VERSION,
         "latency_ms": latency_ms,
+        "tokens": tokens,
         "items": len(items),
     }
 
@@ -531,12 +544,13 @@ def generate_candidates(payload: dict) -> tuple[list[dict], dict]:
         f"DATA:\n{json.dumps(data, ensure_ascii=False)}"
     )
     system_message = "You are a careful research assistant. Output JSON only."
-    content, latency_ms = _complete(prompt, system_message, max_tokens=2000)
+    content, latency_ms, tokens = _complete(prompt, system_message, max_tokens=2000)
     items = _candidate_items(_extract_payload(content), evidence_ids, variables)
     return items, {
         "provider": settings.llm_provider,
         "model": settings.llm_model,
         "prompt_version": CANDIDATE_PROMPT_VERSION,
         "latency_ms": latency_ms,
+        "tokens": tokens,
         "items": len(items),
     }

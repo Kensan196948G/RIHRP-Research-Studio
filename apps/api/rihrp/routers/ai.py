@@ -51,6 +51,7 @@ def draft_claims(
             "candidates": meta["candidates"],
             "valid": meta["valid"],
             "latency_ms": meta["latency_ms"],
+            "tokens": meta["tokens"],
         },
     )
     db.commit()
@@ -84,6 +85,7 @@ def debate(
             "prompt_version": meta["prompt_version"],
             "messages": meta["messages"],
             "latency_ms": meta["latency_ms"],
+            "tokens": meta["tokens"],
         },
     )
     db.commit()
@@ -117,6 +119,7 @@ def critiques(
             "prompt_version": meta["prompt_version"],
             "items": meta["items"],
             "latency_ms": meta["latency_ms"],
+            "tokens": meta["tokens"],
         },
     )
     db.commit()
@@ -150,6 +153,7 @@ def candidates(
             "prompt_version": meta["prompt_version"],
             "items": meta["items"],
             "latency_ms": meta["latency_ms"],
+            "tokens": meta["tokens"],
         },
     )
     db.commit()

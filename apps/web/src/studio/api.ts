@@ -23,6 +23,7 @@ export type DebateResult = {
     model: string;
     prompt_version: string;
     latency_ms: number;
+    tokens: { input: number | null; output: number | null };
     messages: number;
   };
 };
@@ -41,6 +42,7 @@ export type CritiqueResult = {
     model: string;
     prompt_version: string;
     latency_ms: number;
+    tokens: { input: number | null; output: number | null };
     items: number;
   };
 };
@@ -59,6 +61,7 @@ export type CandidateResult = {
     model: string;
     prompt_version: string;
     latency_ms: number;
+    tokens: { input: number | null; output: number | null };
     items: number;
   };
 };

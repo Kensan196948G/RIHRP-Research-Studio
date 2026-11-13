@@ -125,9 +125,23 @@ class StubProvider:
                     }
                 content_text = json.dumps(payload, ensure_ascii=False)
                 if self.path.endswith("/messages"):
-                    stub._send(self, 200, {"content": [{"type": "text", "text": content_text}]})
+                    stub._send(
+                        self,
+                        200,
+                        {
+                            "content": [{"type": "text", "text": content_text}],
+                            "usage": {"input_tokens": 120, "output_tokens": 60},
+                        },
+                    )
                     return
-                stub._send(self, 200, {"choices": [{"message": {"content": content_text}}]})
+                stub._send(
+                    self,
+                    200,
+                    {
+                        "choices": [{"message": {"content": content_text}}],
+                        "usage": {"prompt_tokens": 120, "completion_tokens": 60},
+                    },
+                )
 
             def log_message(self, *args: Any) -> None:  # noqa: A003
                 return
@@ -216,6 +230,7 @@ def test_debate_returns_messages_without_saving(
     assert body["messages"][1]["evidenceIds"] == ["ev-1"]
     assert body["meta"]["model"] == "stub-model"
     assert body["meta"]["prompt_version"] == "studio-debate-v1"
+    assert body["meta"]["tokens"] == {"input": 120, "output": 60}
     assert API_KEY not in response.text
 
     after = editor_client.get(f"/api/projects/{project['id']}/research").json()
