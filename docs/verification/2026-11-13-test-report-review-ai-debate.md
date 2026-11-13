@@ -36,7 +36,7 @@ vitest 10 件・既定 OFF・引用ガード・監査）。実行証跡（pytest
 | API `test_ai_debate.py` 11 passed | S3 ローカル実行 11 passed（10:2x JST）、S5 API ジョブ success | aligned | なし |
 | 既存 AI 下書き 11 passed（回帰） | S3 実行 11 passed、S5 全 pytest success | aligned | なし |
 | 討論 E2E 1 passed（4.0s） | S4 `e2e-ai-debate.txt` 4.0s（単体）、`e2e-full.txt` 3.8s | aligned（実行ごとの差） | なし |
-| 全 E2E 44 passed / 1 skipped / 2.2 分 | S4 `e2e-full.txt`（45 tests / 44 passed / 1 skipped / 2.2m）。初回は 3 failed（401）→ 再実行で解消（D-02） | aligned | skip はスタブ設定時の未設定経路（意図どおり） |
+| 全 E2E 44 passed / 1 skipped / 2.2 分 | S4 `e2e-full.txt`（45 tests / 44 passed / 1 skipped / 2.2m）。初回の 3 failed は E2E 中の pytest 同時実行が原因と特定（D-02・再発防止済み） | aligned | skip はスタブ設定時の未設定経路（意図どおり） |
 | Web build OK / vitest 10 passed | S5 Web ジョブ success、S6 vitest 10 passed | aligned（件数はローカル） | なし |
 | 403 / 503 / 422 / 未知 ID / 混在 / 401 / 不正 JSON / timeout / 429 / 監査 | S3 各テスト。**「401」は上流 401**（利用者認証 401 は未テスト） | **partially aligned（表現の曖昧さ）** | 認証境界の未テストを「401 済み」と誤読しうる → 本文表現を修正 |
 | 引用ガード（未知 ID 破棄・全滅 502） | S3 未知 ID／混在テスト（本レビューで混在の assertion を強化） | aligned | なし |
@@ -76,7 +76,7 @@ vitest 10 件・既定 OFF・引用ガード・監査）。実行証跡（pytest
 |---|---|---|---|---|
 | C1 | 実キー評価（LHT-02/03/04/05/06・D-13〜16）が未実施 | **open** | オーナー（承認）/ QA / セキュリティ | 実キーでスモーク 1 回＋評定記録＋監査 `ai.debate_requested`。**有効化前に必須** |
 | C2 | 欠陥証跡（欠陥一覧・オープン欠陥の明示）がない | **closed**（2026-11-13 追補） | QA | 検証記録「既知の問題・欠陥」にオープン欠陥 0 件と D-01〜D-03 を明示 |
-| C3 | 討論 E2E が標準 E2E ワークフローで実行されない（スタブ未配線） | **open** | 開発 | `e2e.yml` にスタブ起動＋env を追加し、`workflow_dispatch` の PASS（run id）を記録 |
+| C3 | 討論 E2E が標準 E2E ワークフローで実行されない（スタブ未配線） | **open（提案作成済み）** | 開発（適用は人間） | 差分を [docs/ci/e2e-workflow.md](../ci/e2e-workflow.md) に提案済み。人間が `e2e.yml` へ適用し、`workflow_dispatch` の PASS（run id）を記録 |
 
 **Improvements**: 未認証 401・破棄経路・`evidenceIds` 保存・スキーマ破棄・`rate_limited` code のテスト追加（任意）。
 
@@ -87,7 +87,7 @@ vitest 10 件・既定 OFF・引用ガード・監査）。実行証跡（pytest
 | 実キーでの幻覚・注入（LHT-05 は P0） | 誤情報の混入・資料内命令への追従 | 既定 OFF、引用 ID 実在チェック、人間承認ゲート | 実キー証跡なし。実在 ID でも**支持関係**は未保証 |
 | 引用 ID 実在 ≠ 内容支持 | 誤った引用が残る | 人間レビュー前提 | 自動検出なし（LHT-02/03/06） |
 | レート制限がプロセス内 | 多プロセス配備で実効性低下 | 1 分窓のプロセス内制限 | 共有ストアなし |
-| E2E が CI 未配線 | 討論 UI の退行を CI で検知できない | ローカル実行ログを保存 | 再現手順が暗黙（C3） |
+| E2E が CI 未配線 | 討論 UI の退行を CI で検知できない | ローカル実行ログを保存し、スタブ配線の差分を提案済み | 適用は人間（C3） |
 | 作成者＝レビュアー | 見落としの独立性がない | Skill の観点適用 | 第三者レビューではない |
 
 ## 8. Open Actions
@@ -96,7 +96,7 @@ vitest 10 件・既定 OFF・引用ガード・監査）。実行証跡（pytest
 |---|---|---|---|---|---|
 | A1 | C1 | 実キー評価（承認後） | オーナー / QA | 評定記録＋監査 | open |
 | A2 | C2 | 欠陥一覧の明示 | QA | 記録更新 | **closed**（2026-11-13） |
-| A3 | C3 | E2E スタブ配線 | 開発 | workflow_dispatch PASS | open |
+| A3 | C3 | E2E スタブ配線 | 開発（適用は人間） | 差分提案済み（`docs/ci/e2e-workflow.md`）。適用後の workflow_dispatch PASS | open |
 | A4 | 改善 | 401・破棄・スキーマ等の追加テスト | 開発 | テスト追加 | open（任意） |
 
 ## 9. Recommendation Basis and Limitations
@@ -112,4 +112,4 @@ vitest 10 件・既定 OFF・引用ガード・監査）。実行証跡（pytest
 
 1. 既定 OFF の PoC として本 PR をマージし、実キー評価（C1）を**有効化前のゲート**として残してよいか。
 2. 実キー評価の実施者・承認者・評定ルーブリックをいつ確定するか。
-3. C3（E2E スタブ配線）を今回の PR で行うか、次回の改善とするか。
+3. C3（E2E スタブ配線）の提案をいつ適用するか（適用は人間。`docs/ci/e2e-workflow.md`）。
