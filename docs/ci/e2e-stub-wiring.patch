@@ -1,0 +1,27 @@
+--- a/.github/workflows/e2e.yml
++++ b/.github/workflows/e2e.yml
+@@ -66,8 +66,24 @@
+       - name: Install Playwright Chromium
+         working-directory: apps/web
+         run: npx playwright install --with-deps chromium
++      - name: Start LLM stub
++        run: |
++          nohup .venv/bin/python tests/e2e/llm_stub.py > /tmp/llm-stub.log 2>&1 &
++          for _ in $(seq 1 30); do
++            if curl -s -o /dev/null http://127.0.0.1:18130/; then
++              echo "LLM stub is ready"
++              exit 0
++            fi
++            sleep 1
++          done
++          echo "LLM stub did not become ready"
++          cat /tmp/llm-stub.log
++          exit 1
+       - name: Run E2E
+         working-directory: apps/web
++        env:
++          RIHRP_E2E_LLM_BASE_URL: http://127.0.0.1:18130/v1
++          RIHRP_E2E_LLM_KEY: stub-key
+         run: npx playwright test
+       - name: Upload Playwright traces
+         if: failure()
