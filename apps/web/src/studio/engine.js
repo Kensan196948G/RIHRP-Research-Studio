@@ -255,7 +255,7 @@ const SAMPLES=[
 const STORE_KEY='rihrp_offline_studio_v1';
 let DB={version:1,projects:[],currentId:null,settings:{speed:1}};
 let P=null;
-const RT={view:'register',running:false,timer:null,resumeOnApprove:false,playing:false,playTimer:null,typing:null,draft:'',showAddEv:false,editing:null,cmpSel:null,saveT:null,tour:false,tourStage:null,tourTimer:null,tourEnteredAt:0,aiDebate:null,aiDebateBusy:false};
+const RT={view:'register',running:false,timer:null,resumeOnApprove:false,playing:false,playTimer:null,typing:null,draft:'',showAddEv:false,editing:null,cmpSel:null,saveT:null,tour:false,tourStage:null,tourTimer:null,tourEnteredAt:0,aiDebate:null,aiDebateBusy:false,aiCritique:null,aiCritiqueBusy:false,aiCandidate:null,aiCandidateBusy:false};
 
 function newProject(src){
  const s=src||{title:'新しい研究テーマ',field:'auto',hypothesis:'',background:'',conditions:'',constraints:{budget:'標準',period:'標準',safety:false}};
@@ -263,7 +263,7 @@ function newProject(src){
   constraints:Object.assign({budget:'標準',period:'標準',safety:false},s.constraints||{}),
   createdAt:nowStr(),updatedAt:nowStr(),revision:s.hypothesis?1:0,
   revisions:s.hypothesis?[{rev:1,hypothesis:s.hypothesis,conditions:s.conditions,at:nowStr(),note:'初版登録'}]:[],
-  analysis:null,plan:null,ethics:null,critiques:null,falsification:null,evidence:[],debate:[],debateShown:0,debateAi:null,candidates:null,
+  analysis:null,plan:null,ethics:null,critiques:null,falsification:null,evidence:[],debate:[],debateShown:0,debateAi:null,aiAssist:null,candidates:null,
   weights:{evidence:25,testability:25,burden:15,importance:25,novelty:10},decisions:[],logs:[],tasks:[],stale:false,genCount:0,reportAt:null,reportNote:'',sampleKey:s.key||null};
  p.tasks=TASK_DEFS.map(d=>({key:d.key,status:'blocked',progress:0,runs:0}));
  refreshReady(p);
@@ -416,13 +416,16 @@ function sanitizeProject(p){
  p.debateShown=Math.max(0,Math.floor(num(p.debateShown,0)));
  const dai=obj(p.debateAi);
  p.debateAi=dai?{provider:str(dai.provider,''),model:str(dai.model,''),promptVersion:str(dai.promptVersion,''),generatedAt:str(dai.generatedAt,'')}:null;
+ const asst=obj(p.aiAssist);
+ const asstMeta=o=>{const x=obj(o);return x?{provider:str(x.provider,''),model:str(x.model,''),promptVersion:str(x.promptVersion,''),generatedAt:str(x.generatedAt,'')}:null};
+ p.aiAssist=asst?{critiques:asstMeta(asst.critiques),candidates:asstMeta(asst.candidates)}:null;
  // 解析結果は派生データ。壊れた形をそのまま保持すると描画時に例外になるため、
  // 期待する形（列挙・配列・有限値）を満たすときだけ採用し、それ以外は再計算させる。
  const an=obj(p.analysis);
  p.analysis=(an&&['auto'].concat(FIELD_KEYS).includes(an.field)&&Array.isArray(an.vars)&&Array.isArray(an.inferred)&&Array.isArray(an.nums)&&Array.isArray(an.vague)&&Number.isFinite(num(an.quality,NaN)))
   ?Object.assign({},an,{iv:an.iv==null?null:str(an.iv,''),dv:an.dv==null?null:str(an.dv,''),dir:str(an.dir,''),vars:an.vars.map(x=>str(x,'')),inferred:an.inferred.map(x=>str(x,'')),nums:an.nums.map(x=>str(x,'')),vague:an.vague.map(x=>str(x,'')),hasNum:!!an.hasNum,hasMech:!!an.hasMech,hasCond:!!an.hasCond,hasComp:!!an.hasComp,quality:Math.max(0,Math.min(5,Math.floor(num(an.quality,0))))})
   :null;
- if(p.critiques!=null)p.critiques=arr(p.critiques).filter(obj).map(x=>({id:safeId(x.id,'cr'),sev:CRIT_SEVS.includes(x.sev)?x.sev:'低',cat:str(x.cat,''),text:str(x.text,''),sug:str(x.sug,''),status:CRIT_STATUSES.includes(x.status)?x.status:'未対応'}));
+ if(p.critiques!=null)p.critiques=arr(p.critiques).filter(obj).map(x=>({id:safeId(x.id,'cr'),sev:CRIT_SEVS.includes(x.sev)?x.sev:'低',cat:str(x.cat,''),text:str(x.text,''),sug:str(x.sug,''),status:CRIT_STATUSES.includes(x.status)?x.status:'未対応',origin:str(x.origin,'')}));
  if(p.falsification!=null)p.falsification=arr(p.falsification).map(x=>str(x,''));
  if(p.ethics!=null)p.ethics=arr(p.ethics).filter(obj).map(x=>({level:x.level==='要確認'?'要確認':'問題なし',text:str(x.text,''),action:str(x.action,'')}));
  const pl=obj(p.plan);
@@ -817,7 +820,7 @@ function reject(k){decide(`「${tdef(k).name}」を差し戻し、再実行`);lo
 function resetAll(silent){
  stopOrch();
  P.tasks=TASK_DEFS.map(d=>({key:d.key,status:'blocked',progress:0,runs:0}));
- P.analysis=null;P.plan=null;P.ethics=null;P.critiques=null;P.falsification=null;P.debate=[];P.debateShown=0;P.debateAi=null;P.reportAt=null;P.verified=false;
+ P.analysis=null;P.plan=null;P.ethics=null;P.critiques=null;P.falsification=null;P.debate=[];P.debateShown=0;P.debateAi=null;P.aiAssist=null;P.reportAt=null;P.verified=false;RT.aiDebate=null;RT.aiCritique=null;RT.aiCandidate=null;
  P.evidence=(P.evidence||[]).filter(e=>e.source!=='builtin');P.evidence.forEach(e=>{delete e.reliability});
  if(P.candidates){const keep=P.candidates.filter(c=>c.origin!=='主仮説'&&['採択','保留'].includes(c.status));P.candidates=keep.length?keep:null}
  refreshReady(P);if(!silent)log('↻ 全タスクをリセットしました');touch();
@@ -1174,13 +1177,15 @@ function viewDebate(){
 
 // ----- 04 evidence -----
 function viewEvidence(){
- const acts=`<button class="btn" data-act="importEv">資料を取込（.txt/.csv/.json）</button><button class="btn" data-act="toggleAddEv">＋ 手動で追加</button>`;
+ const acts=`<button class="btn" data-act="importEv">資料を取込（.txt/.csv/.json）</button><button class="btn" data-act="toggleAddEv">＋ 手動で追加</button><button class="btn" data-act="aiCritique"${RT.aiCritiqueBusy?' disabled':''}>${RT.aiCritiqueBusy?'✦ 提案中…':'✦ AIで批判を提案（試行）'}</button>`;
  const head=pageHead('04','根拠・反証','内蔵の架空資料とローカルから取り込んだ資料を整理し、信頼性・関連度の評価、批判レビュー、棄却条件、検証計画、研究倫理・安全の確認を行います。',acts);
  const ev=P.evidence;
  const addForm=RT.showAddEv?`<div class="addform"><b>資料を手動で追加</b><label class="f">タイトル</label><input type="text" id="ae_title">
   <div class="row"><div><label class="f">種別</label><select class="in" id="ae_type">${EV_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div><div><label class="f">発表年</label><input type="number" id="ae_year" value="${new Date().getFullYear()}"></div><div><label class="f">標本数・事例数</label><input type="number" id="ae_n" placeholder="不明なら空欄"></div><div><label class="f">立場</label><select class="in" id="ae_stance"><option value="support">支持</option><option value="contradict">反証</option><option value="neutral" selected>中立</option></select></div></div>
   <label class="f">概要</label><textarea id="ae_sum" rows="2"></textarea><div class="acts" style="margin-top:10px"><button class="btn pri" data-act="addEv">追加する</button><button class="btn" data-act="toggleAddEv">閉じる</button></div></div>`:'';
- if(!ev.length&&!P.critiques)return head+staleBanner()+addForm+emptyBox('▤','まだ資料調査が行われていません。','critic','根拠調査〜批判レビューまで即時実行');
+ const aiCrit=RT.aiCritique?`<div class="banner acc no-print"><span><b>AI生成の批判（試行）</b>　${RT.aiCritique.items.length}件 / ${esc(RT.aiCritique.meta.model)}（${esc(RT.aiCritique.meta.prompt_version)}）</span><span class="acts"><button class="btn sm pri" data-act="aiCritiqueAdopt">この批判を採用</button><button class="btn sm" data-act="aiCritiqueDiscard">破棄</button></span></div><p class="hint no-print">採用すると重要度「低」・未対応で追加されます。重要度は採用後に変更してください。</p>`:'';
+ const aiCritList=RT.aiCritique?`<div class="no-print">${RT.aiCritique.items.map(i=>`<div style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="chip">${esc(i.cat)}</span> ${esc(i.text)}${i.sug?`<div class="muted" style="font-size:12px">提案：${esc(i.sug)}</div>`:''}</div>`).join('')}</div>`:'';
+ if(!ev.length&&!P.critiques)return head+staleBanner()+addForm+aiCrit+aiCritList+emptyBox('▤','まだ資料調査が行われていません。','critic','根拠調査〜批判レビューまで即時実行');
  const sup=ev.filter(e=>e.stance==='support').length,con=ev.filter(e=>e.stance==='contradict').length;const avg=avgRel(activeEv(P));
  const evHTML=ev.map(e=>`<div class="ev${e.accepted===false?' off':''}"><div class="t">${esc(e.title)}</div>
   <div class="meta">${e.source==='builtin'?'<span class="chip mock">架空・模擬データ</span>':'<span class="chip info">取込資料</span>'}<span class="chip">${esc(e.type)}</span><span class="chip">${esc(e.year)}年</span><span class="chip">n=${e.n==null?'不明':esc(e.n)}</span>
@@ -1200,7 +1205,7 @@ function viewEvidence(){
  <div class="grid2"><section class="card"><h2>根拠資料 <span class="cnt">関連度順</span>${task(P,'verify').status!=='done'&&task(P,'verify').status!=='approval'&&ev.length?'<button class="btn sm" data-act="runUpTo" data-k="verify" style="margin-left:auto">信頼性を検証</button>':''}</h2>
   <p class="hint" style="margin:-4px 0 10px">信頼性＝資料種別・発表年・標本数による例示スコア。関連度＝仮説の変数との一致度。立場はプルダウンで修正できます。</p>
   <div class="evlist">${evHTML||'<p class="muted">資料がありません。</p>'}</div></section>
- <div><section class="card"><h2>批判・反証レビュー <span class="cnt">${crs.length}件</span>${!P.critiques?'<button class="btn sm" data-act="runUpTo" data-k="critic" style="margin-left:auto">レビューを実行</button>':''}</h2>${crHTML}</section>
+ <div><section class="card"><h2>批判・反証レビュー <span class="cnt">${crs.length}件</span>${!P.critiques?'<button class="btn sm" data-act="runUpTo" data-k="critic" style="margin-left:auto">レビューを実行</button>':''}</h2>${aiCrit}${aiCritList}${crHTML}</section>
   <section class="card"><h2>この仮説が棄却される条件</h2>${P.falsification?`<ol class="fals">${P.falsification.map(f=>`<li>${esc(f)}</li>`).join('')}</ol><p class="hint">検証前に棄却条件を定めておくことで、結果の後付け解釈を防ぎます。</p>`:'<p class="muted">批判・反証レビュー後に表示されます。</p>'}</section>
   <section class="card"><h2>検証計画（方法論AI）</h2>${plan?`<h3 style="margin-top:0">検証手法</h3>${plan.methods.map((m,i)=>`<div class="mth"><span>${i===0?'<span class="chip acc">主</span> ':i===1?'<span class="chip">補</span> ':'<span class="chip">代替</span> '}${esc(m.n)}</span><span style="display:flex;gap:10px;font-size:11px" class="muted">費用${lvl(num(m.cost,3),1)} 期間${lvl(num(m.time,3),1)} 妥当性${lvl(num(m.val,3))}</span></div>`).join('')}
    <h3>測定項目</h3><div class="tblwrap"><table class="tbl"><tbody>${plan.measures.map(m=>`<tr><td><span class="chip ${m.role==='独立変数'?'info':m.role==='従属変数'?'acc':''}">${esc(m.role)}</span></td><td><b>${esc(m.n)}</b></td><td class="muted">${esc(m.u)}</td><td style="font-size:12.5px">${esc(m.m)}</td></tr>`).join('')}${plan.controls.map(m=>`<tr><td><span class="chip warn">統制変数</span></td><td><b>${esc(m.n)}</b></td><td class="muted">${esc(m.u)}</td><td style="font-size:12.5px">${esc(m.m)}</td></tr>`).join('')}</tbody></table></div>
@@ -1221,9 +1226,10 @@ function radarSVG(cands){
  return`<svg class="radar" viewBox="0 0 360 300" style="width:100%;max-width:440px;height:auto" role="img" aria-label="仮説比較レーダーチャート">${g}</svg>`;
 }
 function viewCompare(){
- const acts=`<button class="btn" data-act="regenCand">↻ 新しい仮説を再生成</button>`;
+ const acts=`<button class="btn" data-act="regenCand">↻ 新しい仮説を再生成</button><button class="btn" data-act="aiCandidate"${RT.aiCandidateBusy?' disabled':''}>${RT.aiCandidateBusy?'✦ 提案中…':'✦ AIで候補を提案（試行）'}</button>`;
  const head=pageHead('05','新仮説比較','仮説創出AIが組合せルールで提示した研究方向と主仮説を、5つの例示指標で比較します。研究者は候補を採択・保留・却下・修正でき、採択した仮説を主仮説として研究フローを再実行できます。',acts);
- if(!P.candidates||!P.candidates.length)return head+staleBanner()+emptyBox('◈','まだ新しい仮説が生成されていません。','evaluate','前工程を含めて即時実行');
+ const aiCand=RT.aiCandidate?`<div class="banner acc no-print"><span><b>AI生成の候補（試行）</b>　${RT.aiCandidate.items.length}件 / ${esc(RT.aiCandidate.meta.model)}（${esc(RT.aiCandidate.meta.prompt_version)}）</span><span class="acts"><button class="btn sm pri" data-act="aiCandidateAdopt">この候補を採用</button><button class="btn sm" data-act="aiCandidateDiscard">破棄</button></span></div><p class="hint no-print">採用後に既存の採点ロジックで再評価します（AI は採点しません）。</p><div class="no-print">${RT.aiCandidate.items.map(i=>`<div style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="chip">${esc(i.type)}</span> ${esc(i.text)}<div class="muted" style="font-size:11.5px">変数：${i.vars.map(esc).join('・')}${(i.evidenceIds||[]).length?`　根拠: ${i.evidenceIds.map(esc).join(', ')}`:''}</div></div>`).join('')}</div>`:'';
+ if(!P.candidates||!P.candidates.length)return head+staleBanner()+aiCand+emptyBox('◈','まだ新しい仮説が生成されていません。','evaluate','前工程を含めて即時実行');
  const cs=P.candidates;const w=P.weights;
  if(!RT.cmpSel||!RT.cmpSel.every(id=>cs.some(c=>c.id===id)))RT.cmpSel=cs.slice(0,4).map(c=>c.id);
  const sorted=cs.slice().sort((x,y)=>y.total-x.total);const best=sorted[0];
@@ -1239,7 +1245,7 @@ function viewCompare(){
    `<button class="btn sm good" data-act="candStatus" data-id="${esc(c.id)}" data-s="採択">採択</button><button class="btn sm" data-act="candStatus" data-id="${esc(c.id)}" data-s="保留">保留</button><button class="btn sm danger" data-act="candStatus" data-id="${esc(c.id)}" data-s="却下">却下</button><button class="btn sm" data-act="candEdit" data-id="${esc(c.id)}">修正</button>${c.status==='採択'?`<button class="btn sm pri" data-act="setMain" data-id="${esc(c.id)}">主仮説にして再実行</button>`:''}`}</div></div>`}).join('');
  const wl=[['evidence','根拠の充足度'],['testability','検証可能性'],['burden','実験負担の低さ'],['importance','研究上の重要性'],['novelty','新規性（例示）']];
  const selC=cs.filter(c=>RT.cmpSel.includes(c.id));
- return head+staleBanner()+
+ return head+staleBanner()+aiCand+
  `<div class="banner acc"><span>現在の重み付けでの最高評価：<b>${esc(best.label)}（${esc(best.type)}）総合 ${Math.round(num(best.total,0))}点</b>　— 評価値はルールに基づく例示であり、仮説の真偽や新規性を保証するものではありません。</span></div>
  <div class="cands" style="margin-bottom:16px">${cards}</div>
  <section class="card"><h2>評価の重み付け</h2><div class="wts">${wl.map(([k,l])=>`<div><label><span>${l}</span><b data-wv="${k}">${w[k]}</b></label><input type="range" min="0" max="50" value="${w[k]}" data-w="${k}"></div>`).join('')}</div><p class="hint">重みを変えると総合点・順位・チャートが即座に更新されます。実験負担は低いほど高得点として合算します。</p></section>
@@ -1352,6 +1358,28 @@ root.addEventListener('click',async e=>{
    P.debateShown=0;P.debateAi={provider:str(r.meta.provider,''),model:str(r.meta.model,''),promptVersion:str(r.meta.prompt_version,''),generatedAt:nowStr()};
    RT.aiDebate=null;log('✦ AI生成の討論を採用');decide('AI討論を採用');touch();render();later(playDebate,200);break}
   case'aiDebateDiscard':RT.aiDebate=null;render();break;
+  case'aiCritique':{if(RT.aiCritiqueBusy)return;if(!P.hypothesis.trim()){toast('研究仮説を入力してください');return}
+   RT.aiCritiqueBusy=true;render();
+   try{const r=await host.generateCritiques(P.id);RT.aiCritique=r;log(`✦ AI批判を提案（${r.items.length}件、${r.meta.model}）`);decide('AI批判を提案（試行）')}
+   catch(e){toast('AI批判を提案できません：'+((e&&e.message)||'未設定'))}
+   finally{RT.aiCritiqueBusy=false;render()}break}
+  case'aiCritiqueAdopt':{const r=RT.aiCritique;if(!r)return;
+   P.critiques=(P.critiques||[]).concat(r.items.map(i=>({id:uid('cr'),sev:'低',cat:str(i.cat,''),text:str(i.text,''),sug:str(i.sug,''),status:'未対応',origin:'AI提案'})));
+   P.aiAssist=Object.assign({},P.aiAssist,{critiques:{provider:str(r.meta.provider,''),model:str(r.meta.model,''),promptVersion:str(r.meta.prompt_version,''),generatedAt:nowStr()}});
+   RT.aiCritique=null;log('✦ AI生成の批判を採用');decide('AI批判を採用');touch();render();break}
+  case'aiCritiqueDiscard':RT.aiCritique=null;render();break;
+  case'aiCandidate':{if(RT.aiCandidateBusy)return;if(!P.hypothesis.trim()){toast('研究仮説を入力してください');return}
+   RT.aiCandidateBusy=true;render();
+   try{const r=await host.generateCandidates(P.id);RT.aiCandidate=r;log(`✦ AI候補を提案（${r.items.length}件、${r.meta.model}）`);decide('AI候補を提案（試行）')}
+   catch(e){toast('AI候補を提案できません：'+((e&&e.message)||'未設定'))}
+   finally{RT.aiCandidateBusy=false;render()}break}
+  case'aiCandidateAdopt':{const r=RT.aiCandidate;if(!r)return;
+   const base=P.candidates?P.candidates.slice():[makeH0(P)];
+   const fresh=r.items.map(i=>({id:uid('c'),label:'',type:str(i.type,''),text:str(i.text,''),vars:arr(i.vars).map(v=>str(v,'')),origin:'AI提案',status:'候補'}));
+   P.candidates=base.concat(fresh);P.candidates.forEach((c,i)=>c.label='H'+i);scoreAll(P);
+   P.aiAssist=Object.assign({},P.aiAssist,{candidates:{provider:str(r.meta.provider,''),model:str(r.meta.model,''),promptVersion:str(r.meta.prompt_version,''),generatedAt:nowStr()}});
+   RT.aiCandidate=null;log('✦ AI生成の候補を採用');decide('AI候補を採用');touch();render();break}
+  case'aiCandidateDiscard':RT.aiCandidate=null;render();break;
   case'playDebate':playDebate();renderDebateCtrls();break;
   case'pausePlay':stopPlay();renderChat();renderDebateCtrls();break;
   case'showAll':stopPlay();P.debateShown=P.debate.length;touch();renderChat();renderDebateCtrls();break;
@@ -1398,7 +1426,7 @@ root.addEventListener('input',e=>{
 },{signal:ac.signal});
 root.addEventListener('change',async e=>{
  const t=e.target;
- if(t.id==='projSel'){await flush();stopOrch();stopPlay();P=DB.projects.find(p=>p.id===t.value)||P;DB.currentId=P.id;RT.cmpSel=null;RT.draft='';touch();render();return}
+ if(t.id==='projSel'){await flush();stopOrch();stopPlay();P=DB.projects.find(p=>p.id===t.value)||P;DB.currentId=P.id;RT.cmpSel=null;RT.draft='';RT.aiDebate=null;RT.aiCritique=null;RT.aiCandidate=null;touch();render();return}
  if(t.id==='speedSel'){DB.settings.speed=+t.value;try{localStorage.setItem('rihrp_speed',String(t.value))}catch(e){}touch();return}
  if(t.id==='fileJson'){if(t.files[0])importAll(t.files[0]);t.value='';return}
  if(t.id==='fileEv'){if(t.files.length)importEvidenceFiles(t.files);t.value='';return}

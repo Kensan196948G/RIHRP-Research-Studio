@@ -1,7 +1,7 @@
 # ADR-0008: スタジオ AI による批判・候補の提案（生成のみ・採点は決定論）
 
-- 状態: **提案（未承認）**
-- 日付: 2026-11-13
+- 状態: **採用（PoC）**
+- 日付: 2026-11-13（所有者が既定案で実装を承認）
 - 関連: [ADR-0002](0002-deterministic-verification.md) / [ADR-0006](0006-ai-drafting.md) / [ADR-0007](0007-studio-ai-debate.md) / [Phase 3 C 設計](../design/04-studio-ai-critiques-candidates.md)
 
 ## 背景
@@ -11,7 +11,7 @@ Phase 3 B で 03 討論の AI 支援を PoC 実装し、既定 OFF・assist・�
 05 新仮説比較の「候補」である。一方、05 の候補は **スコアと採択** が製品の決定論的な中核で、
 AI に採点させると再現性と監査の前提が崩れる。
 
-## 決定（提案）
+## 決定
 
 1. **対象は 04 の批判提案と 05 の候補提案（生成のみ）**。検証・スコア・重み・採択・レポートは変更しない。
 2. **assist 方式・既定 OFF**。`RIHRP_LLM_*` 未設定なら 503 `ai_not_configured`。既存機能は通常どおり。
@@ -42,6 +42,7 @@ AI に採点させると再現性と監査の前提が崩れる。
 - 保存形式: `critiques[]` / `candidates[]` の要素に `origin`（AI 提案）を付け、文書に
   `aiAssist`（工程ごとの provider/model/promptVersion/generatedAt）を追加する（案）。
 - テスト: 決定論（採用後のスコアが再計算と一致）、未知 type/vars の破棄、監査、既定 OFF。
+- 実装・検証: [検証記録](../verification/2026-11-13-ai-critique-candidate.md) / [テスト計画 08](../testing/08-ai-critique-candidate-test-plan.md)。
 
 ## 代替案
 

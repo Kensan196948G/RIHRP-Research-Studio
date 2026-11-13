@@ -27,6 +27,42 @@ export type DebateResult = {
   };
 };
 
+export type CritiqueItem = {
+  cat: string;
+  text: string;
+  sug: string;
+  evidenceIds: string[];
+};
+
+export type CritiqueResult = {
+  items: CritiqueItem[];
+  meta: {
+    provider: string;
+    model: string;
+    prompt_version: string;
+    latency_ms: number;
+    items: number;
+  };
+};
+
+export type CandidateItem = {
+  type: string;
+  text: string;
+  vars: string[];
+  evidenceIds: string[];
+};
+
+export type CandidateResult = {
+  items: CandidateItem[];
+  meta: {
+    provider: string;
+    model: string;
+    prompt_version: string;
+    latency_ms: number;
+    items: number;
+  };
+};
+
 export class StudioApiError extends Error {
   code: string;
   status: number;
@@ -115,6 +151,22 @@ export const studioHost = {
   /** 03 討論の AI 支援（Phase 3 B PoC）。生成のみ・保存はしない。 */
   async generateDebate(id: string, signal?: AbortSignal): Promise<DebateResult> {
     return request<DebateResult>(`/api/projects/${encodeURIComponent(id)}/ai/debate`, {
+      method: "POST",
+      signal,
+    });
+  },
+
+  /** 04 批判の AI 提案（Phase 3 C）。生成のみ・保存はしない。 */
+  async generateCritiques(id: string, signal?: AbortSignal): Promise<CritiqueResult> {
+    return request<CritiqueResult>(`/api/projects/${encodeURIComponent(id)}/ai/critiques`, {
+      method: "POST",
+      signal,
+    });
+  },
+
+  /** 05 候補の AI 提案（Phase 3 C）。採点はしない。 */
+  async generateCandidates(id: string, signal?: AbortSignal): Promise<CandidateResult> {
+    return request<CandidateResult>(`/api/projects/${encodeURIComponent(id)}/ai/candidates`, {
       method: "POST",
       signal,
     });

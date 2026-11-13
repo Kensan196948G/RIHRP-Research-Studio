@@ -35,6 +35,40 @@ DEBATE = json.dumps(
     ensure_ascii=False,
 )
 
+CRITIQUES = json.dumps(
+    {
+        "items": [
+            {
+                "cat": "外的妥当性",
+                "text": "E2E スタブの批判です。適用範囲の確認が必要です。",
+                "sug": "現地観測と比較する。",
+                "evidenceIds": ["ev-1"],
+            },
+            {
+                "cat": "測定",
+                "text": "E2E スタブの測定に関する批判です。",
+                "sug": "",
+                "evidenceIds": [],
+            },
+        ]
+    },
+    ensure_ascii=False,
+)
+
+CANDIDATES = json.dumps(
+    {
+        "items": [
+            {
+                "type": "交互作用",
+                "text": "E2E スタブの候補です。重量の効果は流速条件に依存する。",
+                "vars": ["根固め工の重量", "洗掘深", "流速"],
+                "evidenceIds": ["ev-1"],
+            }
+        ]
+    },
+    ensure_ascii=False,
+)
+
 
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
@@ -48,7 +82,14 @@ class Handler(BaseHTTPRequestHandler):
                 prompt = str(messages[-1].get("content") or "")
         except ValueError:
             pass
-        content = DEBATE if ("EVIDENCE_IDS" in prompt or "debate" in prompt.lower()) else CLAIMS
+        if "critique items" in prompt:
+            content = CRITIQUES
+        elif "(candidates)" in prompt:
+            content = CANDIDATES
+        elif "EVIDENCE_IDS" in prompt or "debate" in prompt.lower():
+            content = DEBATE
+        else:
+            content = CLAIMS
         body = json.dumps({"choices": [{"message": {"content": content}}]}).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
