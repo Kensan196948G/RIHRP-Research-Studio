@@ -97,7 +97,7 @@ vitest 10 件・既定 OFF・引用ガード・監査）。実行証跡（pytest
 | A1 | C1 | 実キー評価（承認後） | オーナー / QA | 評定記録＋監査 | open |
 | A2 | C2 | 欠陥一覧の明示 | QA | 記録更新 | **closed**（2026-11-13） |
 | A3 | C3 | E2E スタブ配線 | 開発（適用は人間） | 差分提案済み（`docs/ci/e2e-workflow.md`）。適用後の workflow_dispatch PASS | open |
-| A4 | 改善 | 401・破棄・スキーマ等の追加テスト | 開発 | テスト追加 | open（任意） |
+| A4 | 改善 | 401・破棄・スキーマ等の追加テスト | 開発 | テスト追加 | **closed**（2026-11-13・PR #53） |
 
 ## 9. Recommendation Basis and Limitations
 

@@ -82,6 +82,20 @@ test("AI 討論を生成し、プレビューから採用できる（採用時�
   expect(during.version).toBe(before.version);
   expect(during.payload.debateAi).toBeUndefined();
 
+  // 破棄では保存されず、プレビューも消える
+  await page.locator('button[data-act="aiDebateDiscard"]').click();
+  await expect(main).not.toContainText("AI生成の討論（試行）");
+  const discarded = (await api(page, "GET", `/api/projects/${projectId}/research`)) as {
+    version: number;
+    payload: { debateAi?: unknown };
+  };
+  expect(discarded.version).toBe(before.version);
+  expect(discarded.payload.debateAi).toBeUndefined();
+
+  // 再生成して採用する
+  await page.locator('button[data-act="aiDebate"]').click();
+  await expect(main).toContainText("AI生成の討論（試行）");
+
   await page.locator('button[data-act="aiDebateAdopt"]').click();
   await expect(main).toContainText("この討論は AI 生成");
   await expect(page.locator("#chat")).toContainText("E2E スタブの根拠発言");

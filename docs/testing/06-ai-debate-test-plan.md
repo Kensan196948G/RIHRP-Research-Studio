@@ -53,12 +53,15 @@
 | D-09 | 上流タイムアウト | 生成 | 504 `ai_timeout` |
 | D-10 | レート上限 1 | 2 回生成 | 2 回目は 429 |
 | D-11 | 生成成功 | 監査を取得 | `ai.debate_requested` があり、鍵・プロンプト・生成本文なし |
+| D-17 | 未ログイン | 生成 | 401 `unauthorized` |
+| D-18 | 不正スキーマの応答（未知 agent・短すぎる本文・`evidenceIds` が配列でない） | 生成 | 不正な発言だけ破棄し、有効な発言は返す |
 
 ### ブラウザ E2E（スタブ）
 
 | ID | 手順 | 期待 |
 |---|---|---|
 | D-12 | 研究文書を用意 → 03 →「AIで討論を生成」→ プレビュー確認 → 採用 | プレビュー表示、採用前は保存なし、採用後に `debateAi` + `debate[]` が保存される |
+| D-19 | プレビュー → 破棄 → 再生成 → 採用 | 破棄でプレビューが消え、保存なし（version・`debateAi` 不変）。再生成後は採用できる |
 
 ### 未実行（実キー・人間レビュー）
 
@@ -71,13 +74,14 @@
 
 ## 4. 実行結果（2026-11-13）
 
-- API: `test_ai_debate.py` **11 passed**。既存 `test_ai_drafting.py` **11 passed**（refactor 回帰）。
-- E2E: `ai-debate.spec.ts` **1 passed（4.0s）**（スタブ）。
+- API: `test_ai_debate.py` **13 passed**（D-01〜D-12, D-17, D-18）。既存 `test_ai_drafting.py` **11 passed**（refactor 回帰）。
+- E2E: `ai-debate.spec.ts` **1 passed（4.1s）**（スタブ・破棄経路を含む）。
 - Web: `npm run build` OK、vitest **10 passed**。
 - 全 E2E（スタブ、`npx playwright test`）: **44 passed / 1 skipped / 0 failed（2.2 分）**。
 - 実キーでの実行は未実施（承認待ち）。D-13〜D-16 は未実行。
-- 注: 初回の全 E2E ではログイン/セッションの flake で 3 件失敗したが、再実行で全件 PASS。
-  個別スイート（journey / gate+journey / AI+a11y+journey）も PASS を確認した。
+- 注: 初回の全 E2E で 3 件失敗した原因は、E2E 実行中の pytest 同時実行（同一 `rihrp_test` DB の初期化）と特定した。
+  再発防止として `tests/conftest.py` にガードを追加し、手順を [docs/ci/e2e-workflow.md](../ci/e2e-workflow.md) に記載した。
+- 追補（PR #53）: D-17/D-18/D-19 を追加し、全 pytest **421 passed / 1 skipped** を確認。
 
 ## 5. 残リスク・未検証
 
