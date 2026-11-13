@@ -1,12 +1,12 @@
 # 04. スタジオ AI 拡大（Phase 3 C）設計 — 04 批判・05 候補
 
-- 版: v0.1（2026-11-13・**提案 / 未承認**）
+- 版: v1.0（2026-11-13・実装済み）
 - 対象: 04 根拠・反証の批判提案、05 新仮説比較の候補提案（生成のみ）
 - 関連: [ADR-0008](../adr/0008-studio-ai-critiques-candidates.md) / [ADR-0007](../adr/0007-studio-ai-debate.md)
   / [Phase 3 B 設計](03-studio-llm-replacement-plan.md) / [テスト計画 06](../testing/06-ai-debate-test-plan.md)
 - 前提: Phase 3 B（03 討論）は実装・マージ済み（main `6690049`）
 
-## 0. 決定（この設計で固定する案）
+## 0. 決定（2026-11-13 所有者承認・既定案で確定）
 
 | ID | 決定 | 理由 |
 |---|---|---|
@@ -152,18 +152,28 @@ Phase 3 C では、AI の出力を `genCandidates()` の**テンプレートの�
 
 ## 9. 未決事項（所有者の決定）
 
-| ID | 決めること | 既定案 |
+| ID | 決定（既定案で確定） | 状態 |
 |---|---|---|
-| Q1 | 批判の最大件数 | 6 件 |
-| Q2 | 候補の最大件数 | 5 件 |
-| Q3 | 批判の `sev` の初期値 | `低`（人間が変更） |
-| Q4 | 候補 `vars` の許容範囲 | 解析済み変数のみ |
-| Q5 | provenance の持ち方 | 文書の `aiAssist` に工程別で保存 |
-| Q6 | レート制限の予算 | 討論と共通（1 分あたり同数） |
-| Q7 | 既定 ON の判断基準 | 実キー canary で G1/G2/G4 PASS、G5 は所有者の閾値 |
+| Q1 | 批判の最大件数 = 6 件 | 決定 |
+| Q2 | 候補の最大件数 = 5 件 | 決定 |
+| Q3 | 批判の `sev` 初期値 = `低`（人間が変更） | 決定 |
+| Q4 | 候補 `vars` = 解析済み変数のみ | 決定 |
+| Q5 | provenance = 文書の `aiAssist` に工程別で保存 | 決定 |
+| Q6 | レート制限 = 討論と共通 | 決定 |
+| Q7 | 既定 ON の判断基準 = 実キー canary で G1/G2/G4 PASS、G5 は所有者の閾値 | 決定（未実施） |
 
 ## 10. 見積り（参考）
 
 - コード: `llm.py` 2 関数、`routers/ai.py` 2 エンドポイント、`engine.js` 2 プレビュー、`api.ts` 2 呼び出し。
 - テスト: API 8〜10 件、E2E 2 件、決定論 1 件。
 - 規模: Phase 3 B と同程度（1 PR を API と UI に分割）。
+
+
+## 11. 実装結果（2026-11-13）
+
+- API: `POST /api/projects/{id}/ai/critiques` / `ai/candidates`。AI の `scores`/`total`/`status` は破棄。
+- UI: 04/05 のプレビュー→採用/破棄。採用時のみ保存し、候補は `scoreAll()` で再採点。
+- 検証: API **13 passed**、E2E **2 passed**、全 pytest **434 passed / 1 skipped**、全 E2E **46 passed / 1 skipped**。
+- 証跡・残リスク: [検証記録](../verification/2026-11-13-ai-critique-candidate.md) /
+  [レビュー記録](../verification/2026-11-13-test-report-review-ai-assist.md)。
+- 未実施: 実キー評価（LHT-C4/C5/C6）と 2 名評定。有効化前のゲート。

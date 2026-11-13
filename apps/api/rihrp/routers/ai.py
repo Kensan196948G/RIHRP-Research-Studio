@@ -88,3 +88,69 @@ def debate(
     )
     db.commit()
     return {"messages": messages, "meta": meta}
+
+
+@router.post("/projects/{project_id}/ai/critiques")
+def critiques(
+    project_id: str,
+    principal: Principal = Depends(require_editor),
+    db: OrmSession = Depends(get_db),
+) -> dict:
+    """04 の批判候補を作る（保存しない。重要度は人間が決める）。"""
+    project = get_project_or_404(db, project_id)
+    doc = db.get(ResearchDocument, project.id)
+    data = doc.payload if doc is not None and isinstance(doc.payload, dict) else {}
+    if not isinstance(data.get("hypothesis"), str) or not data["hypothesis"].strip():
+        raise ApiError(422, "validation_error", "研究仮説が未入力です。")
+    llm.check_draft_rate(principal.user_id)
+    items, meta = llm.generate_critiques(data)
+    write_audit(
+        db,
+        actor_id=principal.user_id,
+        action="ai.critique_requested",
+        entity_type="project",
+        entity_id=project.id,
+        project_id=project_id,
+        details={
+            "provider": meta["provider"],
+            "model": meta["model"],
+            "prompt_version": meta["prompt_version"],
+            "items": meta["items"],
+            "latency_ms": meta["latency_ms"],
+        },
+    )
+    db.commit()
+    return {"items": items, "meta": meta}
+
+
+@router.post("/projects/{project_id}/ai/candidates")
+def candidates(
+    project_id: str,
+    principal: Principal = Depends(require_editor),
+    db: OrmSession = Depends(get_db),
+) -> dict:
+    """05 の候補を作る（保存しない。採点は採用後に既存ロジックで行う）。"""
+    project = get_project_or_404(db, project_id)
+    doc = db.get(ResearchDocument, project.id)
+    data = doc.payload if doc is not None and isinstance(doc.payload, dict) else {}
+    if not isinstance(data.get("hypothesis"), str) or not data["hypothesis"].strip():
+        raise ApiError(422, "validation_error", "研究仮説が未入力です。")
+    llm.check_draft_rate(principal.user_id)
+    items, meta = llm.generate_candidates(data)
+    write_audit(
+        db,
+        actor_id=principal.user_id,
+        action="ai.candidate_requested",
+        entity_type="project",
+        entity_id=project.id,
+        project_id=project_id,
+        details={
+            "provider": meta["provider"],
+            "model": meta["model"],
+            "prompt_version": meta["prompt_version"],
+            "items": meta["items"],
+            "latency_ms": meta["latency_ms"],
+        },
+    )
+    db.commit()
+    return {"items": items, "meta": meta}

@@ -844,6 +844,65 @@ paths:
       summary: Update Project
       tags:
       - projects
+  /api/projects/{project_id}/ai/candidates:
+    post:
+      description: 05 の候補を作る（保存しない。採点は採用後に既存ロジックで行う）。
+      operationId: candidates_api_projects__project_id__ai_candidates_post
+      parameters:
+      - in: path
+        name: project_id
+        required: true
+        schema:
+          title: Project Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Candidates Api Projects  Project Id  Ai Candidates
+                  Post
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Candidates
+      tags:
+      - ai
+  /api/projects/{project_id}/ai/critiques:
+    post:
+      description: 04 の批判候補を作る（保存しない。重要度は人間が決める）。
+      operationId: critiques_api_projects__project_id__ai_critiques_post
+      parameters:
+      - in: path
+        name: project_id
+        required: true
+        schema:
+          title: Project Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Critiques Api Projects  Project Id  Ai Critiques Post
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Critiques
+      tags:
+      - ai
   /api/projects/{project_id}/ai/debate:
     post:
       description: 研究文書から討論の発言候補を作る（保存しない。採用は利用者）。

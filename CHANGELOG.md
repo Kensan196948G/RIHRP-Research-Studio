@@ -11,6 +11,9 @@
   プロトタイプ HTML は変更せず、`apps/web` の UI のみの追加。
 - スタジオ 03 討論の AI 支援（PoC・既定 OFF）。プレビュー→採用時のみ保存し、引用は既存 evidence ID に限定。
   API は `POST /api/projects/{id}/ai/debate`、判断は ADR-0007。
+- スタジオ 04 批判・05 候補の AI 提案（PoC・既定 OFF）。プレビュー→採用時のみ保存し、
+  AI は採点せず採用後に既存ロジックで採点する。API は `POST /api/projects/{id}/ai/critiques` /
+  `ai/candidates`、判断は ADR-0008。
 - 監査ログの保持期間削除（`python -m rihrp.maintenance purge-audit`、dry-run 既定・
   所有者ロール・承認後にタイマー有効化。ADR-0006）。
 
