@@ -46,9 +46,23 @@ class AssistStub:
                 )
                 content = json.dumps(stub.payload, ensure_ascii=False)
                 if self.path.endswith("/messages"):
-                    stub._send(self, 200, {"content": [{"type": "text", "text": content}]})
+                    stub._send(
+                        self,
+                        200,
+                        {
+                            "content": [{"type": "text", "text": content}],
+                            "usage": {"input_tokens": 90, "output_tokens": 30},
+                        },
+                    )
                     return
-                stub._send(self, 200, {"choices": [{"message": {"content": content}}]})
+                stub._send(
+                    self,
+                    200,
+                    {
+                        "choices": [{"message": {"content": content}}],
+                        "usage": {"prompt_tokens": 90, "completion_tokens": 30},
+                    },
+                )
 
             def log_message(self, *args: Any) -> None:  # noqa: A003
                 return
@@ -169,6 +183,7 @@ def test_critiques_return_items_without_saving(editor_client: TestClient, stub: 
     assert "sev" not in body["items"][0]
     assert body["meta"]["model"] == "stub-model"
     assert body["meta"]["prompt_version"] == "studio-critique-v1"
+    assert body["meta"]["tokens"] == {"input": 90, "output": 30}
     assert API_KEY not in response.text
 
     after = editor_client.get(f"/api/projects/{project['id']}/research").json()
