@@ -1,10 +1,23 @@
 # 03. スタジオ LLM 置換（Phase 3 B案）設計・リスク・PoC 計画
 
 - 版: v0.1（2026-11-13）
-- 状態: **提案（未承認・実装未着手）**
+- 状態: **PoC 実装済み（討論のみ・既定 OFF）**（2026-11-13）
 - 対象: `RIHRP_Offline_Research_Studio` のルールベース生成を外部 LLM に置き換えるかの判断材料
 - 関連: [05-automation-3layers.md](../testing/05-automation-3layers.md) Phase 3 / [02-offline-studio-spec.md](02-offline-studio-spec.md) / [ADR-0002](../adr/0002-deterministic-verification.md) / [ADR-0006](../adr/0006-ai-drafting.md) / [03-ai-drafting-test-plan.md](../testing/03-ai-drafting-test-plan.md) / [04-ai-feature-workflow.md](../testing/04-ai-feature-workflow.md)
 - Skill 適用: `ai-feature-testing` を設計前に適用（2026-11-13）。テスト設計時に `llm-hallucination-testing`、実装後に `ai-generated-test-review`、記録時に `test-report-review` を適用する（未適用）。
+
+## 0. 決定（2026-11-13）
+
+所有者の承認を受けて、PoC は次の範囲で実装した。実装は [ADR-0007](../adr/0007-studio-ai-debate.md) を参照。
+
+| # | 決定 | 内容 |
+|---|---|---|
+| Q1 | 置換範囲 | **03 討論のみ**。検証・スコア・採点・採択の決定論は維持 |
+| Q2 | オフライン方針 | **assist**（既定 OFF）。生成操作そのものを opt-in とし、プロジェクト設定は追加しない |
+| Q3 | 保存 | **プレビュー→採用時のみ保存**。provenance を付ける |
+| Q4 | 費用 | 既存の `RIHRP_LLM_*` 上限（timeout 30s / 5 回/分）を流用。新しい予算枠は設けない |
+| Q5 | データ越境 | 送信は仮説・資料 8 件・批判 6 件に限定。本番キー投入は別承認（ADR-0006 と同じ） |
+| Q6 | 品質基準 | 暫定ルーブリックで人間確認。自動品質ゲートは設けない |
 
 ## 1. Task Understanding and Scope
 
@@ -179,3 +192,17 @@
 | `llm-hallucination-testing` | テスト設計時 | 幻覚・引用・棄権の検証設計 | 未適用（実装判断後） |
 | `ai-generated-test-review` | 実装後 | AI 生成テストの過信・弱い assertion の点検 | 未適用 |
 | `test-report-review` | 記録作成時 | 証跡整合・未検証範囲のレビュー | 未適用 |
+
+## 7. 実装（PoC、2026-11-13）
+
+- **API**: `POST /api/projects/{id}/ai/debate`（editor 以上、body なし）。
+  `research_documents` の payload から仮説・資料・批判を読み、LLM の `messages[]` を返す。
+- **LLM**: `apps/api/rihrp/llm.py` の `generate_debate`。promptVersion `studio-debate-v1`。
+  evidence ID を持たない/存在しない ID を引く発言は破棄する。
+- **UI**: 03 の「✦ AIで討論を生成（試行）」→ プレビュー →「この討論を採用」/「破棄」。
+  採用時のみ `debate[]` に `evidenceIds` 付きで保存し、`debateAi` に provenance を残す。
+  採用後は「この討論は AI 生成（model / promptVersion / 日時）」を表示する。
+- **監査**: `ai.debate_requested`（provider / model / promptVersion / messages / latency）。
+  プロンプト・生成本文・鍵は残さない。
+- **テスト**: API 11 件（スタブ）、E2E 1 件（スタブ）。実キーのスモークは未実施（別承認）。
+- **未実装**: 中断時の自動クリーンアップ、他工程（批判・候補）への拡大、品質の自動ゲート。

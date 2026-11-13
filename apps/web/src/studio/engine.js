@@ -255,7 +255,7 @@ const SAMPLES=[
 const STORE_KEY='rihrp_offline_studio_v1';
 let DB={version:1,projects:[],currentId:null,settings:{speed:1}};
 let P=null;
-const RT={view:'register',running:false,timer:null,resumeOnApprove:false,playing:false,playTimer:null,typing:null,draft:'',showAddEv:false,editing:null,cmpSel:null,saveT:null,tour:false,tourStage:null,tourTimer:null,tourEnteredAt:0};
+const RT={view:'register',running:false,timer:null,resumeOnApprove:false,playing:false,playTimer:null,typing:null,draft:'',showAddEv:false,editing:null,cmpSel:null,saveT:null,tour:false,tourStage:null,tourTimer:null,tourEnteredAt:0,aiDebate:null,aiDebateBusy:false};
 
 function newProject(src){
  const s=src||{title:'新しい研究テーマ',field:'auto',hypothesis:'',background:'',conditions:'',constraints:{budget:'標準',period:'標準',safety:false}};
@@ -263,7 +263,7 @@ function newProject(src){
   constraints:Object.assign({budget:'標準',period:'標準',safety:false},s.constraints||{}),
   createdAt:nowStr(),updatedAt:nowStr(),revision:s.hypothesis?1:0,
   revisions:s.hypothesis?[{rev:1,hypothesis:s.hypothesis,conditions:s.conditions,at:nowStr(),note:'初版登録'}]:[],
-  analysis:null,plan:null,ethics:null,critiques:null,falsification:null,evidence:[],debate:[],debateShown:0,candidates:null,
+  analysis:null,plan:null,ethics:null,critiques:null,falsification:null,evidence:[],debate:[],debateShown:0,debateAi:null,candidates:null,
   weights:{evidence:25,testability:25,burden:15,importance:25,novelty:10},decisions:[],logs:[],tasks:[],stale:false,genCount:0,reportAt:null,reportNote:'',sampleKey:s.key||null};
  p.tasks=TASK_DEFS.map(d=>({key:d.key,status:'blocked',progress:0,runs:0}));
  refreshReady(p);
@@ -412,8 +412,10 @@ function sanitizeProject(p){
  p.constraints={budget:['潤沢','標準','厳しい'].includes(c.budget)?c.budget:'標準',period:['余裕あり','標準','短期'].includes(c.period)?c.period:'標準',safety:!!c.safety};
  p.revisions=arr(p.revisions).filter(obj).map(r=>({rev:Math.max(1,Math.floor(num(r.rev,1))),hypothesis:str(r.hypothesis,''),conditions:str(r.conditions,''),at:str(r.at,''),note:str(r.note,'')}));
  p.evidence=arr(p.evidence).filter(obj).map(e=>Object.assign({},e,{id:safeId(e.id,'ev'),title:str(e.title,'（無題）'),type:str(e.type,''),year:str(e.year,''),summary:str(e.summary,''),note:str(e.note,''),stance:STANCES.includes(e.stance)?e.stance:'neutral',reliability:e.reliability==null?null:lim(e.reliability,0,0,100),relevance:lim(e.relevance,0,0,100),tags:arr(e.tags).map(x=>str(x,''))}));
- p.debate=arr(p.debate).filter(obj).map(m=>({id:safeId(m.id,'m'),agent:AGENTS[m.agent]?m.agent:'fac',round:Math.max(1,Math.floor(num(m.round,1))),kind:str(m.kind,''),text:str(m.text,'')}));
+ p.debate=arr(p.debate).filter(obj).map(m=>({id:safeId(m.id,'m'),agent:AGENTS[m.agent]?m.agent:'fac',round:Math.max(1,Math.floor(num(m.round,1))),kind:str(m.kind,''),text:str(m.text,''),evidenceIds:arr(m.evidenceIds).map(x=>str(x,'')).slice(0,5)}));
  p.debateShown=Math.max(0,Math.floor(num(p.debateShown,0)));
+ const dai=obj(p.debateAi);
+ p.debateAi=dai?{provider:str(dai.provider,''),model:str(dai.model,''),promptVersion:str(dai.promptVersion,''),generatedAt:str(dai.generatedAt,'')}:null;
  // 解析結果は派生データ。壊れた形をそのまま保持すると描画時に例外になるため、
  // 期待する形（列挙・配列・有限値）を満たすときだけ採用し、それ以外は再計算させる。
  const an=obj(p.analysis);
@@ -815,7 +817,7 @@ function reject(k){decide(`「${tdef(k).name}」を差し戻し、再実行`);lo
 function resetAll(silent){
  stopOrch();
  P.tasks=TASK_DEFS.map(d=>({key:d.key,status:'blocked',progress:0,runs:0}));
- P.analysis=null;P.plan=null;P.ethics=null;P.critiques=null;P.falsification=null;P.debate=[];P.debateShown=0;P.reportAt=null;P.verified=false;
+ P.analysis=null;P.plan=null;P.ethics=null;P.critiques=null;P.falsification=null;P.debate=[];P.debateShown=0;P.debateAi=null;P.reportAt=null;P.verified=false;
  P.evidence=(P.evidence||[]).filter(e=>e.source!=='builtin');P.evidence.forEach(e=>{delete e.reliability});
  if(P.candidates){const keep=P.candidates.filter(c=>c.origin!=='主仮説'&&['採択','保留'].includes(c.status));P.candidates=keep.length?keep:null}
  refreshReady(P);if(!silent)log('↻ 全タスクをリセットしました');touch();
@@ -1147,14 +1149,18 @@ function renderDebateCtrls(){const el=$('#debCtrls');if(el)el.innerHTML=debateCt
 function debateCtrls(){
  const rem=P.debate.length-P.debateShown;
  return(RT.playing?`<button class="btn" data-act="pausePlay">⏸ 再生を停止</button>`:`<button class="btn pri" data-act="playDebate"${rem?'':' disabled'}>▶ 討論を再生${rem?`（残り${rem}）`:''}</button>`)+
-  `<button class="btn" data-act="showAll"${rem?'':' disabled'}>⏭ すべて表示</button><button class="btn" data-act="regenDebate">↻ 討論を再生成</button>`;
+  `<button class="btn" data-act="showAll"${rem?'':' disabled'}>⏭ すべて表示</button><button class="btn" data-act="regenDebate">↻ 討論を再生成</button>`+
+  `<button class="btn" data-act="aiDebate"${RT.aiDebateBusy?' disabled':''}>${RT.aiDebateBusy?'✦ 生成中…':'✦ AIで討論を生成（試行）'}</button>`;
 }
 function viewDebate(){
  const head=pageHead('03','複数AI討論（Multi-Agent AI Collaboration Studio）','8体の専門エージェントが根拠・批判・検証方法・代替仮説を時系列で議論します。途中で反論や条件変更を入力すると、ルールの範囲内で応答と評価が変化します。',`<span class="acts" id="debCtrls">${debateCtrls()}</span>`);
- if(!P.debate.length)return head+staleBanner()+emptyBox('◎','まだ討論が行われていません。討論には構造化・文献調査・根拠検証・批判レビュー等の前工程が必要です。','debate','前工程を含めて即時実行');
+ if(!P.debate.length&&!RT.aiDebate)return head+staleBanner()+emptyBox('◎','まだ討論が行われていません。討論には構造化・文献調査・根拠検証・批判レビュー等の前工程が必要です。','debate','前工程を含めて即時実行');
+ const aiPreview=RT.aiDebate?`<div class="banner acc no-print"><span><b>AI生成の討論（試行）</b>　${RT.aiDebate.messages.length}件 / ${esc(RT.aiDebate.meta.model)}（${esc(RT.aiDebate.meta.prompt_version)}）</span><span class="acts"><button class="btn sm pri" data-act="aiDebateAdopt">この討論を採用</button><button class="btn sm" data-act="aiDebateDiscard">破棄</button></span></div>`+
+  `<section class="card no-print"><h2>AI生成のプレビュー <span class="cnt">採用前に内容を確認</span></h2>${RT.aiDebate.messages.map(m=>`<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>${esc(AGENTS[m.agent]?AGENTS[m.agent].name:m.agent)}</b> <span class="chip">${esc(m.kind)}</span><div style="margin-top:4px">${esc(m.text)}</div>${(m.evidenceIds||[]).length?`<div class="muted" style="font-size:11px">根拠: ${m.evidenceIds.map(esc).join(', ')}</div>`:''}</div>`).join('')}</section>`:'';
+ const aiNote=P.debateAi?`<p class="hint no-print">この討論は AI 生成（${esc(P.debateAi.model)} / ${esc(P.debateAi.promptVersion)} / ${esc(P.debateAi.generatedAt)}）を採用したものです。</p>`:'';
  const st=stances(P);const cs=consensus(P);const F=FIELDS[A(P).field];
  const chips=[['反論する','その反証資料は条件が異なるので、適用範囲外の事例ではないか'],['条件を変更','対象を'+F.scope+'の場合に限定する'],['予算制約','予算が限られているので、低コストの検証方法にしたい'],['期間制約','半年以内に結果を出したい'],['安全・倫理','現場作業員の安全と、作業員データの取扱いを重視したい'],['データ不足','根拠となるデータが不足していると思う']];
- return head+staleBanner()+`<div class="debate">
+ return head+staleBanner()+aiPreview+aiNote+`<div class="debate">
   <aside><section class="card"><h2>参加エージェント</h2><div class="agents">${AG_KEYS.map(k=>`<div class="agent${RT.typing===k?' speaking':''}" data-ag="${k}">${avatar(k)}<span><span class="nm">${AGENTS[k].name}</span><span class="rl">${AGENTS[k].role}</span></span><span class="chip ${st[k].t}">${st[k].l}</span></div>`).join('')}</div></section>
   <section class="card"><h2>合意度（例示）</h2><div class="meter"><i style="left:calc(${cs}% - 2px)"></i></div><div style="display:flex;justify-content:space-between;font-size:11.5px" class="muted"><span>対立</span><b style="color:var(--ink)">${cs}</b><span>合意</span></div>
   <p class="hint">支持根拠・未対応の批判・採択状況から算出する例示指標です。</p></section></aside>
@@ -1336,6 +1342,16 @@ root.addEventListener('click',async e=>{
   case'reject':reject(k);break;
   case'rerun':rerun(k);break;
   case'runUpTo':runUpTo(k);break;
+  case'aiDebate':{if(RT.aiDebateBusy)return;if(!P.hypothesis.trim()){toast('研究仮説を入力してください');return}
+   RT.aiDebateBusy=true;render();
+   try{const r=await host.generateDebate(P.id);RT.aiDebate=r;log(`✦ AI討論を生成（${r.messages.length}件、${r.meta.model}）`);decide('AI討論を生成（試行）')}
+   catch(e){toast('AI討論を生成できません：'+((e&&e.message)||'未設定'))}
+   finally{RT.aiDebateBusy=false;render()}break}
+  case'aiDebateAdopt':{const r=RT.aiDebate;if(!r)return;stopPlay();
+   P.debate=r.messages.map((m,i)=>({id:uid('m'),round:Math.floor(i/3)+1,agent:AGENTS[m.agent]?m.agent:'fac',kind:str(m.kind,''),text:str(m.text,''),evidenceIds:arr(m.evidenceIds).slice(0,5)}));
+   P.debateShown=0;P.debateAi={provider:str(r.meta.provider,''),model:str(r.meta.model,''),promptVersion:str(r.meta.prompt_version,''),generatedAt:nowStr()};
+   RT.aiDebate=null;log('✦ AI生成の討論を採用');decide('AI討論を採用');touch();render();later(playDebate,200);break}
+  case'aiDebateDiscard':RT.aiDebate=null;render();break;
   case'playDebate':playDebate();renderDebateCtrls();break;
   case'pausePlay':stopPlay();renderChat();renderDebateCtrls();break;
   case'showAll':stopPlay();P.debateShown=P.debate.length;touch();renderChat();renderDebateCtrls();break;

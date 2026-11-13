@@ -164,7 +164,7 @@ plugin メッセージを追加できる（既存 `harness/plugins/memory-recall
 | 案 | 内容 | 判断 |
 |---|---|---|
 | A. 自動実行 | 01〜06 をワンクリックで通す（UI のみ） | **採用・実装**（本節） |
-| B. AI 化 | ルールベースを LLM に置換 | 設計済み（[03-studio-llm-replacement-plan.md](../design/03-studio-llm-replacement-plan.md)）。実装は別承認 |
+| B. AI 化 | ルールベースを LLM に置換 | **PoC 実装済み（討論のみ・既定 OFF）**（[ADR-0007](../adr/0007-studio-ai-debate.md)） |
 
 ### 実装（A案）
 
@@ -192,8 +192,18 @@ plugin メッセージを追加できる（既存 `harness/plugins/memory-recall
 - 全体: `npx playwright test` **43 passed / 1 skipped / 0 failed**（スタジオ spec 28 件を含む）、
   `npm run build` OK、vitest **10 件 PASS**。
 - 詳細: [02-detailed-test-spec.md](02-detailed-test-spec.md) §14。
-- 残: B案（LLM 置換）は設計まで完了（[03-studio-llm-replacement-plan.md](../design/03-studio-llm-replacement-plan.md)）。
-  実装は Q1〜Q6（範囲・保存・費用・データ越境・品質基準）の決定と別承認が必要。
+- 残: B案の本番キー投入・実モデルでの品質/幻覚評価は未実施（別承認）。他工程（批判・候補）への拡大も未着手。
+
+### B案 PoC（2026-11-13）
+
+- 範囲: **03 討論のみ**を assist で追加。検証・スコア・採点・採択の決定論は変更しない。
+- API: `POST /api/projects/{id}/ai/debate`（editor 以上、保存しない）。
+- UI: 「✦ AIで討論を生成（試行）」→ プレビュー →「採用」時のみ保存（`debateAi` に provenance）。
+- 引用: 既存 evidence ID のみ。存在しない ID を引く発言は破棄する。
+- 既定 OFF（`RIHRP_LLM_*` 未設定なら 503）。監査は `ai.debate_requested`（本文・鍵なし）。
+- テスト: API 11 件 + E2E 1 件（スタブ）。詳細は [06-ai-debate-test-plan.md](06-ai-debate-test-plan.md)。
+- 未実施: 実キーでのスモーク、実モデルの幻覚・品質評価、他工程への拡大。設計・判断は
+  [ADR-0007](../adr/0007-studio-ai-debate.md) と [03-studio-llm-replacement-plan.md](../design/03-studio-llm-replacement-plan.md)。
 
 ## リスク
 
