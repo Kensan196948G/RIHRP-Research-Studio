@@ -5,7 +5,7 @@
   実施するための手順・評定・停止条件。実施記録は別途 `docs/verification/` に残す。
 - 関連: [ADR-0007](../adr/0007-studio-ai-debate.md) / [Phase 3 B 設計](../design/03-studio-llm-replacement-plan.md)
   / [検証記録](../verification/2026-11-13-ai-debate-poc.md) / [レビュー記録](../verification/2026-11-13-test-report-review-ai-debate.md)（条件 C1）
-- 状態: **未実施（承認待ち）**。本手順は準備物であり、実施の承認ではない。
+- 状態: **実施済み（2026-11-13）**。[実施記録](../verification/2026-11-13-ai-debate-canary.md) を参照。
 
 ## 0. 目的と範囲
 
@@ -123,7 +123,7 @@
 
 ## 9. 実施後に更新する文書
 
-- `docs/verification/<date>-ai-debate-canary.md`（結果・合否・残リスク）
+- `docs/verification/2026-11-13-ai-debate-canary.md`（結果・合否・残リスク）
 - [レビュー記録](../verification/2026-11-13-test-report-review-ai-debate.md) の条件 C1（実キー評価）を closed に更新
 - 必要なら ADR-0007 に「実キー評価の結果」を追記
 

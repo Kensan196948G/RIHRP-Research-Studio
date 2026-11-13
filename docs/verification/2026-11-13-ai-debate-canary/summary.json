@@ -1,0 +1,264 @@
+{
+  "scenarios": {
+    "C-A": {
+      "status": 200,
+      "elapsed_s": 22.73,
+      "messages": 9,
+      "meta": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "prompt_version": "studio-debate-v1",
+        "latency_ms": 22697,
+        "messages": 9
+      }
+    },
+    "C-B": {
+      "status": 200,
+      "elapsed_s": 19.4,
+      "body": {
+        "messages": 9,
+        "meta": {
+          "provider": "anthropic",
+          "model": "claude-opus-5-5",
+          "prompt_version": "studio-debate-v1",
+          "latency_ms": 19383,
+          "messages": 9
+        }
+      }
+    },
+    "C-C": {
+      "status": 200,
+      "elapsed_s": 28.63,
+      "body": {
+        "messages": 10,
+        "meta": {
+          "provider": "anthropic",
+          "model": "claude-opus-5-5",
+          "prompt_version": "studio-debate-v1",
+          "latency_ms": 28618,
+          "messages": 10
+        }
+      }
+    }
+  },
+  "verify": {
+    "before": {
+      "verified": 1,
+      "results": [
+        {
+          "claim_id": "f6c0d0fa4716403ab728323267df12c4",
+          "verdict": "verified",
+          "reasons": [
+            "quote_verified"
+          ]
+        }
+      ]
+    },
+    "after": {
+      "verified": 1,
+      "results": [
+        {
+          "claim_id": "f6c0d0fa4716403ab728323267df12c4",
+          "verdict": "verified",
+          "reasons": [
+            "quote_verified"
+          ]
+        }
+      ]
+    },
+    "same": true
+  },
+  "adoption": {
+    "status": 200,
+    "body": {
+      "version": 2,
+      "payload": {
+        "title": "canary-standard",
+        "hypothesis": "河道湾曲部の外岸側で根固め工の重量を従来比1.5倍にすると、計画高水時の護岸基礎部の洗掘深は30%以上低減する。",
+        "evidence": [
+          {
+            "id": "ev-1",
+            "title": "護岸基礎の洗掘に関する現地観測",
+            "stance": "support",
+            "reliability": 78,
+            "summary": "重量を増した区間で洗掘深が低減した。"
+          }
+        ],
+        "critiques": [
+          {
+            "cat": "外的妥当性",
+            "sev": "高",
+            "text": "相似則の違いに注意が必要。"
+          }
+        ],
+        "debate": [
+          {
+            "id": "m0",
+            "round": 1,
+            "agent": "fac",
+            "kind": "進行",
+            "text": "本日の検討対象は「河道湾曲部の外岸側で根固め工の重量を従来比1.5倍にすると、計画高水時の護岸基礎部の洗掘深は30%以上低減する」という仮説です。手元の証拠は1件（ev-1）のみです。まず証拠の内容を確認し、次に仮説の定量部分をどこまで裏付けられるかを検証します。",
+            "evidenceIds": []
+          },
+          {
+            "id": "m1",
+            "round": 1,
+            "agent": "lit",
+            "kind": "根拠",
+            "text": "ev-1「護岸基礎の洗掘に関する現地観測」は支持側の証拠で、信頼度は78です。要旨は「重量を増した区間で洗掘深が低減した」というものです。根固め工の重量増と洗掘深低減の方向性は、この現地観測と整合します。",
+            "evidenceIds": [
+              "ev-1"
+            ]
+          },
+          {
+            "id": "m2",
+            "round": 1,
+            "agent": "evi",
+            "kind": "検証",
+            "text": "ev-1の要旨から確認できるのは、定性的な傾向（重量増→洗掘深低減）までです。仮説の中核である「従来比1.5倍」という重量条件、「30%以上」という低減率、「計画高水時」という流量条件、「湾曲部外岸側」という位置条件は、いずれも要旨に記載がありません。したがって現時点では、仮説の定量的主張は証拠で裏付けられていません。",
+            "evidenceIds": [
+              "ev-1"
+            ]
+          },
+          {
+            "id": "m3",
+            "round": 2,
+            "agent": "cri",
+            "kind": "反論",
+            "text": "批評では外的妥当性について、重大度「高」で相似則の違いへの注意が指摘されています。ev-1は現地観測とされるため、模型実験に固有の縮尺効果は直接は当てはまりません。ただし観測区間の河道規模・河床材料・流況が対象河川と異なれば、同じ問題が生じます。観測時の出水規模が計画高水に達していたかも不明で、計画高水時への外挿は根拠不足です。",
+            "evidenceIds": [
+              "ev-1"
+            ]
+          },
+          {
+            "id": "m4",
+            "round": 2,
+            "agent": "met",
+            "kind": "反論",
+            "text": "方法論上の懸念も挙げます。現地観測では、重量を増した区間と比較区間の間で、湾曲度、流速分布、河床材料、施工時期などの交絡要因が統制されていない可能性があります。要旨だけでは比較設計を判断できず、低減の原因を重量増に帰属できるかは未確認です。",
+            "evidenceIds": [
+              "ev-1"
+            ]
+          },
+          {
+            "id": "m5",
+            "round": 2,
+            "agent": "ide",
+            "kind": "提案",
+            "text": "検証計画として三段階を提案します。①ev-1の原典で、重量比、洗掘深の実測値、出水規模、観測位置（外岸側か否か）を確認する。②相似則に配慮した移動床水理模型実験で、重量比1.0/1.25/1.5/2.0と流量段階を系統的に変え、低減率の用量反応関係を見る。③可能なら数値解析（河床変動計算）と照合し、計画高水条件への外挿の妥当性を評価する。",
+            "evidenceIds": [
+              "ev-1"
+            ]
+          },
+          {
+            "id": "m6",
+            "round": 3,
+            "agent": "eth",
+            "kind": "確認",
+            "text": "実務への影響も確認します。「30%以上低減」が未検証のまま設計基準や予算判断に引用されると、過小設計や過大投資につながるおそれがあります。報告では、現時点の根拠は定性的傾向を示す1件の観測に限られる（ev-1）ことを明記すべきです。",
+            "evidenceIds": [
+              "ev-1"
+            ]
+          },
+          {
+            "id": "m7",
+            "round": 3,
+            "agent": "int",
+            "kind": "確認",
+            "text": "論点を整理します。合意点は、重量増で洗掘深が低減する方向性はev-1と整合することです。未解決点は次の4つです。(a)1.5倍・30%という数値の根拠。(b)計画高水条件への適用性。(c)湾曲部外岸側という条件の一致。(d)相似則・交絡を含む外的妥当性。",
+            "evidenceIds": [
+              "ev-1"
+            ]
+          },
+          {
+            "id": "m8",
+            "round": 3,
+            "agent": "fac",
+            "kind": "評価",
+            "text": "総合評価です。仮説の方向性は限定的に支持されます（ev-1、信頼度78、1件のみ）。一方、定量的主張（1.5倍で30%以上低減、計画高水時）は現有証拠では検証不能で、外的妥当性の懸念も重大度「高」です。判定は「定量部分は証拠不十分、追加検証が必要」とし、提案した原典確認と模型実験を次段階の作業とします。",
+            "evidenceIds": [
+              "ev-1"
+            ]
+          }
+        ],
+        "debateAi": {
+          "provider": "anthropic",
+          "model": "claude-opus-5-5",
+          "promptVersion": "studio-debate-v1",
+          "generatedAt": "2026-11-13T14:20:00+09:00"
+        }
+      },
+      "updated_at": "2026-11-13T05:17:19.676725+00:00",
+      "updated_by": "720979e1834b47e6970f5e1bc64dd04a"
+    },
+    "saved": {
+      "version": 2,
+      "debate_len": 9,
+      "debateAi": {
+        "model": "claude-opus-5-5",
+        "provider": "anthropic",
+        "generatedAt": "2026-11-13T14:20:00+09:00",
+        "promptVersion": "studio-debate-v1"
+      }
+    }
+  },
+  "audit": {
+    "C-A": [
+      {
+        "id": "4719e16cc036484587d852f3cab3c917",
+        "actor_id": "720979e1834b47e6970f5e1bc64dd04a",
+        "actor_name": "E2E Admin",
+        "action": "ai.debate_requested",
+        "entity_type": "project",
+        "entity_id": "50ae5c5e3d604019a41dfa98757556c9",
+        "project_id": "50ae5c5e3d604019a41dfa98757556c9",
+        "details": {
+          "model": "claude-opus-5-5",
+          "messages": 9,
+          "provider": "anthropic",
+          "latency_ms": 22697,
+          "prompt_version": "studio-debate-v1"
+        },
+        "created_at": "2026-11-13T14:16:56.879310+09:00"
+      }
+    ],
+    "C-B": [
+      {
+        "id": "d473c96cbc624bd5955a3b72f90e4082",
+        "actor_id": "720979e1834b47e6970f5e1bc64dd04a",
+        "actor_name": "E2E Admin",
+        "action": "ai.debate_requested",
+        "entity_type": "project",
+        "entity_id": "c40381295263402f90f9d087a15bd709",
+        "project_id": "c40381295263402f90f9d087a15bd709",
+        "details": {
+          "model": "claude-opus-5-5",
+          "messages": 9,
+          "provider": "anthropic",
+          "latency_ms": 19383,
+          "prompt_version": "studio-debate-v1"
+        },
+        "created_at": "2026-11-13T14:17:19.860487+09:00"
+      }
+    ],
+    "C-C": [
+      {
+        "id": "4195736e1da54dc29d75e2c089b43a2f",
+        "actor_id": "720979e1834b47e6970f5e1bc64dd04a",
+        "actor_name": "E2E Admin",
+        "action": "ai.debate_requested",
+        "entity_type": "project",
+        "entity_id": "4ce3f3052d9b4f43969ae43b8642dd6e",
+        "project_id": "4ce3f3052d9b4f43969ae43b8642dd6e",
+        "details": {
+          "model": "claude-opus-5-5",
+          "messages": 10,
+          "provider": "anthropic",
+          "latency_ms": 28618,
+          "prompt_version": "studio-debate-v1"
+        },
+        "created_at": "2026-11-13T14:17:39.385443+09:00"
+      }
+    ]
+  }
+}
